@@ -10,8 +10,19 @@ dist
 out
 build
 bin
+docs/
 dist-electron
 *.tsbuildinfo
+# Build Studio uses `build` as a product-domain source directory. Keep these
+# source trees tracked while retaining the generic build-output exclusion.
+!server/internal/build/
+!server/internal/build/**
+!packages/core/build/
+!packages/core/build/**
+!packages/views/build/
+!packages/views/build/**
+!apps/web/app/**/build/
+!apps/web/app/**/build/**
 # ...except electron-builder's source resources dir, which holds tracked
 # config files (entitlements, icons) — not build output.
 !apps/desktop/build/

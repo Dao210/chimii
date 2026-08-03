@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { setCurrentWorkspace } from "@chimii/core/platform";
@@ -18,9 +18,10 @@ import type { AgentRuntime, Workspace } from "@chimii/core/types";
 import { StepWelcome } from "./steps/step-welcome";
 import { StepAboutYou } from "./steps/step-about-you";
 import { StepWorkspace } from "./steps/step-workspace";
-import { StepRuntimeConnect } from "./steps/step-runtime-connect";
-import { StepPlatformFork } from "./steps/step-platform-fork";
+import { StepRuntimeAutoConnect } from "./steps/step-runtime-auto-connect";
 import { useT } from "../i18n";
+
+type OnboardingView = OnboardingStep | "finishing";
 
 const EMPTY_QUESTIONNAIRE: QuestionnaireAnswers = {
   source: [],
@@ -34,6 +35,14 @@ const EMPTY_QUESTIONNAIRE: QuestionnaireAnswers = {
   use_case_skipped: false,
   version: 2,
 };
+
+function OnboardingSurface({ children }: { children: ReactNode }) {
+  return (
+    <div className="chimii-onboarding-surface h-full min-h-0 bg-background text-foreground">
+      {children}
+    </div>
+  );
+}
 
 /**
  * Coerce a stored questionnaire slot into the array shape used by the
@@ -78,7 +87,6 @@ function mergeQuestionnaire(
 }
 
 /**
-/**
  * Shell's onComplete contract:
  *   onComplete(workspace?, issueId?) — if an issue id is present, navigate
  *   straight into that onboarding issue; otherwise navigate into the
@@ -87,11 +95,10 @@ function mergeQuestionnaire(
  * Three exit shapes feed onComplete:
  *   - Skip-existing (Welcome): completeOnboarding marks onboarded; navigate
  *     to the existing workspace's issue list.
- *   - Runtime-skipped (no runtime on Step 3): completeOnboarding marks
- *     onboarded; we push a {choice:"skip"} welcome signal and navigate
- *     to the workspace. The welcome hook in the workspace shell creates
- *     the install-runtime / create-agent guide issues on landing.
- *   - Runtime-connected (runtime picked on Step 3): completeOnboarding
+ *   - Runtime-unavailable (automatic probe timed out): completeOnboarding
+ *     marks onboarded and enters the creation space without blocking on
+ *     setup. A local runtime can still be added later from Runtimes.
+ *   - Runtime-connected (automatic remote/local match): completeOnboarding
  *     marks onboarded; we push a {choice:"runtime", runtimeId} welcome
  *     signal and navigate. The welcome hook creates the Chimii Helper
  *     agent on the picked runtime and shows the starter-card Modal.
@@ -102,21 +109,10 @@ function mergeQuestionnaire(
  */
 export function OnboardingFlow({
   onComplete,
-  runtimeInstructions,
-  onRuntimeRefresh,
-  runtimesPending,
+  isWeb = false,
 }: {
   onComplete: (workspace?: Workspace, issueId?: string) => void;
-  runtimeInstructions?: React.ReactNode;
-  /** Desktop wires this to restart the bundled daemon so a freshly
-   *  installed agent CLI gets picked up on the runtime step. Web omits
-   *  it — its CLI install flow already runs on the user's machine and
-   *  the embedded picker reacts to daemon:register events. */
-  onRuntimeRefresh?: () => void | Promise<void>;
-  /** Desktop wires this to the local daemon's live status so the runtime
-   *  step doesn't flash "no runtime found" while the daemon is still booting
-   *  or probing CLI versions (MUL-5119). Web omits it. */
-  runtimesPending?: boolean;
+  isWeb?: boolean;
 }) {
   const { t } = useT("onboarding");
   const user = useAuthStore((s) => s.user);
@@ -131,8 +127,9 @@ export function OnboardingFlow({
   const storedQuestionnaire = mergeQuestionnaire(user.onboarding_questionnaire);
   const [answers, setAnswers] = useState<QuestionnaireAnswers>(storedQuestionnaire);
 
-  const [step, setStep] = useState<OnboardingStep>("welcome");
+  const [step, setStep] = useState<OnboardingView>("welcome");
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
+  const completionErrorShownRef = useRef(false);
 
   // Fetched at Step 0 + Step 2. Step 2 uses it to detect a pre-existing
   // workspace from an earlier abandoned onboarding (so StepWorkspace shows
@@ -147,12 +144,6 @@ export function OnboardingFlow({
   });
   const existingWorkspace = workspace ?? workspaces[0] ?? null;
   const canSkipWelcome = workspacesFetched && workspaces.length > 0;
-
-  // The `runtimeInstructions` slot is only plumbed by the web shell
-  // (desktop bundles a daemon, so a CLI install card would be noise
-  // there). We reuse its presence as the web signal rather than
-  // introducing a redundant prop.
-  const isWeb = !!runtimeInstructions;
 
   // Derive "what comes after `from`" from ONBOARDING_STEP_ORDER so
   // inserting/reordering a persisted step only requires editing the
@@ -198,10 +189,7 @@ export function OnboardingFlow({
 
   // "I've done this before" path — returning user who already has a
   // workspace and just wants to land there. Marks onboarding complete
-  // server-side (idempotent via COALESCE on onboarded_at); when the
-  // target workspace has no runtime yet, the server seeds the same
-  // install-runtime issue as Step 3 Skip so the user lands on a
-  // concrete next step.
+  // server-side (idempotent via COALESCE on onboarded_at) and opens it.
   const handleWelcomeSkip = useCallback(async () => {
     try {
       await completeOnboarding("skip_existing", workspaces[0]?.id);
@@ -212,47 +200,55 @@ export function OnboardingFlow({
       return;
     }
     onComplete(workspaces[0] ?? undefined);
-  }, [workspaces, onComplete]);
+  }, [workspaces, onComplete, t]);
 
   const handleWorkspaceCreated = useCallback(
     (ws: Workspace) => {
       setWorkspace(ws);
       setCurrentWorkspace(ws.slug, ws.id);
-      advanceFrom("workspace");
+      setStep("finishing");
     },
-    [advanceFrom],
+    [],
   );
 
-  const handleRuntimeNext = useCallback(
-    async (rt: AgentRuntime | null) => {
-      if (!workspace) return;
-      // Step 3 in v3 does exactly two things:
+  const handleRuntimeResolved = useCallback(
+    async (ws: Workspace, rt: AgentRuntime | null) => {
+      // The automatic finishing state does exactly two things:
       //   1. Mark onboarded server-side (the workspace layout hard gate
       //      will redirect us back to /onboarding without this).
       //   2. Park a transient welcome signal for the workspace shell to
-      //      consume on the next render, telling it what the user chose.
+      //      consume when an online runtime was found.
       // Helper-agent creation and starter-issue creation happen in the
       // workspace shell's welcome hook, AFTER navigation, via the generic
       // createAgent / createIssue endpoints.
       try {
-        await completeOnboarding(
-          rt ? "full" : "runtime_skipped",
-          workspace.id,
-        );
+        await completeOnboarding(rt ? "full" : "runtime_skipped", ws.id);
       } catch (err) {
-        toast.error(
-          err instanceof Error ? err.message : t(($) => $.errors.skip_failed),
-        );
-        return;
+        if (!completionErrorShownRef.current) {
+          completionErrorShownRef.current = true;
+          toast.error(
+            err instanceof Error
+              ? err.message
+              : t(($) => $.errors.skip_failed),
+          );
+        }
+        throw err;
       }
-      useWelcomeStore.getState().set({
-        workspaceId: workspace.id,
-        choice: rt ? "runtime" : "skip",
-        ...(rt ? { runtimeId: rt.id } : {}),
-      });
-      onComplete(workspace, undefined);
+      if (rt) {
+        useWelcomeStore.getState().set({
+          workspaceId: ws.id,
+          choice: "runtime",
+          runtimeId: rt.id,
+        });
+      } else {
+        // Do not resurrect the old install/connect-computer onboarding
+        // modal. Runtime setup is optional after entry and lives in the
+        // dedicated Runtimes area.
+        useWelcomeStore.getState().reset();
+      }
+      onComplete(ws, undefined);
     },
-    [workspace, onComplete, t],
+    [onComplete, t],
   );
 
   const handleBack = useCallback((from: OnboardingStep) => {
@@ -266,66 +262,54 @@ export function OnboardingFlow({
     setStep(prev);
   }, []);
 
-  // Welcome, Questionnaire, and Workspace own full-bleed two-column
-  // layouts (hero / side panel) with their own DragStrip + StepHeader.
-  // The runtime step owns its own full-bleed shell.
+  // Welcome, Interests, and Creation Space own their own full-bleed
+  // layouts. Finishing is a short, non-interactive automatic runtime probe.
   if (step === "welcome") {
     return (
-      <StepWelcome
-        onNext={handleWelcomeNext}
-        onSkip={canSkipWelcome ? handleWelcomeSkip : undefined}
-        isWeb={isWeb}
-      />
+      <OnboardingSurface>
+        <StepWelcome
+          onNext={handleWelcomeNext}
+          onSkip={canSkipWelcome ? handleWelcomeSkip : undefined}
+          isWeb={isWeb}
+        />
+      </OnboardingSurface>
     );
   }
 
   if (step === "about_you") {
     return (
-      <StepAboutYou
-        answers={answers}
-        onChange={applyAnswers}
-        onAdvance={() => advanceFrom("about_you")}
-        onSkip={() => advanceFrom("about_you")}
-        onBack={() => handleBack("about_you")}
-      />
+      <OnboardingSurface>
+        <StepAboutYou
+          answers={answers}
+          onChange={applyAnswers}
+          onAdvance={() => advanceFrom("about_you")}
+          onSkip={() => advanceFrom("about_you")}
+          onBack={() => handleBack("about_you")}
+        />
+      </OnboardingSurface>
     );
   }
 
   if (step === "workspace") {
     return (
-      <StepWorkspace
-        existing={existingWorkspace}
-        onCreated={handleWorkspaceCreated}
-        onBack={() => handleBack("workspace")}
-      />
+      <OnboardingSurface>
+        <StepWorkspace
+          existing={existingWorkspace}
+          onCreated={handleWorkspaceCreated}
+          onBack={() => handleBack("workspace")}
+        />
+      </OnboardingSurface>
     );
   }
 
-  // Step 3. Both paths own full-bleed two-column layouts.
-  //   - Desktop (no cliInstructions slot) → StepRuntimeConnect drives
-  //     the local daemon's runtime list directly.
-  //   - Web → StepPlatformFork offers Download / CLI / Cloud paths.
-  //     Under the CLI path it embeds StepRuntimeConnect for the live
-  //     probe; the Cloud path is a soft exit via the waitlist.
-  if (step === "runtime" && workspace) {
-    if (!runtimeInstructions) {
-      return (
-        <StepRuntimeConnect
-          wsId={workspace.id}
-          onNext={handleRuntimeNext}
-          onBack={() => handleBack("runtime")}
-          onRefresh={onRuntimeRefresh}
-          runtimesPending={runtimesPending}
-        />
-      );
-    }
+  if (step === "finishing" && workspace) {
     return (
-      <StepPlatformFork
-        wsId={workspace.id}
-        onNext={handleRuntimeNext}
-        onBack={() => handleBack("runtime")}
-        cliInstructions={runtimeInstructions}
-      />
+      <OnboardingSurface>
+        <StepRuntimeAutoConnect
+          wsId={workspace.id}
+          onResolved={(runtime) => handleRuntimeResolved(workspace, runtime)}
+        />
+      </OnboardingSurface>
     );
   }
 

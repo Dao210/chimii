@@ -58,7 +58,7 @@ export function formatRouteErrorReport({
  */
 function useRecoveryRoute(): string | null {
   const activeWorkspaceSlug = useTabStore((state) => state.activeWorkspaceSlug);
-  return activeWorkspaceSlug ? `/${activeWorkspaceSlug}/issues` : null;
+  return activeWorkspaceSlug ? `/${activeWorkspaceSlug}/build` : null;
 }
 
 export function DesktopRouteErrorPage() {
@@ -112,7 +112,7 @@ function DesktopNotFoundPage() {
                 .navigateActiveSession(recoveryRoute, { replace: true })
             }
           >
-            Go to issues
+            Go to Build
           </Button>
         ) : null}
         <Button

@@ -49,8 +49,8 @@ describe("sanitizeTabPath", () => {
   });
 
   it("normalizes a bare workspace url to its default surface (replaces the in-router index redirect)", () => {
-    expect(sanitizeTabPath("/acme")).toBe("/acme/issues");
-    expect(sanitizeTabPath("/acme?welcome=1")).toBe("/acme/issues?welcome=1");
+    expect(sanitizeTabPath("/acme")).toBe("/acme/build");
+    expect(sanitizeTabPath("/acme?welcome=1")).toBe("/acme/build?welcome=1");
   });
 });
 
@@ -119,10 +119,10 @@ describe("useTabStore actions", () => {
     const s = useTabStore.getState();
     expect(s.activeWorkspaceSlug).toBe("acme");
     expect(s.byWorkspace.acme.tabs).toHaveLength(1);
-    expect(s.byWorkspace.acme.tabs[0].url).toBe("/acme/issues");
-    expect(s.byWorkspace.acme.tabs[0].resourceKey).toBe("/acme/issues");
+    expect(s.byWorkspace.acme.tabs[0].url).toBe("/acme/build");
+    expect(s.byWorkspace.acme.tabs[0].resourceKey).toBe("/acme/build");
     expect(s.byWorkspace.acme.tabs[0].history).toEqual({
-      stack: ["/acme/issues"],
+      stack: ["/acme/build"],
       index: 0,
     });
   });
@@ -146,16 +146,16 @@ describe("useTabStore actions", () => {
 
   it("switchWorkspace with openPath dedupes into an existing tab with the same resourceKey", () => {
     const store = useTabStore.getState();
-    store.switchWorkspace("acme"); // creates default /acme/issues
+    store.switchWorkspace("acme"); // creates default /acme/build
     store.addTab("/acme/projects", "Projects");
 
-    store.switchWorkspace("acme", "/acme/issues");
+    store.switchWorkspace("acme", "/acme/build");
     const s = useTabStore.getState();
     expect(s.byWorkspace.acme.tabs).toHaveLength(2); // no duplicate created
     const activeTab = s.byWorkspace.acme.tabs.find(
       (t) => t.id === s.byWorkspace.acme.activeTabId,
     );
-    expect(activeTab?.url).toBe("/acme/issues");
+    expect(activeTab?.url).toBe("/acme/build");
   });
 
   it("switchWorkspace with openPath not matching any tab adds a new tab", () => {
@@ -181,17 +181,17 @@ describe("useTabStore actions", () => {
 
   it("openTab with a different query focuses the existing tab and keeps its url (RFC §8.2 semantic change)", () => {
     const store = useTabStore.getState();
-    store.switchWorkspace("acme"); // default tab at /acme/issues
+    store.switchWorkspace("acme"); // default tab at /acme/build
     const defaultTabId = useTabStore.getState().byWorkspace.acme.tabs[0].id;
 
-    const id = store.openTab("/acme/issues?filter=urgent", "Issues");
+    const id = store.openTab("/acme/build?camera=front", "Build");
 
     const s = useTabStore.getState();
     expect(id).toBe(defaultTabId); // focused, not duplicated
     expect(s.byWorkspace.acme.tabs).toHaveLength(1);
     // The existing tab's own view state (url) wins; the incoming filter does
     // not overwrite it.
-    expect(s.byWorkspace.acme.tabs[0].url).toBe("/acme/issues");
+    expect(s.byWorkspace.acme.tabs[0].url).toBe("/acme/build");
   });
 
   it("closeTab on the last tab in a workspace reseeds the default tab", () => {
@@ -201,7 +201,7 @@ describe("useTabStore actions", () => {
     store.closeTab(onlyTabId);
     const s = useTabStore.getState();
     expect(s.byWorkspace.acme.tabs).toHaveLength(1);
-    expect(s.byWorkspace.acme.tabs[0].url).toBe("/acme/issues");
+    expect(s.byWorkspace.acme.tabs[0].url).toBe("/acme/build");
     expect(s.byWorkspace.acme.tabs[0].id).not.toBe(onlyTabId); // fresh tab
   });
 
@@ -264,7 +264,7 @@ describe("useTabStore actions", () => {
     const s = useTabStore.getState();
     expect(s.activeWorkspaceSlug).toBe("acme");
     expect(s.byWorkspace.acme.tabs).toHaveLength(1);
-    expect(s.byWorkspace.acme.tabs[0].url).toBe("/acme/issues");
+    expect(s.byWorkspace.acme.tabs[0].url).toBe("/acme/build");
   });
 
   it("validateWorkspaceSlugs reactivates an existing valid group before seeding", () => {
@@ -293,7 +293,7 @@ describe("useTabStore actions", () => {
     expect(Object.keys(s.byWorkspace)).toEqual(["acme"]);
     expect(s.activeWorkspaceSlug).toBe("acme");
     expect(s.byWorkspace.acme.tabs).toHaveLength(1);
-    expect(s.byWorkspace.acme.tabs[0].url).toBe("/acme/issues");
+    expect(s.byWorkspace.acme.tabs[0].url).toBe("/acme/build");
   });
 
   it("reset wipes the whole store", () => {
@@ -329,7 +329,7 @@ describe("navigateActiveSession", () => {
     expect(active.url).toBe("/acme/projects?sort=name");
     expect(active.resourceKey).toBe("/acme/projects");
     expect(active.history).toEqual({
-      stack: ["/acme/issues", "/acme/projects?sort=name"],
+      stack: ["/acme/build", "/acme/projects?sort=name"],
       index: 1,
     });
   });
@@ -343,7 +343,7 @@ describe("navigateActiveSession", () => {
 
     const active = getActiveTab(useTabStore.getState())!;
     expect(active.history).toEqual({
-      stack: ["/acme/issues", "/acme/projects?sort=name"],
+      stack: ["/acme/build", "/acme/projects?sort=name"],
       index: 1,
     });
   });
@@ -360,7 +360,7 @@ describe("navigateActiveSession", () => {
 
     const active = getActiveTab(useTabStore.getState())!;
     expect(active.history).toEqual({
-      stack: ["/acme/issues", "/acme/inbox"],
+      stack: ["/acme/build", "/acme/inbox"],
       index: 1,
     });
   });
@@ -372,7 +372,7 @@ describe("navigateActiveSession", () => {
     store.navigateActiveSession("/butter/issues");
 
     const active = getActiveTab(useTabStore.getState())!;
-    expect(active.url).toBe("/acme/issues");
+    expect(active.url).toBe("/acme/build");
   });
 
   it("goBack/goForward project the history stack back into the url", () => {
@@ -382,7 +382,7 @@ describe("navigateActiveSession", () => {
 
     store.goBack();
     let active = getActiveTab(useTabStore.getState())!;
-    expect(active.url).toBe("/acme/issues");
+    expect(active.url).toBe("/acme/build");
     expect(active.history.index).toBe(0);
 
     store.goForward();
@@ -635,7 +635,7 @@ describe("moveTab boundary clamp", () => {
     const tabs = useTabStore.getState().byWorkspace.acme.tabs;
     expect(tabs.map((t) => t.url)).toEqual([
       "/acme/agents",
-      "/acme/issues",
+      "/acme/build",
       "/acme/projects",
     ]);
   });

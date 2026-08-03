@@ -114,17 +114,17 @@ describe("LoginPage", () => {
   // Email step rendering
   // -------------------------------------------------------------------------
 
-  it("renders email form with 'Sign in to Chimii' title", () => {
+  it("renders the parent-focused email form", () => {
     renderWithI18n(<LoginPage onSuccess={onSuccess} />);
     expect(
-      screen.getByText(/sign in to chimii/i),
+      screen.getByText(/sign in or create a parent account/i),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/enter your email to get a login code/i),
+      screen.getByText(/enter your email for a 6-digit code/i),
     ).toBeInTheDocument();
     expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: /continue/i }),
+      screen.getByRole("button", { name: /send sign-in code/i }),
     ).toBeInTheDocument();
   });
 
@@ -132,27 +132,16 @@ describe("LoginPage", () => {
   // Email validation
   // -------------------------------------------------------------------------
 
-  it("shows error when submitting with empty email", async () => {
+  it("prevents submitting when email is empty", async () => {
     renderWithI18n(<LoginPage onSuccess={onSuccess} />);
 
-    // The Continue button is disabled when email is empty, so we submit the
-    // form programmatically the same way the component does — via form submit.
-    // Since the button is disabled, we directly call handleSendCode's logic
-    // by removing the required attr and submitting.
-    const emailInput = screen.getByLabelText(/email/i);
-    // The input has required + the button is disabled, so we need to type
-    // a space then clear to trigger the empty-email error path.
-    // Actually, the component guards `if (!email)` in handleSendCode.
-    // But the button is disabled when `!email`. Let's verify:
-    const button = screen.getByRole("button", { name: /continue/i });
-    expect(button).toBeDisabled();
-
-    // Type an email to enable button, then clear it — button becomes disabled again
     const user = userEvent.setup();
-    await user.type(emailInput, "a");
-    expect(button).not.toBeDisabled();
-    await user.clear(emailInput);
-    expect(button).toBeDisabled();
+    const button = screen.getByRole("button", { name: /send sign-in code/i });
+    expect(button).toBeEnabled();
+
+    await user.click(button);
+
+    expect(mockSendCode).not.toHaveBeenCalled();
   });
 
   // -------------------------------------------------------------------------
@@ -165,7 +154,7 @@ describe("LoginPage", () => {
 
     const user = userEvent.setup();
     await user.type(screen.getByLabelText(/email/i), "test@example.com");
-    await user.click(screen.getByRole("button", { name: /continue/i }));
+    await user.click(screen.getByRole("button", { name: /send sign-in code/i }));
 
     expect(mockSendCode).toHaveBeenCalledWith("test@example.com");
   });
@@ -177,7 +166,7 @@ describe("LoginPage", () => {
 
     const user = userEvent.setup();
     await user.type(screen.getByLabelText(/email/i), "test@example.com");
-    await user.click(screen.getByRole("button", { name: /continue/i }));
+    await user.click(screen.getByRole("button", { name: /send sign-in code/i }));
 
     expect(screen.getByText(/sending code/i)).toBeInTheDocument();
   });
@@ -188,43 +177,70 @@ describe("LoginPage", () => {
 
     const user = userEvent.setup();
     await user.type(screen.getByLabelText(/email/i), "test@example.com");
-    await user.click(screen.getByRole("button", { name: /continue/i }));
+    await user.click(screen.getByRole("button", { name: /send sign-in code/i }));
 
     await waitFor(() => {
       expect(
-        screen.getByText(/check your email/i),
+        screen.getByText(/enter your 6-digit code/i),
       ).toBeInTheDocument();
     });
     expect(screen.getByText(/test@example.com/)).toBeInTheDocument();
   });
 
   it("autofocuses the OTP input when the code step opens", async () => {
+    const matchMedia = vi
+      .spyOn(window, "matchMedia")
+      .mockImplementation(
+        (query) =>
+          ({
+            matches: query === "(min-width: 768px)",
+            media: query,
+            onchange: null,
+            addListener: () => {},
+            removeListener: () => {},
+            addEventListener: () => {},
+            removeEventListener: () => {},
+            dispatchEvent: () => false,
+          }) as MediaQueryList,
+      );
     mockSendCode.mockResolvedValueOnce(undefined);
-    renderWithI18n(<LoginPage onSuccess={onSuccess} />);
+    try {
+      renderWithI18n(<LoginPage onSuccess={onSuccess} />);
 
-    const user = userEvent.setup();
-    await user.type(screen.getByLabelText(/email/i), "test@example.com");
-    await user.click(screen.getByRole("button", { name: /continue/i }));
+      const user = userEvent.setup();
+      await user.type(screen.getByLabelText(/email/i), "test@example.com");
+      await user.click(
+        screen.getByRole("button", { name: /send sign-in code/i }),
+      );
 
-    await waitFor(() => {
-      expect(screen.getByText(/check your email/i)).toBeInTheDocument();
-    });
+      await waitFor(() => {
+        expect(
+          screen.getByText(/enter your 6-digit code/i),
+        ).toBeInTheDocument();
+      });
 
-    // The OTP field should be focused on mount so the user can type the code
-    // without clicking it first — important when repeatedly switching accounts.
-    expect(getOTPInput()).toHaveFocus();
+      // On desktop the OTP field should be focused on mount so the user can
+      // type the code without clicking it first.
+      await waitFor(() => {
+        expect(getOTPInput()).toHaveFocus();
+      });
+    } finally {
+      matchMedia.mockRestore();
+    }
   });
 
   it("shows error when sendCode fails", async () => {
-    mockSendCode.mockRejectedValueOnce(new Error("Rate limited"));
+    mockSendCode.mockRejectedValueOnce(
+      Object.assign(new Error("Rate limited"), { status: 429 }),
+    );
     renderWithI18n(<LoginPage onSuccess={onSuccess} />);
 
     const user = userEvent.setup();
     await user.type(screen.getByLabelText(/email/i), "test@example.com");
-    await user.click(screen.getByRole("button", { name: /continue/i }));
+    await user.click(screen.getByRole("button", { name: /send sign-in code/i }));
 
     await waitFor(() => {
-      expect(screen.getByText("Rate limited")).toBeInTheDocument();
+      expect(screen.getByText(/too many requests/i)).toBeInTheDocument();
     });
   });
 
@@ -234,7 +250,7 @@ describe("LoginPage", () => {
 
     const user = userEvent.setup();
     await user.type(screen.getByLabelText(/email/i), "test@example.com");
-    await user.click(screen.getByRole("button", { name: /continue/i }));
+    await user.click(screen.getByRole("button", { name: /send sign-in code/i }));
 
     await waitFor(() => {
       expect(
@@ -257,12 +273,12 @@ describe("LoginPage", () => {
     const user = userEvent.setup();
     // Step 1: email
     await user.type(screen.getByLabelText(/email/i), "test@example.com");
-    await user.click(screen.getByRole("button", { name: /continue/i }));
+    await user.click(screen.getByRole("button", { name: /send sign-in code/i }));
 
     // Step 2: code
     await waitFor(() => {
       expect(
-        screen.getByText(/check your email/i),
+        screen.getByText(/enter your 6-digit code/i),
       ).toBeInTheDocument();
     });
 
@@ -293,11 +309,11 @@ describe("LoginPage", () => {
 
     const user = userEvent.setup();
     await user.type(screen.getByLabelText(/email/i), "test@example.com");
-    await user.click(screen.getByRole("button", { name: /continue/i }));
+    await user.click(screen.getByRole("button", { name: /send sign-in code/i }));
 
     await waitFor(() => {
       expect(
-        screen.getByText(/check your email/i),
+        screen.getByText(/enter your 6-digit code/i),
       ).toBeInTheDocument();
     });
 
@@ -305,7 +321,7 @@ describe("LoginPage", () => {
     await user.type(otpInput, "000000");
 
     await waitFor(() => {
-      expect(screen.getByText("Invalid code")).toBeInTheDocument();
+      expect(screen.getByText("Invalid or expired code")).toBeInTheDocument();
     });
     expect(onSuccess).not.toHaveBeenCalled();
   });
@@ -320,11 +336,11 @@ describe("LoginPage", () => {
 
     const user = userEvent.setup();
     await user.type(screen.getByLabelText(/email/i), "test@example.com");
-    await user.click(screen.getByRole("button", { name: /continue/i }));
+    await user.click(screen.getByRole("button", { name: /send sign-in code/i }));
 
     await waitFor(() => {
       expect(
-        screen.getByText(/check your email/i),
+        screen.getByText(/enter your 6-digit code/i),
       ).toBeInTheDocument();
     });
 
@@ -339,10 +355,10 @@ describe("LoginPage", () => {
     renderWithI18n(<LoginPage onSuccess={onSuccess} />);
 
     await user.type(screen.getByLabelText(/email/i), "test@example.com");
-    await user.click(screen.getByRole("button", { name: /continue/i }));
+    await user.click(screen.getByRole("button", { name: /send sign-in code/i }));
 
     await waitFor(() => {
-      expect(screen.getByText(/check your email/i)).toBeInTheDocument();
+      expect(screen.getByText(/enter your 6-digit code/i)).toBeInTheDocument();
     });
 
     // After transition, resend shows cooldown text and is disabled
@@ -355,10 +371,10 @@ describe("LoginPage", () => {
 
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     await user.type(screen.getByLabelText(/email/i), "test@example.com");
-    await user.click(screen.getByRole("button", { name: /continue/i }));
+    await user.click(screen.getByRole("button", { name: /send sign-in code/i }));
 
     await waitFor(() => {
-      expect(screen.getByText(/check your email/i)).toBeInTheDocument();
+      expect(screen.getByText(/enter your 6-digit code/i)).toBeInTheDocument();
     });
 
     // sendCode was called once for the initial send
@@ -507,7 +523,7 @@ describe("LoginPage", () => {
     );
 
     expect(
-      screen.getByText(/sign in to chimii/i),
+      screen.getByText(/sign in or create a parent account/i),
     ).toBeInTheDocument();
   });
 
@@ -589,11 +605,11 @@ describe("LoginPage", () => {
 
     const user = userEvent.setup();
     await user.type(screen.getByLabelText(/email/i), "cli@example.com");
-    await user.click(screen.getByRole("button", { name: /continue/i }));
+    await user.click(screen.getByRole("button", { name: /send sign-in code/i }));
 
     await waitFor(() => {
       expect(
-        screen.getByText(/check your email/i),
+        screen.getByText(/enter your 6-digit code/i),
       ).toBeInTheDocument();
     });
 
@@ -655,11 +671,11 @@ describe("LoginPage", () => {
 
     const user = userEvent.setup();
     await user.type(screen.getByLabelText(/email/i), "test@example.com");
-    await user.click(screen.getByRole("button", { name: /continue/i }));
+    await user.click(screen.getByRole("button", { name: /send sign-in code/i }));
 
     await waitFor(() => {
       expect(
-        screen.getByText(/check your email/i),
+        screen.getByText(/enter your 6-digit code/i),
       ).toBeInTheDocument();
     });
 
@@ -682,18 +698,20 @@ describe("LoginPage", () => {
 
     const user = userEvent.setup();
     await user.type(screen.getByLabelText(/email/i), "test@example.com");
-    await user.click(screen.getByRole("button", { name: /continue/i }));
+    await user.click(screen.getByRole("button", { name: /send sign-in code/i }));
 
     await waitFor(() => {
       expect(
-        screen.getByText(/check your email/i),
+        screen.getByText(/enter your 6-digit code/i),
       ).toBeInTheDocument();
     });
 
-    await user.click(screen.getByRole("button", { name: /back/i }));
+    await user.click(
+      screen.getByRole("button", { name: /use a different email/i }),
+    );
 
     expect(
-      screen.getByText(/sign in to chimii/i),
+      screen.getByText(/sign in or create a parent account/i),
     ).toBeInTheDocument();
   });
 

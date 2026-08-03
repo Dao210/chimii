@@ -1,0 +1,1 @@
+DROP INDEX CONCURRENTLY IF EXISTS build_creation_id_idx;

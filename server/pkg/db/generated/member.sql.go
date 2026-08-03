@@ -167,6 +167,50 @@ func (q *Queries) ListMembersWithUser(ctx context.Context, workspaceID pgtype.UU
 	return items, nil
 }
 
+const lockWorkspaceMemberForRevocation = `-- name: LockWorkspaceMemberForRevocation :one
+SELECT id FROM member
+WHERE id = $1 AND workspace_id = $2 AND user_id = $3
+FOR UPDATE
+`
+
+type LockWorkspaceMemberForRevocationParams struct {
+	ID          pgtype.UUID `json:"id"`
+	WorkspaceID pgtype.UUID `json:"workspace_id"`
+	UserID      pgtype.UUID `json:"user_id"`
+}
+
+// Acquired before deleting any member-owned FK-free state. It conflicts with
+// LockWorkspaceMemberForScopedWrite, so the cleanup snapshot cannot miss a
+// Build/child-mode write that is still committing.
+func (q *Queries) LockWorkspaceMemberForRevocation(ctx context.Context, arg LockWorkspaceMemberForRevocationParams) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, lockWorkspaceMemberForRevocation, arg.ID, arg.WorkspaceID, arg.UserID)
+	var id pgtype.UUID
+	err := row.Scan(&id)
+	return id, err
+}
+
+const lockWorkspaceMemberForScopedWrite = `-- name: LockWorkspaceMemberForScopedWrite :one
+SELECT id FROM member
+WHERE workspace_id = $1 AND user_id = $2
+FOR KEY SHARE
+`
+
+type LockWorkspaceMemberForScopedWriteParams struct {
+	WorkspaceID pgtype.UUID `json:"workspace_id"`
+	UserID      pgtype.UUID `json:"user_id"`
+}
+
+// Build Studio and child mode are owned by a workspace member but intentionally
+// carry no database foreign keys. Their writers take this shared row lock in
+// the same transaction as the write. Member revocation takes FOR UPDATE before
+// its cleanup sweep, closing the create/remove race explicitly in the app layer.
+func (q *Queries) LockWorkspaceMemberForScopedWrite(ctx context.Context, arg LockWorkspaceMemberForScopedWriteParams) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, lockWorkspaceMemberForScopedWrite, arg.WorkspaceID, arg.UserID)
+	var id pgtype.UUID
+	err := row.Scan(&id)
+	return id, err
+}
+
 const updateMemberRole = `-- name: UpdateMemberRole :one
 UPDATE member SET role = $2
 WHERE id = $1

@@ -106,14 +106,22 @@ describe("LoginPage", () => {
     mockListMyInvitations.mockResolvedValue([]);
   });
 
-  it("renders login form with email input and continue button", () => {
+  it("renders the parent-focused login form", () => {
     render(<LoginPage />, { wrapper: createWrapper() });
 
-    expect(screen.getByText("Sign in to Chimii")).toBeInTheDocument();
-    expect(screen.getByText("Enter your email to get a login code")).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", {
+        name: "Sign in or create a parent account",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Enter your email for a 6-digit code. A new email creates an account after verification.",
+      ),
+    ).toBeInTheDocument();
     expect(screen.getByLabelText("Email")).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Continue" })
+      screen.getByRole("button", { name: "Send sign-in code" }),
     ).toBeInTheDocument();
   });
 
@@ -121,7 +129,9 @@ describe("LoginPage", () => {
     const user = userEvent.setup();
     render(<LoginPage />, { wrapper: createWrapper() });
 
-    await user.click(screen.getByRole("button", { name: "Continue" }));
+    await user.click(
+      screen.getByRole("button", { name: "Send sign-in code" }),
+    );
     expect(mockSendCode).not.toHaveBeenCalled();
   });
 
@@ -131,23 +141,27 @@ describe("LoginPage", () => {
     render(<LoginPage />, { wrapper: createWrapper() });
 
     await user.type(screen.getByLabelText("Email"), "test@chimii.ai");
-    await user.click(screen.getByRole("button", { name: "Continue" }));
+    await user.click(
+      screen.getByRole("button", { name: "Send sign-in code" }),
+    );
 
     await waitFor(() => {
       expect(mockSendCode).toHaveBeenCalledWith("test@chimii.ai");
     });
   });
 
-  it("shows 'Sending code...' while submitting", async () => {
+  it("shows the sending state while submitting", async () => {
     mockSendCode.mockReturnValueOnce(new Promise(() => {}));
     const user = userEvent.setup();
     render(<LoginPage />, { wrapper: createWrapper() });
 
     await user.type(screen.getByLabelText("Email"), "test@chimii.ai");
-    await user.click(screen.getByRole("button", { name: "Continue" }));
+    await user.click(
+      screen.getByRole("button", { name: "Send sign-in code" }),
+    );
 
     await waitFor(() => {
-      expect(screen.getByText("Sending code...")).toBeInTheDocument();
+      expect(screen.getByText("Sending code…")).toBeInTheDocument();
     });
   });
 
@@ -157,10 +171,12 @@ describe("LoginPage", () => {
     render(<LoginPage />, { wrapper: createWrapper() });
 
     await user.type(screen.getByLabelText("Email"), "test@chimii.ai");
-    await user.click(screen.getByRole("button", { name: "Continue" }));
+    await user.click(
+      screen.getByRole("button", { name: "Send sign-in code" }),
+    );
 
     await waitFor(() => {
-      expect(screen.getByText("Check your email")).toBeInTheDocument();
+      expect(screen.getByText("Enter your 6-digit code")).toBeInTheDocument();
     });
   });
 
@@ -170,10 +186,16 @@ describe("LoginPage", () => {
     render(<LoginPage />, { wrapper: createWrapper() });
 
     await user.type(screen.getByLabelText("Email"), "test@chimii.ai");
-    await user.click(screen.getByRole("button", { name: "Continue" }));
+    await user.click(
+      screen.getByRole("button", { name: "Send sign-in code" }),
+    );
 
     await waitFor(() => {
-      expect(screen.getByText("Network error")).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          "Failed to send code. Make sure the server is running.",
+        ),
+      ).toBeInTheDocument();
     });
   });
 
@@ -256,7 +278,7 @@ describe("LoginPage", () => {
       render(<LoginPage />, { wrapper: createWrapper() });
 
       await waitFor(() => {
-        expect(mockReplace).toHaveBeenCalledWith("/acme/issues");
+        expect(mockReplace).toHaveBeenCalledWith("/acme/build");
       });
       expect(mockListWorkspaces).toHaveBeenCalledTimes(1);
     });

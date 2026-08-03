@@ -1,173 +1,151 @@
-<p align="center">
-  <img src="docs/assets/banner.jpg" alt="Chimii — 人类与 AI，并肩前行" width="100%">
-</p>
-
 <div align="center">
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/logo-dark.svg">
-  <source media="(prefers-color-scheme: light)" srcset="docs/assets/logo-light.svg">
-  <img alt="Chimii" src="docs/assets/logo-light.svg" width="50">
-</picture>
+# CHIMII 奇觅
 
-# Chimii
+### 让孩子从 AI 内容消费者，变成真实世界的创造者。
 
-**你的下一批员工，不是人类。**
-
-开源的 Managed Agents 平台。<br/>
-将编码 Agent 变成真正的队友——分配任务、跟踪进度、积累技能。
+**孩子从任意想法出发，AI 理解现有零件，生成可执行方案，并陪伴孩子完成和改造。**
 
 [![CI](https://github.com/chimii-ai/chimii/actions/workflows/ci.yml/badge.svg)](https://github.com/chimii-ai/chimii/actions/workflows/ci.yml)
 [![GitHub stars](https://img.shields.io/github/stars/chimii-ai/chimii?style=flat)](https://github.com/chimii-ai/chimii/stargazers)
-[![Discord](https://img.shields.io/badge/Discord-Join-5865F2?logo=discord&logoColor=white)](https://discord.gg/W8gYBn226t)
+[![License](https://img.shields.io/badge/license-Modified%20Apache%202.0-2f6f5e)](LICENSE)
 
-[官网](https://chimii.ai) · [Discord](https://discord.gg/W8gYBn226t) · [X](https://x.com/ChimiiAI) · [自部署指南](SELF_HOSTING.md) · [参与贡献](CONTRIBUTING.md)
+[官网](https://chimii.ai) · [产品愿景](docs/plans/%E5%A5%87%E8%A7%85%E5%8F%91%E6%98%8E%E5%AE%B6prd%2020260728.md) · [本地开发](#本地开发) · [X](https://x.com/ChimiiAI)
 
 **[English](README.md) | 简体中文**
 
 </div>
 
-## Chimii 是什么？
+## 从消费 AI 内容，到在真实世界创造
 
-Chimii 将编码 Agent 变成真正的队友。像分配给同事一样分配给 Agent——它们会自主接手工作、编写代码、报告阻塞问题、更新状态。
+大多数面向孩子的 AI 体验，都在把孩子留在屏幕里：再生成一张图片、再看一段动画、再问一个问题。
 
-不再需要复制粘贴 prompt，不再需要盯着运行过程。你的 Agent 出现在看板上、参与对话、随着时间积累可复用的技能。可以理解为开源的 Managed Agents 基础设施——厂商中立、可自部署、专为人类 + AI 团队设计。支持 **Claude Code**、**Codex**、**CodeBuddy**、**GitHub Copilot CLI**、**OpenCode**、**OpenClaw**、**Hermes**、**Pi**、**Cursor Agent**、**Kimi**、**Kiro CLI**、**Antigravity**、**Qoder CLI** 与 **Trae CLI**。
+**CHIMII 奇觅发明家**选择了相反的方向。孩子从任意想法出发，奇觅理解他们手边已有的零件，把想法转化为真正能搭建的方案，并在孩子动手、测试和持续改造的过程中提供陪伴。
 
-面向更大的团队，Squads（小队）提供稳定的路由层：把任务分给由 Agent 带队的小队，由队长判断谁最适合接手。
+AI 是向导，孩子才是发明家。
 
-<p align="center">
-  <img src="docs/assets/hero-screenshot.png" alt="Chimii 看板视图" width="800">
-</p>
+> [!IMPORTANT]
+> **CHIMII 正处于产品方向升级阶段。** 当前营销体验与产品叙事已经切换到本文描述的儿童 AI 发明套件。仓库中仍保留上一阶段已经成熟的 AI Agent 协作基础设施。奇觅发明家专属能力正在这套基础上开发，尚未完成的部分会在下方状态表中明确标记。
 
-## 为什么叫 "Chimii"？
+## 奇觅如何帮助孩子创造
 
-Chimii——**Mul**tiplexed **I**nformation and **C**omputing **A**gent。
+| 阶段 | 孩子的体验 | 奇觅的作用 |
+| --- | --- | --- |
+| **1. Imagine it · 奇思妙想** | 说出想法、用语音描述，或随手画下来。 | 理解创意意图，把它转化为实体设计目标。 |
+| **2. Build it · 动手建造** | 使用家中已有零件，跟随清楚的步骤完成搭建。 | 检查零件约束，生成稳固、可执行的搭建方案。 |
+| **3. Bring it to life · 赋予生命** | 加入动作或表情，反复测试并继续改造。 | 引导运动、互动、故障排查与持续迭代。 |
 
-这个名字是在向 20 世纪 60 年代具有开创意义的操作系统 Multics 致意。Multics 首创了分时系统，让多个用户能够共享同一台机器，同时又像各自独占它一样使用。Unix 则是在有意简化 Multics 的基础上诞生的，强调一个用户、一个任务、一种优雅的哲学。
+奇觅的目标不是替孩子生产更多内容，而是帮助孩子亲手创造真实存在的作品。
 
-我们认为，类似的转折点正在再次出现。几十年来，软件团队一直处于一种单线程的工作模式，一个工程师处理一个任务，一次只专注于一个上下文。AI agents 改变了这个等式。Chimii 将"分时"重新带回这个时代，只不过今天在系统中进行多路复用的"用户"，既包括人类，也包括自主代理。
+## 孩子可以创造什么
 
-在 Chimii 中，agents 是一级团队成员。它们会被分配 issue，汇报进展，提出阻塞，并交付代码，就像人类同事一样。任务分配、活动时间线、任务生命周期，以及运行时基础设施，Chimii 从第一天起就是围绕这一理念构建的。
+- **机器宠物**：会移动，也会对周围作出回应
+- **秘密基地**：拥有舱门、藏宝空间和机械结构
+- **陷阱机关**：使用齿轮、杠杆与重力触发
+- **自动赛车**：在测试、调校和重建中持续进化
+- **情绪玩偶**：会表达情绪，也能感知外部世界
 
-和当年的 Multics 一样，这一判断建立在"多路复用"之上。一个小团队不该因为人数少就显得能力有限。有了合适的系统，两名工程师加上一组 agents，就能发挥出二十人团队的推进速度。
+这些只是起点，不是固定模板。故事由孩子决定，作品也可以一直改变。
 
-## 功能特性
+## 创造过程中自然生长的能力
 
-Chimii 管理完整的 Agent 生命周期：从任务分配到执行监控再到技能复用。
+| 孩子获得 | 家长看到 |
+| --- | --- |
+| 把脑洞变成现实的兴奋感 | 在开放式设计中培养**创造力** |
+| 对设计和故事的真正主导权 | 在测试与修复中提升**解决问题能力** |
+| 可以触摸、运动和继续改造的作品 | 在结构、运动与因果中形成**工程思维** |
+| 通过亲手完成获得的创造自信 | 把 AI 当工具而非思考替代品的**负责任 AI 素养** |
+| 更多在真实世界动手的时间 | **更少被动屏幕时间**，更多专注与行动 |
 
-- **Agent 即队友** — 像分配给同事一样分配给 Agent。它们有个人档案、出现在看板上、发表评论、创建 Issue、主动报告阻塞问题。
-- **Squads（小队）** — 把多个 Agent（以及人类成员）组合成由 leader agent 带队的小队，直接把任务分配给小队本身。Leader 会判断谁最适合接手，团队扩容时路由方式保持不变。用 `@前端组` 代替 `@小张或小李或小王`。
-- **自主执行** — 设置后无需管理。完整的任务生命周期管理（排队、认领、执行、完成/失败），通过 WebSocket 实时推送进度。
-- **自动化（Autopilots）** — 为 Agent 安排周期性工作。定时（Cron）、Webhook 或手动触发，自动化会自动创建 Issue 并分配给 Agent——日报、周报、定期巡检都能让它自己跑起来。
-- **可复用技能** — 每个解决方案都成为全团队可复用的技能。部署、数据库迁移、代码审查——技能让团队能力随时间持续增长。
-- **统一运行时** — 一个控制台管理所有算力。本地 daemon 和云端运行时，自动检测可用 CLI，实时监控。
-- **多工作区** — 按团队组织工作，工作区级别隔离。每个工作区有独立的 Agent、Issue 和设置。
+## 产品原则
 
----
+1. **孩子始终拥有主导权。** 奇觅负责建议、解释和鼓励，但不替代孩子的选择与努力。
+2. **方案必须真的能造出来。** 现有零件、结构稳定、重力和装配顺序都是产品的核心约束。
+3. **屏幕最终要把注意力带回真实世界。** 给出下一条有效提示，然后让孩子继续观察和操作眼前的作品。
+4. **失败也是发明的一部分。** 机关没有运行时，先观察、定位原因，再尝试新的方案。
+5. **隐私从设备端开始。** 在条件允许时，目标架构优先在本地处理孩子的语音、图片与发明数据。
 
-## 快速安装
+## 项目状态
 
-### macOS / Linux（推荐 Homebrew）
+| 模块 | 状态 | 说明 |
+| --- | --- | --- |
+| 多语言营销体验 | **仓库已实现** | 支持英文、简体中文、日文和韩文的响应式奇觅发明家首页。 |
+| Web、桌面端与移动端基础 | **仓库已实现** | 已具备共享业务页面、身份认证、工作区、实时更新和多平台外壳。 |
+| Go 服务与本地运行时基础 | **仓库已实现** | 已具备 API、WebSocket、PostgreSQL、daemon 与 Agent 执行基础能力。 |
+| 奇思妙想编译器 | **路线图** | 多模态创意输入与受实体零件约束的设计生成。 |
+| 物理结构与装配求解器 | **路线图** | 零件审计、稳定性检查与儿童友好的装配步骤。 |
+| 赋予生命体验 | **路线图** | 屏幕表情、动力组件、传感器与极简行为逻辑。 |
+| 家长成长观测站 | **路线图** | 非排名式成长反馈、屏幕时间引导与负责任 AI 护栏。 |
 
-```bash
-brew install chimii-ai/tap/chimii
-```
+完整产品方向请参阅[《奇觅发明家 PRD》](docs/plans/%E5%A5%87%E8%A7%85%E5%8F%91%E6%98%8E%E5%AE%B6prd%2020260728.md)。路线图描述的是产品意图，不代表相关功能已经上线。
 
-后续可用 `brew upgrade chimii-ai/tap/chimii` 更新 CLI。
+## 仓库架构
 
-### macOS / Linux（安装脚本）
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/chimii-ai/chimii/main/scripts/install.sh | bash
-```
-
-如果没有 Homebrew，可以使用安装脚本。脚本会安装 Chimii CLI：检测到 `brew` 时通过 Homebrew 安装，否则直接下载二进制。
-
-### Windows (PowerShell)
-
-```powershell
-irm https://raw.githubusercontent.com/chimii-ai/chimii/main/scripts/install.ps1 | iex
-```
-
-安装完成后，一条命令完成配置、认证和启动：
-
-```bash
-chimii setup          # 连接 Chimii Cloud，登录，启动 daemon
-```
-
-> **自部署？** 生产环境使用由 systemd 管理的原生 Linux 服务。完成[自部署](SELF_HOSTING.md)后，运行 `chimii setup self-host` 连接。
-
----
-
-## 快速上手
-
-安装好 CLI（或注册 [Chimii 云服务](https://chimii.ai)）后，按以下步骤将第一个任务分配给 Agent：
-
-### 1. 配置并启动 daemon
-
-```bash
-chimii setup           # 配置、认证、启动 daemon（一条命令搞定）
-```
-
-daemon 在后台运行，保持你的机器与 Chimii 的连接。它会自动检测 PATH 中可用的 Agent CLI（`claude`、`codex`、`codebuddy`、`copilot`、`opencode`、`openclaw`、`hermes`、`pi`、`cursor-agent`、`kimi`、`kiro-cli`、`agy`、`qodercli`、`traecli`）。
-
-### 2. 确认运行时已连接
-
-在 Chimii Web 端打开你的工作区，进入 **设置 → 运行时（Runtimes）**，你应该能看到你的机器已作为一个活跃的 **Runtime** 出现在列表中。
-
-> **什么是 Runtime（运行时）？** Runtime 是可以执行 Agent 任务的计算环境。它可以是你的本地机器（通过 daemon 连接），也可以是云端实例。每个 Runtime 会上报可用的 Agent CLI，Chimii 据此决定将任务路由到哪里执行。
-
-### 3. 创建 Agent
-
-进入 **设置 → Agents**，点击 **新建 Agent**。选择你刚连接的 Runtime，选择 Provider（Claude Code、Codex、CodeBuddy、GitHub Copilot CLI、OpenCode、OpenClaw、Hermes、Pi、Cursor Agent、Kimi、Kiro CLI、Antigravity、Qoder CLI 或 Trae CLI），并为 Agent 起个名字——它将以这个名字出现在看板、评论和任务分配中。
-
-### 4. 分配你的第一个任务
-
-在看板上创建一个 Issue（或通过 `chimii issue create` 命令创建），然后将其分配给你的新 Agent。Agent 会自动接手任务、在你的 Runtime 上执行、并实时汇报进度——就像一个真正的队友一样。
-
-大功告成！你的 Agent 现在是团队的一员了。 🎉
-
----
-
-## 架构
-
-```
-┌──────────────┐     ┌──────────────┐     ┌──────────────────┐
-│   Next.js    │────>│  Go 后端     │────>│   PostgreSQL     │
-│   前端       │<────│  (Chi + WS)  │<────│   (pgvector)     │
-└──────────────┘     └──────┬───────┘     └──────────────────┘
-                            │
-                     ┌──────┴───────┐
-                     │ Agent Daemon │  运行在你的机器上
-                     └──────────────┘  （Claude Code、Codex、CodeBuddy、GitHub Copilot CLI、
-                                        OpenCode、OpenClaw、Hermes、Pi、Cursor Agent、
-                                        Kimi、Kiro CLI、Antigravity、Qoder CLI、Trae CLI）
+```text
+apps/web/        Next.js Web 应用与多语言营销体验
+apps/desktop/    Electron 桌面应用
+apps/mobile/     Expo / React Native 移动应用
+server/          Go API、实时服务、CLI、daemon 与数据库迁移
+packages/core/   无界面的业务逻辑、API 客户端、查询与状态
+packages/ui/     共享 UI 原语与设计令牌
+packages/views/  Web 与桌面端共享的业务页面
 ```
 
 | 层级 | 技术栈 |
-|------|--------|
-| 前端 | Next.js 16 (App Router) |
-| 后端 | Go (Chi router, sqlc, gorilla/websocket) |
-| 数据库 | PostgreSQL 17 with pgvector |
-| Agent 运行时 | 本地 daemon 执行 Claude Code、Codex、CodeBuddy、GitHub Copilot CLI、OpenCode、OpenClaw、Hermes、Pi、Cursor Agent、Kimi、Kiro CLI、Antigravity、Qoder CLI 或 Trae CLI |
+| --- | --- |
+| Web | Next.js 16、React 19、Tailwind CSS 4 |
+| 桌面端 | Electron |
+| 移动端 | Expo / React Native |
+| 后端 | Go、Chi、sqlc、gorilla/websocket |
+| 数据 | PostgreSQL 17 与 pgvector |
+| Monorepo | pnpm workspaces 与 Turborepo |
 
-## 开发
+当前应用基础使用 React Query 管理服务端状态，使用 Zustand 管理客户端与视图状态。Web 与桌面端共享无界面逻辑和业务页面；移动端拥有独立的平台 UI 与运行时。
 
-参与 Chimii 代码贡献，请参阅 [贡献指南](CONTRIBUTING.md)。
+## 本地开发
 
-**环境要求：** [Node.js](https://nodejs.org/) v20+, [pnpm](https://pnpm.io/) v10.28+, [Go](https://go.dev/) v1.26+, [Docker](https://www.docker.com/)
+### 环境要求
+
+- [Node.js](https://nodejs.org/) 22
+- [pnpm](https://pnpm.io/) 10.28+
+- [Go](https://go.dev/) 1.26+
+- [Docker](https://www.docker.com/)
+
+### 一键启动
 
 ```bash
-pnpm install
-cp .env.example .env
-make setup
-make start
+make dev
 ```
 
-完整的开发流程、worktree 支持、测试和问题排查请参阅 [CONTRIBUTING.md](CONTRIBUTING.md)。
+`make dev` 会准备环境、安装依赖、启动 PostgreSQL、执行数据库迁移，并启动后端与 Web 应用。运行 `make help` 可以查看完整命令列表。
 
-iOS 移动端代码位于 [`apps/mobile/`](apps/mobile/)，自己编译装到手机的方法见 [README](apps/mobile/README.md)。
+### 常用命令
+
+| 命令 | 用途 |
+| --- | --- |
+| `make dev` | 初始化并启动完整本地环境 |
+| `make start` | 使用当前环境文件启动前后端 |
+| `make stop` | 停止当前检出目录的应用进程 |
+| `pnpm dev:web` | 仅运行 Next.js Web 应用 |
+| `pnpm dev:desktop` | 运行 Electron 桌面应用 |
+| `pnpm typecheck` | 检查全部 TypeScript workspace |
+| `pnpm test` | 运行 TypeScript 单元测试 |
+| `make test` | 运行 Go 测试 |
+| `make check` | 运行完整的本地验证流程 |
+
+架构与贡献规则请阅读 [AGENTS.md](AGENTS.md) 和 [CLAUDE.md](CLAUDE.md)。移动端的额外说明位于 [`apps/mobile/README.md`](apps/mobile/README.md)。
+
+## 参与贡献
+
+CHIMII 正在快速演进。我们欢迎与实体设计生成、儿童友好交互、负责任 AI、隐私、无障碍和多语言体验相关的贡献。
+
+提交改动前，请确保：
+
+1. 已阅读 [AGENTS.md](AGENTS.md) 与 [CLAUDE.md](CLAUDE.md) 中的仓库规范。
+2. 产品能力描述与上方状态表保持一致，不把路线图功能写成已上线功能。
+3. 先运行与改动最相关的检查；改动范围较大时，再运行 `make check`。
+4. 修改产品级信息时，同步维护英文与简体中文文档。
 
 ## 开源协议
 
-[Modified Apache 2.0 (with commercial restrictions)](LICENSE)
+CHIMII 使用带附加条件的[修改版 Apache License 2.0](LICENSE)。托管服务、嵌入式使用和商业分发可能需要额外授权，请在商业使用前完整阅读协议。

@@ -16,13 +16,6 @@ import {
 } from "@chimii/core/paths";
 import { api } from "@chimii/core/api";
 import type { Workspace } from "@chimii/core/types";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-} from "@chimii/ui/components/ui/card";
 import { Button } from "@chimii/ui/components/ui/button";
 import { Loader2 } from "lucide-react";
 import { setLoggedInCookie } from "@/features/auth/auth-cookie";
@@ -71,8 +64,8 @@ function LoginPageContent() {
   const isDesktopHandoff = platform === "desktop" && !cliCallbackRaw;
   // `next` carries a protected URL the user was originally headed to
   // (e.g. /invite/{id}). With URL-driven workspaces there is no legacy
-  // "/issues" default — if `next` is absent we decide after login based on
-  // the user's workspace list. Sanitize first so a crafted `?next=https://evil`
+  // global default — if `next` is absent we resolve the user's workspace and
+  // enter its /build studio. Sanitize first so a crafted `?next=https://evil`
   // cannot bounce the user off-origin after a successful login.
   const nextUrl = sanitizeNextUrl(searchParams.get("next"));
 
@@ -105,12 +98,8 @@ function LoginPageContent() {
           setDesktopToken(token);
           window.location.href = `chimii://auth/callback?token=${encodeURIComponent(token)}`;
         })
-        .catch((err) => {
-          setDesktopError(
-            err instanceof Error
-              ? err.message
-              : t(($) => $.web.desktop_handoff.prepare_failed),
-          );
+        .catch(() => {
+          setDesktopError(t(($) => $.web.desktop_handoff.prepare_failed));
         });
       return;
     }
@@ -134,7 +123,17 @@ function LoginPageContent() {
       .catch(() => [] as Workspace[])
       .then((list) => resolveLoggedInDestination(qc, hasOnboarded, list))
       .then((dest) => router.replace(dest));
-  }, [isLoading, user, router, nextUrl, cliCallbackRaw, isDesktopHandoff, hasOnboarded, qc]);
+  }, [
+    isLoading,
+    user,
+    router,
+    nextUrl,
+    cliCallbackRaw,
+    isDesktopHandoff,
+    hasOnboarded,
+    qc,
+    t,
+  ]);
 
   const handleSuccess = async () => {
     // Read the latest user snapshot directly — the closure's `hasOnboarded`
@@ -169,49 +168,64 @@ function LoginPageContent() {
   // render a dedicated screen instead of flashing the login form or redirecting
   // away to a workspace page.
   if (isDesktopHandoff && user) {
-    if (desktopError) {
-      return (
-        <div className="flex min-h-screen items-center justify-center">
-          <Card className="w-full max-w-sm">
-            <CardHeader className="text-center">
-              <CardTitle className="text-2xl">
-                {t(($) => $.web.desktop_handoff.failed_title)}
-              </CardTitle>
-              <CardDescription>{desktopError}</CardDescription>
-            </CardHeader>
-          </Card>
-        </div>
-      );
-    }
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <Card className="w-full max-w-sm">
-          <CardHeader className="text-center">
-            <CardTitle className="text-2xl">
-              {t(($) => $.web.desktop_handoff.opening_title)}
-            </CardTitle>
-            <CardDescription>
-              {desktopToken
+      <section
+        className="chimii-auth-surface relative flex min-h-[520px] w-full flex-1 items-center justify-center overflow-hidden bg-[#f5f0e6] px-5 py-12 text-[#12130f] sm:px-8"
+        aria-labelledby="desktop-handoff-title"
+      >
+        <div className="chimii-invention-grid pointer-events-none absolute inset-0 opacity-25" />
+        <div className="pointer-events-none absolute -left-8 top-16 size-28 rotate-12 rounded-[28px] border-[14px] border-[#f6c84a]/45" />
+        <div className="pointer-events-none absolute -bottom-8 right-8 size-28 rounded-full border-[14px] border-[#4b79d8]/25" />
+
+        <div className="animate-auth-panel-enter relative w-full max-w-[440px] rounded-[26px] border-2 border-[#12130f] bg-[#fffdf7] p-6 text-center shadow-[7px_8px_0_rgba(18,19,15,0.14)] sm:p-9">
+          <div
+            className={`mx-auto flex size-16 items-center justify-center rounded-[20px] border-2 border-[#12130f] ${
+              desktopError ? "bg-[#f05a3f]" : "bg-[#f6c84a]"
+            }`}
+          >
+            {desktopError ? (
+              <span className="text-3xl font-black text-white" aria-hidden="true">
+                !
+              </span>
+            ) : (
+              <Loader2
+                className="size-7 animate-spin text-[#12130f]"
+                aria-hidden="true"
+              />
+            )}
+          </div>
+          <p className="mt-6 text-[10px] font-black uppercase tracking-[0.18em] text-[#4b79d8]">
+            CHIMII DESKTOP
+          </p>
+          <h1
+            id="desktop-handoff-title"
+            className="mt-3 text-balance text-3xl font-black leading-tight tracking-[-0.035em]"
+          >
+            {desktopError
+              ? t(($) => $.web.desktop_handoff.failed_title)
+              : t(($) => $.web.desktop_handoff.opening_title)}
+          </h1>
+          <p className="mt-3 text-sm leading-6 text-[#12130f]/58" aria-live="polite">
+            {desktopError ||
+              (desktopToken
                 ? t(($) => $.web.desktop_handoff.opening_description)
-                : t(($) => $.web.desktop_handoff.preparing)}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="flex justify-center">
-            {desktopToken ? (
+                : t(($) => $.web.desktop_handoff.preparing))}
+          </p>
+
+          {desktopToken && !desktopError && (
+            <div className="mt-7">
               <Button
-                variant="outline"
+                className="h-12 w-full rounded-full border-2 border-[#12130f] bg-[#f05a3f] px-5 font-extrabold text-white shadow-[0_4px_0_#b93b29] hover:bg-[#e6533a] dark:bg-[#f05a3f] dark:text-white dark:hover:bg-[#e6533a]"
                 onClick={() => {
                   window.location.href = `chimii://auth/callback?token=${encodeURIComponent(desktopToken)}`;
                 }}
               >
                 {t(($) => $.web.desktop_handoff.open_button)}
               </Button>
-            ) : (
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-            )}
-          </CardContent>
-        </Card>
-      </div>
+            </div>
+          )}
+        </div>
+      </section>
     );
   }
 

@@ -1,0 +1,1 @@
+DROP INDEX CONCURRENTLY IF EXISTS child_profile_parent_workspace_idx;

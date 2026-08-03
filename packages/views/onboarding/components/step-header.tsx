@@ -57,10 +57,11 @@ export function StepHeader({ currentStep }: { currentStep: OnboardingStep }) {
               key={stepId}
               aria-hidden
               className={cn(
-                "h-2 w-2 rounded-full transition-colors",
-                isDone && "bg-primary",
-                isCurrent && "bg-primary ring-2 ring-primary/30 ring-offset-2 ring-offset-background",
-                !isDone && !isCurrent && "bg-muted",
+                "h-2 w-2 rounded-full border border-foreground/15 transition-[background-color,box-shadow,transform]",
+                isDone && "bg-[#35a87d]",
+                isCurrent &&
+                  "scale-110 bg-[#f05a3f] ring-2 ring-[#f05a3f]/30 ring-offset-2 ring-offset-background",
+                !isDone && !isCurrent && "bg-[#fffdf7]/75",
               )}
             />
           );

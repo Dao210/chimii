@@ -95,9 +95,9 @@ describe("StepWorkspace — DISABLE_WORKSPACE_CREATION gate", () => {
     renderStep({ existing: null, disabled: false });
 
     expect(
-      screen.getByText("Name your workspace.", { exact: false }),
+      screen.getByText("Name your creation space.", { exact: false }),
     ).toBeInTheDocument();
-    expect(screen.getByLabelText("Workspace name")).toBeInTheDocument();
+    expect(screen.getByLabelText("Creation space name")).toBeInTheDocument();
     expect(screen.getByLabelText("URL")).toBeInTheDocument();
   });
 
@@ -109,7 +109,9 @@ describe("StepWorkspace — DISABLE_WORKSPACE_CREATION gate", () => {
         exact: false,
       }),
     ).toBeInTheDocument();
-    expect(screen.queryByLabelText("Workspace name")).not.toBeInTheDocument();
+    expect(
+      screen.queryByLabelText("Creation space name"),
+    ).not.toBeInTheDocument();
     expect(screen.queryByLabelText("URL")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: /log out/i })).toBeInTheDocument();
   });

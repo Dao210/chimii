@@ -33,6 +33,12 @@ export interface CoreProviderProps {
   onLogout?: () => void;
   /** Identifies the calling client (web/desktop + version + os) to the server. */
   identity?: ClientIdentity;
+  /**
+   * Whether to load backend config and authenticate the current session.
+   * Public, backend-independent shells may disable this until entering an app
+   * route. Default: true.
+   */
+  initializeBackend?: boolean;
   /** Active locale, determined server-side (web) or at app boot (desktop). */
   locale: SupportedLocale;
   /** i18next resources, server-preloaded for the active locale. */

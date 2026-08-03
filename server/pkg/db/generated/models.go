@@ -261,6 +261,54 @@ type AutopilotTrigger struct {
 	PublishedByID pgtype.UUID `json:"published_by_id"`
 }
 
+type BuildCreation struct {
+	ID             pgtype.UUID        `json:"id"`
+	WorkspaceID    pgtype.UUID        `json:"workspace_id"`
+	CreatorUserID  pgtype.UUID        `json:"creator_user_id"`
+	ChildProfileID pgtype.UUID        `json:"child_profile_id"`
+	SessionID      pgtype.UUID        `json:"session_id"`
+	Title          string             `json:"title"`
+	Prompt         string             `json:"prompt"`
+	Archetype      string             `json:"archetype"`
+	Recipe         []byte             `json:"recipe"`
+	BuildPlan      []byte             `json:"build_plan"`
+	Validation     []byte             `json:"validation"`
+	LdrawMpd       string             `json:"ldraw_mpd"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
+}
+
+type BuildJob struct {
+	ID          pgtype.UUID        `json:"id"`
+	WorkspaceID pgtype.UUID        `json:"workspace_id"`
+	SessionID   pgtype.UUID        `json:"session_id"`
+	Status      string             `json:"status"`
+	Attempts    int32              `json:"attempts"`
+	AvailableAt pgtype.Timestamptz `json:"available_at"`
+	LeasedUntil pgtype.Timestamptz `json:"leased_until"`
+	LeaseToken  pgtype.UUID        `json:"lease_token"`
+	LastError   pgtype.Text        `json:"last_error"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+}
+
+type BuildSession struct {
+	ID              pgtype.UUID        `json:"id"`
+	WorkspaceID     pgtype.UUID        `json:"workspace_id"`
+	CreatorUserID   pgtype.UUID        `json:"creator_user_id"`
+	ChildProfileID  pgtype.UUID        `json:"child_profile_id"`
+	ClientRequestID pgtype.UUID        `json:"client_request_id"`
+	Prompt          string             `json:"prompt"`
+	Status          string             `json:"status"`
+	Question        []byte             `json:"question"`
+	Answers         []byte             `json:"answers"`
+	CreationID      pgtype.UUID        `json:"creation_id"`
+	Error           pgtype.Text        `json:"error"`
+	ExpiresAt       pgtype.Timestamptz `json:"expires_at"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt       pgtype.Timestamptz `json:"updated_at"`
+}
+
 type ChannelBindingToken struct {
 	TokenHash      string             `json:"token_hash"`
 	WorkspaceID    pgtype.UUID        `json:"workspace_id"`
@@ -408,6 +456,32 @@ type ChatSession struct {
 	IsAgentIntro bool               `json:"is_agent_intro"`
 	PinnedAt     pgtype.Timestamptz `json:"pinned_at"`
 	ProjectID    pgtype.UUID        `json:"project_id"`
+}
+
+type ChildProfile struct {
+	ID           pgtype.UUID        `json:"id"`
+	WorkspaceID  pgtype.UUID        `json:"workspace_id"`
+	ParentUserID pgtype.UUID        `json:"parent_user_id"`
+	DisplayName  string             `json:"display_name"`
+	AvatarSeed   string             `json:"avatar_seed"`
+	PinHash      string             `json:"pin_hash"`
+	Enabled      bool               `json:"enabled"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
+}
+
+type ChildSession struct {
+	ID                pgtype.UUID        `json:"id"`
+	TokenHash         string             `json:"token_hash"`
+	ProfileID         pgtype.UUID        `json:"profile_id"`
+	WorkspaceID       pgtype.UUID        `json:"workspace_id"`
+	ParentUserID      pgtype.UUID        `json:"parent_user_id"`
+	ExpiresAt         pgtype.Timestamptz `json:"expires_at"`
+	LastUsedAt        pgtype.Timestamptz `json:"last_used_at"`
+	RevokedAt         pgtype.Timestamptz `json:"revoked_at"`
+	UnlockFailures    int32              `json:"unlock_failures"`
+	UnlockLockedUntil pgtype.Timestamptz `json:"unlock_locked_until"`
+	CreatedAt         pgtype.Timestamptz `json:"created_at"`
 }
 
 type ClientUsageDaily struct {

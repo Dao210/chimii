@@ -65,6 +65,11 @@ type AppConfig struct {
 	// which is continuously deployed so its users can't act on the version —
 	// and empty for dev builds that aren't stamped via -X main.version.
 	ServerVersion string `json:"server_version,omitempty"`
+	// Build Studio requires a configured LLM. We never silently replace it
+	// with a pretend free-text parser; clients use this deployment capability
+	// to render an explicit operator-actionable unavailable state.
+	BuildAvailable         bool   `json:"build_available"`
+	BuildUnavailableReason string `json:"build_unavailable_reason,omitempty"`
 }
 
 // GetConfig is mounted on the public (unauthenticated) route group because
@@ -83,6 +88,10 @@ func (h *Handler) GetConfig(w http.ResponseWriter, r *http.Request) {
 	config.CdnSigned = h.CFSigner != nil
 	config.DaemonServerURL, config.DaemonAppURL = daemonSetupURLsFromEnv()
 	config.VCSIntegrationAvailable = h.cfg.VCSIntegrationEnabled
+	config.BuildAvailable = h.LLM != nil && h.LLM.Enabled()
+	if !config.BuildAvailable {
+		config.BuildUnavailableReason = "llm_not_configured"
+	}
 	config.FeatureFlags = featureflags.EvaluateFrontendPublicFlags(r.Context(), h.FeatureFlags)
 	// Only surface the build version on self-hosted deployments. The managed
 	// cloud is continuously deployed and its users can't choose the build, so

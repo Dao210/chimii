@@ -388,9 +388,10 @@ export function StepWorkspace({
           from "your existing workspace + what's next" to the generic
           "what lives inside / things you'll do here" so the preview
           stays honest to the user's current choice. */}
-      <aside className="hidden min-h-0 border-l bg-muted/40 lg:flex lg:flex-col">
+      <aside className="relative hidden min-h-0 overflow-hidden border-l-2 border-foreground bg-[#c9def7] lg:flex lg:flex-col">
+        <div className="chimii-invention-grid pointer-events-none absolute inset-0 opacity-40" />
         <DragStrip />
-        <div className="min-h-0 flex-1 overflow-y-auto px-12 py-12">
+        <div className="relative min-h-0 flex-1 overflow-y-auto px-12 py-12">
           {reusing && mode !== "create" ? (
             <ExistingWorkspaceSide workspace={reusing} />
           ) : (
@@ -578,7 +579,7 @@ function WorkspacePreviewCard({
   const { t } = useT("onboarding");
   const urlHost = workspaceUrlHost(useConfigStore((s) => s.daemonAppUrl));
   return (
-    <div className="overflow-hidden rounded-xl border bg-card shadow-xs">
+    <div className="overflow-hidden rounded-[24px] border-2 border-foreground bg-card shadow-[7px_8px_0_rgba(18,19,15,0.14)]">
       <div className="flex items-center gap-3 border-b px-4 py-3.5">
         <WorkspaceAvatar name={name} size="md" />
         <div className="flex min-w-0 flex-1 flex-col">

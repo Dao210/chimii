@@ -264,7 +264,7 @@ export function resourceKeyForUrl(url: string): string {
  *     was constructed without the workspace prefix. The router would
  *     interpret `issues` as a workspace slug → NoAccessPage.
  *
- * Normalizes: a bare `/{slug}` (no route segment) becomes `/{slug}/issues` —
+ * Normalizes: a bare `/{slug}` (no route segment) becomes `/{slug}/build` —
  * the workspace's default surface. This replaces the old in-router
  * `<Navigate to="issues">` index redirect (MUL-4741 invariant 1: the router
  * never self-navigates; URLs are normalized before they become sessions).
@@ -290,7 +290,7 @@ export function sanitizeTabPath(path: string): string | null {
     return null;
   }
   if (segments.length === 1) {
-    return `/${firstSegment}/issues${suffix}`;
+    return `/${firstSegment}/build${suffix}`;
   }
   return path;
 }
@@ -322,14 +322,14 @@ function pinnedBoundary(tabs: TabSession[]): number {
   return i;
 }
 
-/** Default entry point for a workspace — its issues list. */
+/** Default entry point for a workspace — the child-friendly Build Studio. */
 function defaultPathFor(slug: string): string {
-  return `/${slug}/issues`;
+  return `/${slug}/build`;
 }
 
 function defaultTabFor(slug: string): TabSession {
   const path = defaultPathFor(slug);
-  return makeSession(path, "Issues");
+  return makeSession(path, "Build");
 }
 
 // ---------------------------------------------------------------------------
@@ -398,7 +398,7 @@ export const useTabStore = create<TabStore>()(
           // First time entering this workspace — create the group.
           const cleanDesired = desiredPath ? sanitizeTabPath(desiredPath) : null;
           const seedPath = cleanDesired ?? defaultPathFor(slug);
-          const tab = makeSession(seedPath, "Issues");
+          const tab = makeSession(seedPath, "Build");
           set({
             activeWorkspaceSlug: slug,
             byWorkspace: {
@@ -426,7 +426,7 @@ export const useTabStore = create<TabStore>()(
               });
               return;
             }
-            const tab = makeSession(clean, "Issues");
+            const tab = makeSession(clean, "Build");
             set({
               activeWorkspaceSlug: slug,
               byWorkspace: {

@@ -15,6 +15,7 @@ config({ path: resolve(__dirname, "../../.env") });
 // the strict resolvers so prebuilt images keep unset upstreams unproxied.
 const isDev = process.env.NODE_ENV === "development";
 const lowMemoryBuild = process.env.CHIMII_LOW_MEMORY_BUILD === "true";
+const deployTypechecked = process.env.CHIMII_DEPLOY_TYPECHECKED === "true";
 const remoteApiUrl = isDev
   ? resolveDevRemoteApiUrl(process.env)
   : resolveRemoteApiUrl(process.env);
@@ -40,6 +41,16 @@ const nextConfig: NextConfig = {
         experimental: {
           cpus: 1,
           webpackMemoryOptimizations: true,
+        },
+      }
+    : {}),
+  // The native deployment script runs the complete Web workspace typecheck on
+  // the build machine first. Only that explicitly gated path skips Next.js's
+  // duplicate Linux typecheck; normal local and CI builds remain strict.
+  ...(deployTypechecked
+    ? {
+        typescript: {
+          ignoreBuildErrors: true,
         },
       }
     : {}),

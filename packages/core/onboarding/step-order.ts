@@ -21,17 +21,17 @@ import type { OnboardingStep } from "./types";
  *     critical path. It is collected post-onboarding by the workspace
  *     source-backfill prompt, and only after agents have completed
  *     work for the user — see `needs-backfill.ts`.
- *   - "role" / "use_case" merged into the single "about_you" step:
- *     they share the same consumer (the Helper "About me" context
- *     block) and one screen keeps the flow at three steps.
+ *   - The legacy "role" question is no longer shown. "about_you" now
+ *     collects a child's interests in the existing `use_case` slot so
+ *     personalization stays compatible without asking adult job questions.
  *
- * Note: "teammate" (the old "Create your first agent" step) is no longer
- * part of the in-flow sequence. Helper agent creation now happens after
- * onboarding exits, in the workspace shell — see
- * `packages/views/workspace/welcome-after-onboarding.tsx`.
+ * Runtime connection is also not a user-facing step anymore. After the
+ * creation space is chosen, the flow automatically selects an online,
+ * remotely provisioned runtime (with an online local runtime as fallback)
+ * and then enters the space. Local runtime management remains available
+ * from the workspace Runtimes area.
  */
 export const ONBOARDING_STEP_ORDER: readonly OnboardingStep[] = [
   "about_you",
   "workspace",
-  "runtime",
 ] as const;

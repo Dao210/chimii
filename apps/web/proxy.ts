@@ -12,6 +12,8 @@ import { isOfficialMarketingHost } from "./lib/public-host";
 // needs to be rewritten to /{slug}/{route}/... so old bookmarks, deep links,
 // and post-revert-and-reapply users don't hit 404.
 const LEGACY_ROUTE_SEGMENTS = new Set([
+  "build",
+  "creations",
   "issues",
   "projects",
   "agents",
@@ -95,7 +97,7 @@ export function proxy(req: NextRequest) {
     !isOfficialMarketingHost(req.nextUrl.hostname)
   ) {
     const url = req.nextUrl.clone();
-    url.pathname = `/${lastSlug}/issues`;
+    url.pathname = `/${lastSlug}/build`;
     return NextResponse.redirect(url);
   }
 

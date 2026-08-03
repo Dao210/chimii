@@ -147,6 +147,21 @@ cleared_vcs_connections AS (
 ),
 cleared_client_usage_workspace AS (
     UPDATE client_usage_daily SET workspace_id = NULL WHERE workspace_id = $1
+),
+cleared_build_jobs AS (
+    DELETE FROM build_job WHERE workspace_id = $1
+),
+cleared_build_creations AS (
+    DELETE FROM build_creation WHERE workspace_id = $1
+),
+cleared_build_sessions AS (
+    DELETE FROM build_session WHERE workspace_id = $1
+),
+cleared_child_sessions AS (
+    DELETE FROM child_session WHERE workspace_id = $1
+),
+cleared_child_profiles AS (
+    DELETE FROM child_profile WHERE workspace_id = $1
 )
 DELETE FROM workspace WHERE workspace.id = $1
 `
@@ -385,6 +400,22 @@ SELECT id FROM workspace WHERE id = $1 FOR UPDATE
 // workspace, so this cannot deadlock against it.
 func (q *Queries) LockWorkspaceForDelete(ctx context.Context, id pgtype.UUID) (pgtype.UUID, error) {
 	row := q.db.QueryRow(ctx, lockWorkspaceForDelete, id)
+	var id_2 pgtype.UUID
+	err := row.Scan(&id_2)
+	return id_2, err
+}
+
+const lockWorkspaceForScopedWrite = `-- name: LockWorkspaceForScopedWrite :one
+SELECT id FROM workspace WHERE id = $1 FOR KEY SHARE
+`
+
+// FK-free workspace-owned features (currently Build Studio and child mode)
+// take this lock inside the same transaction as every insert/update that can
+// create durable state. DeleteWorkspace takes FOR UPDATE first, so it either
+// sees and sweeps the committed write or deletes first and makes this lookup
+// return no rows. FOR KEY SHARE remains compatible across normal writers.
+func (q *Queries) LockWorkspaceForScopedWrite(ctx context.Context, id pgtype.UUID) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, lockWorkspaceForScopedWrite, id)
 	var id_2 pgtype.UUID
 	err := row.Scan(&id_2)
 	return id_2, err

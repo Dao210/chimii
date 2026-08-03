@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import { usePathname } from "next/navigation";
 import { CoreProvider } from "@chimii/core/platform";
 import { createBrowserCookieLocaleAdapter } from "@chimii/core/i18n/browser";
 import type { LocaleResources, SupportedLocale } from "@chimii/core/i18n";
@@ -12,6 +13,7 @@ import {
   clearLoggedInCookie,
 } from "@/features/auth/auth-cookie";
 import { detectWebOS } from "@/platform/client-os";
+import { shouldInitializeBackend } from "@/lib/backend-initialization";
 
 // Legacy token in localStorage → keep this session in token mode so users who
 // logged in before the cookie-auth migration stay authed. They migrate to
@@ -56,6 +58,7 @@ export function WebProviders({
   apiBaseUrl?: string;
   wsUrl?: string;
 }) {
+  const pathname = usePathname();
   const cookieAuth = !hasLegacyToken();
   // Stable identity reference so downstream effects keyed on it don't see a
   // new object on every parent render.
@@ -84,6 +87,7 @@ export function WebProviders({
       locale={locale}
       resources={resources}
       localeAdapter={localeAdapter}
+      initializeBackend={shouldInitializeBackend(pathname)}
     >
       <WebNavigationProvider>{children}</WebNavigationProvider>
     </CoreProvider>

@@ -326,9 +326,10 @@ function FancyView({
 
       {/* Right — always-visible educational aside. "You picked" subsection
           only appears when there's a selection; the other two stay constant. */}
-      <aside className="hidden min-h-0 border-l bg-muted/40 lg:flex lg:flex-col">
+      <aside className="relative hidden min-h-0 overflow-hidden border-l-2 border-foreground bg-[#c9def7] lg:flex lg:flex-col">
+        <div className="chimii-invention-grid pointer-events-none absolute inset-0 opacity-40" />
         <DragStrip />
-        <div className="min-h-0 flex-1 overflow-y-auto px-12 py-12">
+        <div className="relative min-h-0 flex-1 overflow-y-auto px-12 py-12">
           <RuntimeAsidePanel />
         </div>
       </aside>

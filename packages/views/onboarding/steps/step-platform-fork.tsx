@@ -172,9 +172,10 @@ export function StepPlatformFork({
       </div>
 
       {/* Right — always-visible aside */}
-      <aside className="hidden min-h-0 border-l bg-muted/40 lg:flex lg:flex-col">
+      <aside className="relative hidden min-h-0 overflow-hidden border-l-2 border-foreground bg-[#c9def7] lg:flex lg:flex-col">
+        <div className="chimii-invention-grid pointer-events-none absolute inset-0 opacity-40" />
         <DragStrip />
-        <div className="min-h-0 flex-1 overflow-y-auto px-12 py-12">
+        <div className="relative min-h-0 flex-1 overflow-y-auto px-12 py-12">
           <RuntimeAsidePanel />
         </div>
       </aside>
@@ -329,7 +330,7 @@ function CliInstallDialog({
   const { t } = useT("onboarding");
   return (
     <Dialog open={open} onOpenChange={(o) => (o ? null : onClose())}>
-      <DialogContent className="flex max-h-[85vh] flex-col sm:max-w-[560px]">
+      <DialogContent className="chimii-onboarding-surface flex max-h-[85vh] flex-col bg-card sm:max-w-[560px]">
         <DialogHeader>
           <DialogTitle>{t(($) => $.step_platform.cli_dialog_title)}</DialogTitle>
           <DialogDescription>

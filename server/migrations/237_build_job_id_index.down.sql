@@ -1,0 +1,1 @@
+DROP INDEX CONCURRENTLY IF EXISTS build_job_id_idx;

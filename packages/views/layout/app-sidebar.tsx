@@ -5,7 +5,6 @@ import { cn } from "@chimii/ui/lib/utils";
 import { useScrollFade } from "@chimii/ui/hooks/use-scroll-fade";
 import { AppLink, useNavigation } from "../navigation";
 import { HelpLauncher } from "./help-launcher";
-import { JoinDiscordCard } from "./join-discord-card";
 import {
   DndContext,
   PointerSensor,
@@ -19,6 +18,7 @@ import { CSS } from "@dnd-kit/utilities";
 import {
   ChevronDown,
   ChevronRight,
+  Baby,
   LogOut,
   Plus,
   Check,
@@ -81,6 +81,8 @@ import {
 } from "@chimii/core/shortcuts";
 import { ShortcutKeycaps } from "../common/shortcut-keycaps";
 import { useAppForeground } from "../common/use-app-foreground";
+import { childModeOptions } from "@chimii/core/child-mode";
+import { ParentUnlockButton } from "../build";
 
 // Top-level nav items stay active when the user is on a child route
 // (e.g. "Projects" stays lit on /:slug/projects/:id). Pinned items keep
@@ -105,6 +107,8 @@ const EMPTY_INBOX_SUMMARY: Awaited<ReturnType<typeof api.getInboxUnreadSummary>>
 // against the current workspace slug at render time (see AppSidebar body).
 // Only parameterless paths are valid nav destinations.
 type NavKey =
+  | "build"
+  | "creations"
   | "inbox"
   | "chat"
   | "myIssues"
@@ -121,6 +125,8 @@ type NavKey =
 // Static schema (key only) — labels resolved at render via useT("layout"),
 // icons derived from the destination path via routeIconForPath.
 type NavLabelKey =
+  | "build"
+  | "creations"
   | "inbox"
   | "chat"
   | "my_issues"
@@ -144,6 +150,8 @@ const personalNav: { key: NavKey; labelKey: NavLabelKey }[] = [
 ];
 
 const workspaceNav: { key: NavKey; labelKey: NavLabelKey }[] = [
+  { key: "build", labelKey: "build" },
+  { key: "creations", labelKey: "creations" },
   { key: "issues", labelKey: "issues" },
   { key: "projects", labelKey: "projects" },
   { key: "autopilots", labelKey: "autopilots" },
@@ -356,15 +364,18 @@ export function AppSidebar({ topSlot, searchSlot, headerClassName, headerStyle }
   const logout = useLogout();
   const workspace = useCurrentWorkspace();
   const p = useWorkspacePaths();
+  const { data: childMode } = useQuery(childModeOptions());
+  const isChildMode = childMode?.mode === "child";
+  const parentModeReady = childMode?.mode === "parent";
   const { data: workspaces = EMPTY_WORKSPACES } = useQuery(workspaceListOptions());
-  const { data: myInvitations = EMPTY_INVITATIONS } = useQuery(myInvitationListOptions());
+  const { data: myInvitations = EMPTY_INVITATIONS } = useQuery({ ...myInvitationListOptions(), enabled: parentModeReady });
   const workspaceCreationDisabled = useConfigStore((s) => s.workspaceCreationDisabled);
 
   const wsId = workspace?.id;
   const { data: inboxItems = EMPTY_INBOX } = useQuery({
     queryKey: wsId ? inboxKeys.list(wsId) : ["inbox", "disabled"],
     queryFn: () => api.listInbox(),
-    enabled: !!wsId,
+    enabled: !!wsId && parentModeReady,
   });
   const unreadCount = React.useMemo(
     () => deduplicateInboxItems(inboxItems).filter((i) => !i.read).length,
@@ -375,7 +386,7 @@ export function AppSidebar({ topSlot, searchSlot, headerClassName, headerStyle }
   // badge derives from the same function, keeping the platforms in agreement).
   const { data: chatSessions = [] } = useQuery({
     ...chatSessionsOptions(wsId ?? ""),
-    enabled: !!wsId,
+    enabled: !!wsId && parentModeReady,
   });
   // The session the user is reading right now must not count: the thread list
   // renders its row badge as 0 (auto mark-read is about to clear it), and a
@@ -404,7 +415,7 @@ export function AppSidebar({ topSlot, searchSlot, headerClassName, headerStyle }
   // the endpoint resolves through the workspace-member middleware.
   const { data: unreadSummary = EMPTY_INBOX_SUMMARY } = useQuery({
     ...inboxUnreadSummaryOptions(),
-    enabled: !!wsId,
+    enabled: !!wsId && parentModeReady,
   });
   const otherWorkspaceUnread = React.useMemo(
     () => hasOtherWorkspaceUnread(unreadSummary, wsId),
@@ -415,7 +426,7 @@ export function AppSidebar({ topSlot, searchSlot, headerClassName, headerStyle }
   const unreadWsIds = React.useMemo(() => unreadWorkspaceIds(unreadSummary), [unreadSummary]);
   const { data: pinnedItems = EMPTY_PINS } = useQuery({
     ...pinListOptions(wsId ?? "", userId ?? ""),
-    enabled: !!wsId && !!userId,
+    enabled: !!wsId && !!userId && parentModeReady,
   });
   const deletePin = useDeletePin();
   const reorderPins = useReorderPins();
@@ -482,7 +493,7 @@ export function AppSidebar({ topSlot, searchSlot, headerClassName, headerStyle }
         ? list.find((w) => w.id === invitation.workspace_id)
         : null;
       if (joined) {
-        push(paths.workspace(joined.slug).issues());
+        push(paths.workspace(joined.slug).build());
       }
     },
   });
@@ -498,8 +509,21 @@ export function AppSidebar({ topSlot, searchSlot, headerClassName, headerStyle }
   return (
       <Sidebar variant="inset">
         {topSlot}
+        {isChildMode && (
+          <SidebarHeader className="border-b border-sidebar-border py-4">
+            <div className="flex items-center gap-3 px-2">
+              <span className="flex size-10 items-center justify-center rounded-2xl border-2 border-foreground bg-[#ffd85a] text-foreground shadow-[2px_3px_0_#1d241f]">
+                <Baby className="size-5" />
+              </span>
+              <div className="min-w-0">
+                <p className="truncate text-sm font-bold">{childMode.profile?.display_name ?? t($ => $.sidebar.child_profile_fallback)}</p>
+                <p className="text-xs text-muted-foreground">{t($ => $.sidebar.child_space)}</p>
+              </div>
+            </div>
+          </SidebarHeader>
+        )}
         {/* Workspace Switcher */}
-        <SidebarHeader className={cn("py-3", headerClassName)} style={headerStyle}>
+        <SidebarHeader className={cn("py-3", !parentModeReady && "hidden", headerClassName)} style={headerStyle}>
           <SidebarMenu>
             <SidebarMenuItem>
               <DropdownMenu>
@@ -554,7 +578,7 @@ export function AppSidebar({ topSlot, searchSlot, headerClassName, headerStyle }
                       <DropdownMenuItem
                         key={ws.id}
                         render={
-                          <AppLink href={paths.workspace(ws.slug).issues()} />
+                          <AppLink href={paths.workspace(ws.slug).build()} />
                         }
                       >
                         <WorkspaceAvatar name={ws.name} avatarUrl={ws.avatar_url} size="sm" />
@@ -658,7 +682,7 @@ export function AppSidebar({ topSlot, searchSlot, headerClassName, headerStyle }
 
         {/* Navigation */}
         <SidebarContent ref={sidebarScrollRef} style={sidebarFadeStyle}>
-          <SidebarGroup>
+          <SidebarGroup className={cn(!parentModeReady && "hidden")}>
             <SidebarGroupContent>
               <SidebarMenu className="gap-0.5">
                 {personalNav.map((item) => {
@@ -696,7 +720,7 @@ export function AppSidebar({ topSlot, searchSlot, headerClassName, headerStyle }
             </SidebarGroupContent>
           </SidebarGroup>
 
-          {visiblePinned.length > 0 && (
+          {parentModeReady && visiblePinned.length > 0 && (
             <Collapsible defaultOpen>
               <SidebarGroup className="group/pinned">
                 <SidebarGroupLabel
@@ -735,7 +759,7 @@ export function AppSidebar({ topSlot, searchSlot, headerClassName, headerStyle }
             <SidebarGroupLabel>{t(($) => $.sidebar.workspace_group)}</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu className="gap-0.5">
-                {workspaceNav.map((item) => {
+                {workspaceNav.filter((item) => parentModeReady || item.key === "build" || item.key === "creations").map((item) => {
                   const href = p[item.key]();
                   const Icon = routeIconForPath(href);
                   const isActive = !isActivePinnedRoute && isNavActive(pathname, href);
@@ -756,7 +780,7 @@ export function AppSidebar({ topSlot, searchSlot, headerClassName, headerStyle }
             </SidebarGroupContent>
           </SidebarGroup>
 
-          <SidebarGroup>
+          <SidebarGroup className={cn(!parentModeReady && "hidden")}>
             <SidebarGroupLabel>{t(($) => $.sidebar.configure_group)}</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu className="gap-0.5">
@@ -783,10 +807,7 @@ export function AppSidebar({ topSlot, searchSlot, headerClassName, headerStyle }
         </SidebarContent>
 
         <SidebarFooter className="p-2">
-          <JoinDiscordCard />
-          <div className="flex justify-end">
-            <HelpLauncher />
-          </div>
+          {isChildMode ? <ParentUnlockButton /> : parentModeReady ? <div className="flex justify-end"><HelpLauncher /></div> : null}
         </SidebarFooter>
         <SidebarRail />
       </Sidebar>

@@ -25,6 +25,82 @@
   animation: entrance-spin 0.6s ease-out forwards;
 }
 
+/* CHIMII Inventor auth surface — shared by Web and Desktop. */
+.chimii-auth-surface,
+.chimii-auth-surface * {
+  color-scheme: light;
+}
+
+.chimii-invention-grid {
+  background-image:
+    linear-gradient(rgb(18 19 15 / 7%) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(18 19 15 / 7%) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+
+/* Onboarding is the bridge between the always-light invention-themed auth
+ * surface and the product shell. Keep its form semantics token-driven while
+ * giving every shared web/desktop step the same warm paper, ink, and coral
+ * palette. The class lives on OnboardingFlow so platform wrappers and portals
+ * do not need to duplicate the theme contract. */
+.chimii-onboarding-surface,
+.chimii-onboarding-surface * {
+  color-scheme: light;
+}
+
+.chimii-onboarding-surface {
+  --app-shell: #eee7da;
+  --page-canvas: #f5f0e6;
+  --surface: #fffdf7;
+  --surface-foreground: #12130f;
+  --surface-raised: #fffdf7;
+  --surface-hover: #eee7da;
+  --surface-selected: #e4dccd;
+  --surface-selected-foreground: #12130f;
+  --surface-border: rgb(18 19 15 / 16%);
+  --surface-shadow: 0 2px 0 rgb(18 19 15 / 10%);
+  --floating-shadow: 0 18px 44px rgb(18 19 15 / 18%);
+  --menu-shadow: 0 10px 28px rgb(18 19 15 / 14%);
+  --background: #f5f0e6;
+  --foreground: #12130f;
+  --card: #fffdf7;
+  --card-foreground: #12130f;
+  --popover: #fffdf7;
+  --popover-foreground: #12130f;
+  --primary: #f05a3f;
+  --primary-foreground: #ffffff;
+  --secondary: #e9e1d3;
+  --secondary-foreground: #12130f;
+  --muted: #e9e1d3;
+  --muted-foreground: rgb(18 19 15 / 56%);
+  --accent: #ded5c6;
+  --accent-foreground: #12130f;
+  --destructive: #b3261e;
+  --border: rgb(18 19 15 / 16%);
+  --input: rgb(18 19 15 / 22%);
+  --ring: #f05a3f;
+  --brand: #f05a3f;
+  --brand-foreground: #ffffff;
+  --success: #35a87d;
+  --warning: #d59c20;
+  --info: #4b79d8;
+}
+
+.chimii-onboarding-surface [data-slot="button"] {
+  border-radius: 999px;
+}
+
+@keyframes auth-panel-enter {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+.animate-auth-panel-enter {
+  animation: auth-panel-enter 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
 /* Onboarding: step / phase entry — 400ms fade.
  * Applied on mount so every new step (and intra-step phase switch, via
  * key=phase remount) plays once. `both` fill-mode commits the `from`
@@ -254,6 +330,7 @@ html[data-sidebar-resizing="true"] * {
 
 @media (prefers-reduced-motion: reduce) {
   .animate-entrance-spin,
+  .animate-auth-panel-enter,
   .animate-onboarding-enter,
   .animate-welcome-emoji-pop,
   .animate-completion-badge,

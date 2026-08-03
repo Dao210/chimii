@@ -1,23 +1,22 @@
 import { create } from "zustand";
 
 /**
- * Welcome signal — written by Step 3 of the onboarding flow when the user
- * clicks "Start exploring" or "Skip", consumed exactly once by the
- * `<WelcomeAfterOnboarding />` component mounted inside the workspace
- * shell.
+ * Welcome signal — written after onboarding automatically finds an online
+ * runtime, consumed by `<WelcomeAfterOnboarding />` in the workspace shell.
  *
  * The signal is the bridge between the onboarding screen and the workspace
  * shell that succeeds it. `onboarded_at` is already true by the time we
- * land in the workspace — this carries the *transient* "I just finished
- * Step 3, here is what I chose" intent without persisting it on the user
+ * land in the workspace — this carries the transient "an automatic runtime
+ * is ready" intent without persisting it on the user
  * row (the v2 design persisted it as fields and leaked complexity
  * everywhere).
  *
- * `choice` is "runtime" or "skip":
- *   - "runtime": user picked a runtime in Step 3. `runtimeId` is set. The
+ * `choice` is "runtime" or the retained legacy "skip" shape:
+ *   - "runtime": onboarding found a runtime. `runtimeId` is set. The
  *     workspace welcome hook creates a Chimii Helper agent on that runtime
  *     and presents starter cards.
- *   - "skip": user explicitly skipped. `runtimeId` is undefined. The hook
+ *   - "skip": legacy callers explicitly skipped. `runtimeId` is undefined.
+ *     The hook
  *     seeds two issues (install-runtime guide + create-agent guide) and
  *     shows them in a Modal.
  */

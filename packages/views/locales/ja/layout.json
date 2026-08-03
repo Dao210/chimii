@@ -1,5 +1,7 @@
 {
   "nav": {
+    "build": "つくる",
+    "creations": "作品",
     "inbox": "インボックス",
     "chat": "チャット",
     "my_issues": "マイイシュー",
@@ -31,7 +33,6 @@
     "trigger": "ヘルプ",
     "docs": "ドキュメント",
     "changelog": "変更ログ",
-    "discord": "Discord",
     "feedback": "フィードバック",
     "server_version": "サーバーバージョン {{version}}"
   },
@@ -53,11 +54,8 @@
     "pinned_label": "ピン留め済み",
     "workspace_group": "ワークスペース",
     "configure_group": "設定",
-    "unread_overflow": "99+",
-    "discord_card": {
-      "title": "Discord に参加",
-      "description": "チームや他のユーザーと交流しましょう。",
-      "dismiss": "閉じる"
-    }
-  }
+  "unread_overflow": "99+",
+  "child_profile_fallback": "小さなクリエイター",
+  "child_space": "こども創作スペース"
+}
 }

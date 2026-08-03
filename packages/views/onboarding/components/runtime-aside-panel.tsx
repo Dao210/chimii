@@ -16,7 +16,7 @@ export function RuntimeAsidePanel() {
     ? "https://chimii.ai/docs/zh/install-agent-runtime"
     : "https://chimii.ai/docs/install-agent-runtime";
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-6 rounded-[28px] border-2 border-[#12130f] bg-[#fffdf7]/90 p-7 shadow-[7px_8px_0_rgba(18,19,15,0.14)]">
       <section>
         <div className="mb-3 text-xs font-medium uppercase tracking-[0.08em] text-muted-foreground">
           {t(($) => $.runtime_aside.what_eyebrow)}

@@ -1,5 +1,7 @@
 {
   "nav": {
+    "build": "만들기",
+    "creations": "내 작품",
     "inbox": "인박스",
     "chat": "채팅",
     "my_issues": "내 이슈",
@@ -31,7 +33,6 @@
     "trigger": "도움말",
     "docs": "문서",
     "changelog": "변경 로그",
-    "discord": "Discord",
     "feedback": "피드백",
     "server_version": "서버 버전 {{version}}"
   },
@@ -53,11 +54,8 @@
     "pinned_label": "고정됨",
     "workspace_group": "워크스페이스",
     "configure_group": "설정",
-    "unread_overflow": "99+",
-    "discord_card": {
-      "title": "Discord 참여하기",
-      "description": "팀과 다른 사용자들과 교류해 보세요.",
-      "dismiss": "닫기"
-    }
-  }
+  "unread_overflow": "99+",
+  "child_profile_fallback": "꼬마 크리에이터",
+  "child_space": "어린이 창작 공간"
+}
 }

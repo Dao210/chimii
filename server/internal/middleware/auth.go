@@ -60,6 +60,32 @@ func Auth(queries *db.Queries, patCache *auth.PATCache, cloudPAT *auth.CloudPATV
 				return
 			}
 
+			// Restricted child session. The opaque mch_ token resolves to one
+			// parent identity, one child profile, and one workspace. Downstream
+			// capability middleware uses the authoritative actor-source stamp to
+			// expose only Build Studio operations.
+			if strings.HasPrefix(tokenString, "mch_") {
+				if queries == nil {
+					http.Error(w, `{"error":"invalid token"}`, http.StatusUnauthorized)
+					return
+				}
+				session, err := queries.GetActiveChildSessionByTokenHash(r.Context(), auth.HashToken(tokenString))
+				if err != nil {
+					slog.Warn("auth: invalid child session", "path", r.URL.Path, "error", err)
+					http.Error(w, `{"error":"invalid token"}`, http.StatusUnauthorized)
+					return
+				}
+				r.Header.Set("X-User-ID", uuidToString(session.ParentUserID))
+				r.Header.Set("X-Workspace-ID", uuidToString(session.WorkspaceID))
+				r.Header.Set("X-Child-Profile-ID", uuidToString(session.ProfileID))
+				r.Header.Set("X-Child-Session-ID", uuidToString(session.ID))
+				r.Header.Set("X-Child-Display-Name", session.DisplayName)
+				r.Header.Set("X-Actor-Source", "child_session")
+				go queries.TouchChildSession(context.Background(), session.ID)
+				next.ServeHTTP(w, r)
+				return
+			}
+
 			// Agent task token: "mat_" prefix. Minted by the server at
 			// task-claim time and injected by the daemon into the agent
 			// process. Authoritative for actor identity — the bound

@@ -20,6 +20,7 @@ import (
 const (
 	AuthCookieName      = "chimii_auth"
 	CSRFCookieName      = "chimii_csrf"
+	ChildModeCookieName = "chimii_child_mode"
 	defaultAuthTokenTTL = 30 * 24 * time.Hour // 30 days
 )
 
@@ -181,6 +182,28 @@ func SetAuthCookies(w http.ResponseWriter, token string) error {
 		SameSite: http.SameSiteStrictMode,
 	})
 
+	// This readable cookie carries no credential or identity. It exists so the
+	// browser can suppress parent-scoped WebSocket initialization while the
+	// real mch_ token remains protected by the HttpOnly auth cookie.
+	childMode := strings.HasPrefix(token, "mch_")
+	marker := &http.Cookie{
+		Name:     ChildModeCookieName,
+		Path:     "/",
+		Domain:   domain,
+		HttpOnly: false,
+		Secure:   secure,
+		SameSite: http.SameSiteStrictMode,
+	}
+	if childMode {
+		marker.Value = "1"
+		marker.MaxAge = int(ttl.Seconds())
+		marker.Expires = now.Add(ttl)
+	} else {
+		marker.MaxAge = -1
+		marker.Expires = time.Unix(0, 0)
+	}
+	http.SetCookie(w, marker)
+
 	return nil
 }
 
@@ -203,6 +226,18 @@ func ClearAuthCookies(w http.ResponseWriter) {
 
 	http.SetCookie(w, &http.Cookie{
 		Name:     CSRFCookieName,
+		Value:    "",
+		Path:     "/",
+		Domain:   domain,
+		MaxAge:   -1,
+		Expires:  time.Unix(0, 0),
+		HttpOnly: false,
+		Secure:   secure,
+		SameSite: http.SameSiteStrictMode,
+	})
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     ChildModeCookieName,
 		Value:    "",
 		Path:     "/",
 		Domain:   domain,

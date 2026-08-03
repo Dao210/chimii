@@ -1,6 +1,6 @@
 import { LoginPage } from "@chimii/views/auth";
 import { DragStrip } from "@chimii/views/platform";
-import { ChimiiIcon } from "@chimii/ui/components/common/chimii-icon";
+import { ChimiiInventorBrand } from "@chimii/ui/components/common/chimii-inventor-brand";
 
 function requireRuntimeAppUrl(): string {
   const runtimeConfig = window.desktopAPI.runtimeConfig;
@@ -26,7 +26,7 @@ export function DesktopLoginPage() {
     <div className="flex h-screen flex-col">
       <DragStrip />
       <LoginPage
-        logo={<ChimiiIcon bordered size="lg" />}
+        logo={<ChimiiInventorBrand />}
         onSuccess={() => {
           // Auth store update triggers AppContent re-render → shows DesktopShell.
           // Initial workspace navigation happens in routes.tsx via IndexRedirect.

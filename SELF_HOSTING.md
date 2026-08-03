@@ -16,12 +16,29 @@ Only SSH, HTTP, and HTTPS should be reachable from the public internet. Keep por
 
 ## Automated Native Deployment
 
-The repository deployment script cross-compiles Go locally, builds only the Web app on the Linux host, installs PostgreSQL/pgvector and Redis when needed, generates the production environment, runs migrations, and activates versioned systemd releases. It never packages desktop or mobile applications.
+The repository deployment script cross-compiles Go locally, builds only the Web app on the Linux host, generates the production environment, runs migrations, and activates versioned systemd releases. It never packages desktop or mobile applications. PostgreSQL/pgvector, Redis, nginx, and the persistent Linux build workspace are prepared once instead of being reprovisioned on every deployment.
 
 ```bash
-./scripts/deploy.sh deploy
+./scripts/deploy.sh setup       # first run on a server only
+./scripts/deploy.sh auto        # normal deployment; also the default action
 ./scripts/deploy.sh verify
 ```
+
+`auto` compares the deployed source fingerprint and environment hash with the local workspace. Backend changes deploy only the Go services and migrations; Web or shared-package changes deploy only Next.js; `.env` changes update protected runtime configuration. Desktop, mobile, and documentation-only changes do not deploy anything to Linux. Explicit actions are available when needed:
+
+```bash
+./scripts/deploy.sh backend
+./scripts/deploy.sh web
+./scripts/deploy.sh config
+./scripts/deploy.sh full
+./scripts/deploy.sh rollback
+```
+
+The Web workspace is typechecked locally before upload. The Linux host then reuses its retained `node_modules`, pnpm store, and `.next/cache`, and skips only Next.js's duplicate TypeScript pass. Set `SKIP_LOCAL_TYPECHECK=true` only as an explicit emergency override. Each run writes a secret-free timing and artifact-hash report under `.chimii/deploy-reports/`.
+
+Web builds run as systemd transient services and are polled through independent SSH connections, so an SSH disconnect does not cancel the build. Polling defaults to 45 seconds to avoid adding connection pressure on low-memory hosts; override it with `BUILD_POLL_SECONDS` between 15 and 300 when required.
+
+Deployments use local and remote locks, explicitly restart only changed services, and preserve the current and previous release records. A failed activation health check switches application links back and restarts the prior release. Database migrations are intentionally forward-only and are not automatically reversed.
 
 The first command intentionally configures HTTP before DNS is moved. After the domain's A record points to the server, issue and install the certificate separately:
 
@@ -98,6 +115,9 @@ Keep releases immutable and durable data outside release directories:
 /opt/chimii/releases/web/<release-id>/
 /opt/chimii/current-backend -> releases/backend/<release-id>
 /opt/chimii/current-web     -> releases/web/<release-id>
+/opt/chimii/builder/workspace/       # retained Linux node_modules and .next/cache
+/opt/chimii/state/current.env         # deployed commit, hashes, and release paths
+/opt/chimii/state/previous.env        # rollback target
 /etc/chimii/backend.env
 /etc/chimii/web.env
 /var/lib/chimii/uploads/

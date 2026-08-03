@@ -8,13 +8,13 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/go-chi/chi/v5"
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/chimii-ai/chimii/server/internal/analytics"
 	"github.com/chimii-ai/chimii/server/internal/logger"
 	obsmetrics "github.com/chimii-ai/chimii/server/internal/metrics"
 	db "github.com/chimii-ai/chimii/server/pkg/db/generated"
 	"github.com/chimii-ai/chimii/server/pkg/protocol"
+	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 var nonAlpha = regexp.MustCompile(`[^a-zA-Z]`)
@@ -78,6 +78,14 @@ func workspaceToResponse(w db.Workspace) WorkspaceResponse {
 	}
 }
 
+func workspaceToChildResponse(w db.Workspace) WorkspaceResponse {
+	return WorkspaceResponse{
+		ID: uuidToString(w.ID), Name: w.Name, Slug: w.Slug,
+		Settings: map[string]any{}, Repos: []any{}, IssuePrefix: "",
+		AvatarURL: textToPtr(w.AvatarUrl), CreatedAt: "", UpdatedAt: "",
+	}
+}
+
 type MemberResponse struct {
 	ID          string `json:"id"`
 	WorkspaceID string `json:"workspace_id"`
@@ -99,6 +107,16 @@ func memberToResponse(m db.Member) MemberResponse {
 func (h *Handler) ListWorkspaces(w http.ResponseWriter, r *http.Request) {
 	userID, ok := requireUserID(w, r)
 	if !ok {
+		return
+	}
+
+	if r.Header.Get("X-Actor-Source") == "child_session" {
+		workspace, err := h.Queries.GetWorkspace(r.Context(), parseUUID(r.Header.Get("X-Workspace-ID")))
+		if err != nil {
+			writeError(w, http.StatusNotFound, "workspace not found")
+			return
+		}
+		writeJSON(w, http.StatusOK, []WorkspaceResponse{workspaceToChildResponse(workspace)})
 		return
 	}
 

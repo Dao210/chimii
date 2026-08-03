@@ -42,36 +42,24 @@ function renderStep(answers: QuestionnaireAnswers = EMPTY) {
 describe("StepAboutYou", () => {
   beforeEach(() => vi.restoreAllMocks());
 
-  it("renders both question groups on one screen", () => {
+  it("asks about a child's interests instead of an adult role", () => {
     renderStep();
+    expect(screen.getByText("What you love")).toBeInTheDocument();
     expect(
-      screen.getByText("Which best describes you?"),
+      screen.getByText("What do you love making and exploring?"),
     ).toBeInTheDocument();
+    expect(screen.getByText("Pick as many as you like.")).toBeInTheDocument();
     expect(
-      screen.getByText("What do you want to use Chimii for?"),
-    ).toBeInTheDocument();
+      screen.queryByText("Which best describes you?"),
+    ).not.toBeInTheDocument();
   });
 
-  it("selecting a role patches the slug and clears Other/skip", async () => {
-    const user = userEvent.setup();
-    const { onChange, onAdvance } = renderStep();
-
-    await user.click(screen.getByRole("radio", { name: /engineer/i }));
-
-    expect(onChange).toHaveBeenCalledWith({
-      role: "engineer",
-      role_other: null,
-      role_skipped: false,
-    });
-    expect(onAdvance).not.toHaveBeenCalled();
-  });
-
-  it("toggling a use case patches the array and clears skip", async () => {
+  it("stores an interest in the legacy use_case slot", async () => {
     const user = userEvent.setup();
     const { onChange } = renderStep();
 
     await user.click(
-      screen.getByRole("checkbox", { name: /ship code with ai agents/i }),
+      screen.getByRole("checkbox", { name: /robots & machines/i }),
     );
 
     expect(onChange).toHaveBeenCalledWith({
@@ -80,7 +68,7 @@ describe("StepAboutYou", () => {
     });
   });
 
-  it("Continue is disabled until one group has a committed answer", async () => {
+  it("keeps Continue disabled until an interest is committed", async () => {
     const user = userEvent.setup();
     const { onAdvance } = renderStep();
 
@@ -90,27 +78,11 @@ describe("StepAboutYou", () => {
     expect(onAdvance).not.toHaveBeenCalled();
   });
 
-  it("Continue with only role answered marks use_case as skipped", async () => {
+  it("Continue clears any legacy role and advances", async () => {
     const user = userEvent.setup();
     const { onChange, onAdvance } = renderStep({
       ...EMPTY,
       role: "engineer",
-    });
-
-    await user.click(screen.getByRole("button", { name: /continue/i }));
-
-    expect(onChange).toHaveBeenCalledWith({
-      use_case: [],
-      use_case_other: null,
-      use_case_skipped: true,
-    });
-    expect(onAdvance).toHaveBeenCalledTimes(1);
-  });
-
-  it("Continue with only use_case answered marks role as skipped", async () => {
-    const user = userEvent.setup();
-    const { onChange, onAdvance } = renderStep({
-      ...EMPTY,
       use_case: ["ship_code"],
     });
 
@@ -124,33 +96,23 @@ describe("StepAboutYou", () => {
     expect(onAdvance).toHaveBeenCalledTimes(1);
   });
 
-  it("Continue with both groups answered patches nothing extra", async () => {
-    const user = userEvent.setup();
-    const { onChange, onAdvance } = renderStep({
-      ...EMPTY,
-      role: "engineer",
-      use_case: ["ship_code"],
-    });
-
-    await user.click(screen.getByRole("button", { name: /continue/i }));
-
-    expect(onChange).not.toHaveBeenCalled();
-    expect(onAdvance).toHaveBeenCalledTimes(1);
-  });
-
-  it("a lone empty-text Other role does not enable Continue", () => {
-    renderStep({ ...EMPTY, role: "other" });
+  it("a lone empty-text Something else does not enable Continue", () => {
+    renderStep({ ...EMPTY, use_case: ["other"] });
     expect(screen.getByRole("button", { name: /continue/i })).toBeDisabled();
   });
 
-  it("an Other role with text enables Continue", () => {
-    renderStep({ ...EMPTY, role: "other", role_other: "teacher" });
+  it("Something else with text enables Continue", () => {
+    renderStep({
+      ...EMPTY,
+      use_case: ["other"],
+      use_case_other: "music",
+    });
     expect(
       screen.getByRole("button", { name: /continue/i }),
     ).toBeEnabled();
   });
 
-  it("Skip declines both groups in one patch and advances", async () => {
+  it("Skip clears legacy role and interests in one patch", async () => {
     const user = userEvent.setup();
     const { onChange, onSkip } = renderStep();
 
@@ -167,21 +129,17 @@ describe("StepAboutYou", () => {
     expect(onSkip).toHaveBeenCalledTimes(1);
   });
 
-  it("pre-fills both groups from stored answers on re-entry", () => {
+  it("pre-fills multiple stored interests on re-entry", () => {
     renderStep({
       ...EMPTY,
-      role: "designer",
       use_case: ["plan_research", "write_publish"],
     });
 
     expect(
-      screen.getByRole("radio", { name: /designer/i }),
+      screen.getByRole("checkbox", { name: /science experiments/i }),
     ).toHaveAttribute("aria-checked", "true");
     expect(
-      screen.getByRole("checkbox", { name: /plan, brainstorm, research/i }),
-    ).toHaveAttribute("aria-checked", "true");
-    expect(
-      screen.getByRole("checkbox", { name: /write, edit, publish/i }),
+      screen.getByRole("checkbox", { name: /stories & comics/i }),
     ).toHaveAttribute("aria-checked", "true");
   });
 });

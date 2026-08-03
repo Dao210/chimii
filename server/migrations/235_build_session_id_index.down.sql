@@ -1,0 +1,1 @@
+DROP INDEX CONCURRENTLY IF EXISTS build_session_id_idx;

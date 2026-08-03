@@ -91,6 +91,7 @@ export function CoreProvider({
   onLogin,
   onLogout,
   identity,
+  initializeBackend = true,
   locale,
   resources,
   localeAdapter,
@@ -117,11 +118,12 @@ export function CoreProvider({
         storage={storage}
         cookieAuth={cookieAuth}
         identity={identity}
+        enabled={initializeBackend}
       >
         {/* Desktop's reporter owns both activity and runtime state so it must
             be the only writer for that installation. */}
         {identity?.platform !== "desktop" && (
-          <ClientUsageReporter storage={storage} identity={identity} />
+          <ClientUsageReporter storage={storage} identity={identity} cookieAuth={cookieAuth} />
         )}
         <WSProvider
           wsUrl={wsUrl}

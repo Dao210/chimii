@@ -10,7 +10,7 @@ import {
   useHasOnboarded,
 } from "@chimii/core/paths";
 import { workspaceListOptions } from "@chimii/core/workspace/queries";
-import { CliInstallInstructions, OnboardingFlow } from "@chimii/views/onboarding";
+import { OnboardingFlow } from "@chimii/views/onboarding";
 
 /**
  * Web shell for the onboarding flow. The route is the platform chrome on
@@ -21,9 +21,8 @@ import { CliInstallInstructions, OnboardingFlow } from "@chimii/views/onboarding
  * navigate there. Otherwise land on the workspace issues list, or root if
  * the flow never produced a workspace.
  *
- * `CliInstallInstructions` is passed in as the `runtimeInstructions`
- * slot so the flow can render it inside the CLI dialog. The commands it
- * shows are hardcoded — nothing environmental to thread through.
+ * The shared flow automatically selects the remotely provisioned runtime;
+ * web only identifies its platform here so Welcome can show the right CTA.
  */
 export default function OnboardingPage() {
   const router = useRouter();
@@ -52,9 +51,9 @@ export default function OnboardingPage() {
     if (completingRef.current) return;
     // Bounce out only when onboarding genuinely doesn't apply: the user is
     // already onboarded. We deliberately don't bounce on `workspaces.length`
-    // here — Step 3 of the flow creates a workspace mid-onboarding, and a
-    // hasWorkspaces bounce here would kick the user out before Steps 4–5
-    // (runtime / agent / first issue) can run. The new entry-point
+    // here — the flow creates a workspace before its automatic finishing
+    // state, and a hasWorkspaces bounce here would kick the user out before
+    // onboarding is marked complete. The new entry-point
     // judgment in callback / login handles "where should this user go on
     // login" so OnboardingPage no longer needs to second-guess it.
     if (hasOnboarded) {
@@ -71,6 +70,7 @@ export default function OnboardingPage() {
   return (
     <div className="h-full overflow-y-auto bg-background">
       <OnboardingFlow
+        isWeb
         onComplete={(ws, issueId) => {
           // Runtime-connected onboarding now creates one focused
           // onboarding issue. Skip/runtime-less exits still land on the
@@ -79,12 +79,11 @@ export default function OnboardingPage() {
           if (ws && issueId) {
             router.push(paths.workspace(ws.slug).issueDetail(issueId));
           } else if (ws) {
-            router.push(paths.workspace(ws.slug).issues());
+            router.push(paths.workspace(ws.slug).build());
           } else {
             router.push(paths.root());
           }
         }}
-        runtimeInstructions={<CliInstallInstructions />}
       />
     </div>
   );

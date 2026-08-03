@@ -2,6 +2,7 @@ package auth
 
 import (
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 )
@@ -69,8 +70,8 @@ func TestSetAuthCookies_HTTPSelfHost(t *testing.T) {
 	}
 
 	cookies := rec.Result().Cookies()
-	if len(cookies) != 2 {
-		t.Fatalf("expected 2 cookies (auth + csrf), got %d", len(cookies))
+	if len(cookies) != 3 {
+		t.Fatalf("expected 3 cookies (auth + csrf + child-mode marker), got %d", len(cookies))
 	}
 	for _, c := range cookies {
 		if c.Secure {
@@ -80,6 +81,29 @@ func TestSetAuthCookies_HTTPSelfHost(t *testing.T) {
 			t.Errorf("cookie %q has Domain=%q; IP-address Domain would be rejected by the browser (RFC 6265)", c.Name, c.Domain)
 		}
 	}
+}
+
+func TestSetAuthCookies_ChildModeMarkerContainsNoCredential(t *testing.T) {
+	t.Setenv("FRONTEND_ORIGIN", "https://app.example.com")
+	t.Setenv("COOKIE_DOMAIN", "app.example.com")
+
+	rec := httptest.NewRecorder()
+	if err := SetAuthCookies(rec, "mch_super-secret-child-token"); err != nil {
+		t.Fatalf("SetAuthCookies: %v", err)
+	}
+	for _, cookie := range rec.Result().Cookies() {
+		if cookie.Name != ChildModeCookieName {
+			continue
+		}
+		if cookie.Value != "1" || cookie.HttpOnly {
+			t.Fatalf("unexpected child marker: %#v", cookie)
+		}
+		if strings.Contains(cookie.Value, "mch_") {
+			t.Fatal("child mode marker must never contain the session credential")
+		}
+		return
+	}
+	t.Fatal("child mode marker cookie was not set")
 }
 
 func TestParseAuthTokenTTL(t *testing.T) {

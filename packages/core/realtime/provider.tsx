@@ -20,6 +20,7 @@ import {
 } from "../platform/workspace-storage";
 import { createLogger } from "../logger";
 import { useRealtimeSync, type RealtimeSyncStores } from "./use-realtime-sync";
+import { hasChildCredential } from "../child-mode/credential";
 
 type EventHandler = (payload: unknown, actorId?: string, actorType?: string) => void;
 
@@ -78,6 +79,12 @@ export function WSProvider({
 
   useEffect(() => {
     if (!user || !wsSlug) return;
+
+    // Child sessions intentionally have no realtime connection: workspace
+    // events include parent-only Issues/Agents data. Web reads only a
+    // non-sensitive marker while the mch_ credential remains HttpOnly;
+    // Desktop can inspect its local token transport directly.
+    if (hasChildCredential(storage, cookieAuth)) return;
 
     // In token mode we need a token from storage; in cookie mode the HttpOnly
     // cookie is sent automatically with the WS upgrade request.

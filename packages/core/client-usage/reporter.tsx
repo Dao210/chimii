@@ -6,6 +6,7 @@ import { useAuthStore } from "../auth";
 import type { StorageAdapter } from "../types/storage";
 import type { ClientIdentity } from "../platform/types";
 import { getOrCreateInstallId } from "./install-id";
+import { hasChildCredential } from "../child-mode/credential";
 
 const LAST_REPORTED_PREFIX = "chimii_client_usage_last_reported";
 
@@ -16,9 +17,11 @@ export function utcDay(date = new Date()): string {
 export function ClientUsageReporter({
   storage,
   identity,
+  cookieAuth,
 }: {
   storage: StorageAdapter;
   identity?: ClientIdentity;
+  cookieAuth?: boolean;
 }) {
   const userID = useAuthStore((state) => state.user?.id ?? null);
   const userIDRef = useRef(userID);
@@ -31,6 +34,7 @@ export function ClientUsageReporter({
     const activeUserID = userIDRef.current;
     if (!activeUserID || (platform !== "web" && platform !== "desktop"))
       return;
+    if (hasChildCredential(storage, cookieAuth)) return;
     if (inFlight.current) {
       rerun.current = true;
       return;
@@ -53,7 +57,7 @@ export function ClientUsageReporter({
         void reportIfNeeded();
       }
     }
-  }, [identity?.platform, storage]);
+  }, [cookieAuth, identity?.platform, storage]);
 
   useEffect(() => {
     void reportIfNeeded();

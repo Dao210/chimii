@@ -4,25 +4,18 @@ import { useRef } from "react";
 import {
   ArrowLeft,
   ArrowRight,
-  Brain,
-  Briefcase,
-  Code2,
-  Compass,
-  FileEdit,
-  GraduationCap,
-  ListChecks,
-  Megaphone,
+  Blocks,
+  BookOpenText,
+  Bot,
+  FlaskConical,
+  Gamepad2,
   MoreHorizontal,
   Palette,
-  PenLine,
-  Rocket,
-  Search,
-  Settings2,
-  User,
+  PawPrint,
 } from "lucide-react";
 import { Button } from "@chimii/ui/components/ui/button";
 import { useScrollFade } from "@chimii/ui/hooks/use-scroll-fade";
-import type { QuestionnaireAnswers, Role, UseCase } from "@chimii/core/onboarding";
+import type { QuestionnaireAnswers, UseCase } from "@chimii/core/onboarding";
 import { DragStrip } from "@chimii/views/platform";
 import { StepHeader } from "../components/step-header";
 import {
@@ -33,25 +26,14 @@ import {
 import { useT } from "../../i18n";
 
 /**
- * Step 1 — "About you": role (single-select) and use case
- * (multi-select) on ONE screen. They were separate steps once, but
- * they share the same eyebrow, the same consumer (the Helper "About
- * me" context block built by `buildUserContextSection`), and neither
- * deserves a full screen of its own — merging them cut the onboarding
- * progress bar from five steps to three.
+ * Step 1 — interests. The audience is an 8–10 year-old maker, so this
+ * screen asks what they enjoy instead of asking for an adult job role.
+ * Interests are intentionally broad and non-gendered: building,
+ * drawing, stories, games, science, animals, and robots.
  *
- * Answering is optional per group:
- *   - Continue is enabled as soon as EITHER group has a committed
- *     answer (an "Other" pick only counts once its free-text is
- *     non-empty). On Continue, any group left unanswered gets its
- *     `*_skipped` marker — the user saw the question and moved on,
- *     which is exactly what the skip marker means downstream
- *     (analytics + never re-prompting).
- *   - Skip declines both groups at once.
- *
- * Every selection change PATCHes through `onChange` immediately (the
- * flow's `applyAnswers` fire-and-forgets persistence), so re-entry
- * pre-fills both groups.
+ * The server still stores the answer in the legacy `use_case` JSONB
+ * slot. Keeping those stable slugs avoids a database migration while
+ * the labels and downstream Helper context now treat them as interests.
  */
 export function StepAboutYou({
   answers,
@@ -70,37 +52,49 @@ export function StepAboutYou({
   const mainRef = useRef<HTMLElement>(null);
   const fadeStyle = useScrollFade(mainRef);
 
-  const roleOptions: QuestionOption[] = [
-    { slug: "engineer", icon: <Code2 className="h-4 w-4" />, label: t(($) => $.questions.role.engineer) },
-    { slug: "product", icon: <Briefcase className="h-4 w-4" />, label: t(($) => $.questions.role.product) },
-    { slug: "designer", icon: <Palette className="h-4 w-4" />, label: t(($) => $.questions.role.designer) },
-    { slug: "founder", icon: <Rocket className="h-4 w-4" />, label: t(($) => $.questions.role.founder) },
-    { slug: "marketing", icon: <Megaphone className="h-4 w-4" />, label: t(($) => $.questions.role.marketing) },
-    { slug: "writer", icon: <PenLine className="h-4 w-4" />, label: t(($) => $.questions.role.writer) },
-    { slug: "research", icon: <Search className="h-4 w-4" />, label: t(($) => $.questions.role.research) },
-    { slug: "ops", icon: <Settings2 className="h-4 w-4" />, label: t(($) => $.questions.role.ops) },
-    { slug: "student", icon: <GraduationCap className="h-4 w-4" />, label: t(($) => $.questions.role.student) },
-    { slug: "other", icon: <MoreHorizontal className="h-4 w-4" />, label: t(($) => $.questions.role.other), isOther: true },
-  ];
-
   const useCaseOptions: QuestionOption[] = [
-    { slug: "ship_code", icon: <Code2 className="h-4 w-4" />, label: t(($) => $.questions.use_case.ship_code) },
-    { slug: "manage_team", icon: <ListChecks className="h-4 w-4" />, label: t(($) => $.questions.use_case.manage_team) },
-    { slug: "personal_tasks", icon: <User className="h-4 w-4" />, label: t(($) => $.questions.use_case.personal_tasks) },
-    { slug: "plan_research", icon: <Brain className="h-4 w-4" />, label: t(($) => $.questions.use_case.plan_research) },
-    { slug: "write_publish", icon: <FileEdit className="h-4 w-4" />, label: t(($) => $.questions.use_case.write_publish) },
-    { slug: "automate_ops", icon: <Settings2 className="h-4 w-4" />, label: t(($) => $.questions.use_case.automate_ops) },
-    { slug: "evaluate", icon: <Compass className="h-4 w-4" />, label: t(($) => $.questions.use_case.evaluate) },
-    { slug: "other", icon: <MoreHorizontal className="h-4 w-4" />, label: t(($) => $.questions.use_case.other), isOther: true },
+    {
+      slug: "ship_code",
+      icon: <Bot className="h-4 w-4" />,
+      label: t(($) => $.questions.use_case.ship_code),
+    },
+    {
+      slug: "manage_team",
+      icon: <Blocks className="h-4 w-4" />,
+      label: t(($) => $.questions.use_case.manage_team),
+    },
+    {
+      slug: "personal_tasks",
+      icon: <Palette className="h-4 w-4" />,
+      label: t(($) => $.questions.use_case.personal_tasks),
+    },
+    {
+      slug: "plan_research",
+      icon: <FlaskConical className="h-4 w-4" />,
+      label: t(($) => $.questions.use_case.plan_research),
+    },
+    {
+      slug: "write_publish",
+      icon: <BookOpenText className="h-4 w-4" />,
+      label: t(($) => $.questions.use_case.write_publish),
+    },
+    {
+      slug: "automate_ops",
+      icon: <Gamepad2 className="h-4 w-4" />,
+      label: t(($) => $.questions.use_case.automate_ops),
+    },
+    {
+      slug: "evaluate",
+      icon: <PawPrint className="h-4 w-4" />,
+      label: t(($) => $.questions.use_case.evaluate),
+    },
+    {
+      slug: "other",
+      icon: <MoreHorizontal className="h-4 w-4" />,
+      label: t(($) => $.questions.use_case.other),
+      isOther: true,
+    },
   ];
-
-  // Role stays single-select — downstream personalization (the Helper
-  // "About me" block, the tailored intro slides) wants one primary
-  // identity, not a blend.
-  const roleSelected: readonly string[] = answers.role ? [answers.role] : [];
-  const roleOtherFilled = (answers.role_other ?? "").trim().length > 0;
-  const roleAnswered =
-    answers.role !== null && (answers.role !== "other" || roleOtherFilled);
 
   const useCaseSlugs = answers.use_case ?? [];
   const useCaseOtherFilled =
@@ -111,15 +105,7 @@ export function StepAboutYou({
   const useCaseAnswered =
     useCaseSlugs.length > 0 && (useCaseHasNonOther || useCaseOtherFilled);
 
-  const canContinue = roleAnswered || useCaseAnswered;
-
-  const pickRole = (slug: string) => {
-    if (slug === "other") {
-      onChange({ role: "other", role_skipped: false });
-      return;
-    }
-    onChange({ role: slug as Role, role_other: null, role_skipped: false });
-  };
+  const canContinue = useCaseAnswered;
 
   const toggleUseCase = (slug: string) => {
     const current = answers.use_case ?? [];
@@ -143,22 +129,10 @@ export function StepAboutYou({
 
   const confirmAdvance = () => {
     if (!canContinue) return;
-    // A group the user looked at but left unanswered is a decline —
-    // stamp its skip marker so analytics see the decision and the
-    // slot isn't treated as "never reached". Also clears a dangling
-    // empty-text "Other" role pick.
-    const patch: Partial<QuestionnaireAnswers> = {};
-    if (!roleAnswered) {
-      patch.role = null;
-      patch.role_other = null;
-      patch.role_skipped = true;
-    }
-    if (!useCaseAnswered) {
-      patch.use_case = [];
-      patch.use_case_other = null;
-      patch.use_case_skipped = true;
-    }
-    if (Object.keys(patch).length > 0) onChange(patch);
+    // Role is no longer asked. Clear any value saved by an older version
+    // and mark the slot skipped so the server still considers the v2
+    // questionnaire complete.
+    onChange({ role: null, role_other: null, role_skipped: true });
     onAdvance();
   };
 
@@ -214,18 +188,6 @@ export function StepAboutYou({
 
           <QuestionGroup
             number={1}
-            question={t(($) => $.questions.role.question)}
-            options={roleOptions}
-            selectedSlugs={roleSelected}
-            otherValue={answers.role_other ?? ""}
-            onOtherChange={(v) => onChange({ role_other: v })}
-            otherPlaceholder={t(($) => $.questions.role.other_placeholder)}
-            onAnswer={pickRole}
-            onConfirm={confirmAdvance}
-          />
-
-          <QuestionGroup
-            number={2}
             question={t(($) => $.questions.use_case.question)}
             options={useCaseOptions}
             selectedSlugs={useCaseSlugs}
@@ -263,9 +225,8 @@ export function StepAboutYou({
 StepAboutYou.displayName = "StepAboutYou";
 
 /**
- * One question group: mono index + sub-question heading + option card
- * grid. Selection semantics live in the parent's handlers; this stays
- * a layout shell so both groups render identically.
+ * Interest grid: mono index + short prompt + option cards. Selection
+ * semantics live in the parent so the layout stays presentation-only.
  */
 function QuestionGroup({
   number,

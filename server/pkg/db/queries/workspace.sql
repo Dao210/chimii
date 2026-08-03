@@ -90,6 +90,14 @@ SELECT id FROM workspace WHERE id = $1 FOR UPDATE;
 -- implicit FOR KEY SHARE, which would vanish if that FK is dropped.
 SELECT id FROM workspace WHERE id = $1 FOR KEY SHARE;
 
+-- name: LockWorkspaceForScopedWrite :one
+-- FK-free workspace-owned features (currently Build Studio and child mode)
+-- take this lock inside the same transaction as every insert/update that can
+-- create durable state. DeleteWorkspace takes FOR UPDATE first, so it either
+-- sees and sweeps the committed write or deletes first and makes this lookup
+-- return no rows. FOR KEY SHARE remains compatible across normal writers.
+SELECT id FROM workspace WHERE id = $1 FOR KEY SHARE;
+
 -- name: DeleteWorkspace :exec
 -- The channel_* tables (MUL-3515 §4), resource-label junctions, and custom issue
 -- property definitions carry NO FK to workspace, so — unlike the CASCADE-backed
@@ -195,5 +203,20 @@ cleared_vcs_connections AS (
 ),
 cleared_client_usage_workspace AS (
     UPDATE client_usage_daily SET workspace_id = NULL WHERE workspace_id = $1
+),
+cleared_build_jobs AS (
+    DELETE FROM build_job WHERE workspace_id = $1
+),
+cleared_build_creations AS (
+    DELETE FROM build_creation WHERE workspace_id = $1
+),
+cleared_build_sessions AS (
+    DELETE FROM build_session WHERE workspace_id = $1
+),
+cleared_child_sessions AS (
+    DELETE FROM child_session WHERE workspace_id = $1
+),
+cleared_child_profiles AS (
+    DELETE FROM child_profile WHERE workspace_id = $1
 )
 DELETE FROM workspace WHERE workspace.id = $1;

@@ -850,10 +850,13 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 	// Protected API routes
 	r.Group(func(r chi.Router) {
 		r.Use(middleware.Auth(queries, patCache, cloudPATVerifier))
+		r.Use(middleware.ChildCapabilities)
 		r.Use(middleware.RefreshCloudFrontCookies(cfSigner))
 
 		// --- User-scoped routes (no workspace context required) ---
 		r.Get("/api/me", h.GetMe)
+		r.Get("/api/child-mode", h.GetChildMode)
+		r.Post("/api/child-mode/exit", h.ExitChildMode)
 		r.Patch("/api/me", h.UpdateMe)
 		r.Patch("/api/me/onboarding", h.PatchOnboarding)
 		r.Post("/api/me/onboarding/complete", h.CompleteOnboarding)
@@ -1075,6 +1078,25 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 		// --- Workspace-scoped routes (all require workspace membership) ---
 		r.Group(func(r chi.Router) {
 			r.Use(middleware.RequireWorkspaceMember(queries))
+
+			r.Route("/api/child-profiles", func(r chi.Router) {
+				r.Use(handler.RequireHumanActor)
+				r.Get("/", h.ListChildProfiles)
+				r.Post("/", h.CreateChildProfile)
+				r.Post("/{id}/enter", h.EnterChildMode)
+			})
+
+			// Build Studio: child-language prompt -> deterministic, inventory-
+			// validated construction plan. The worker persists progress in
+			// Postgres; clients poll the session while it is queued/generating.
+			r.Route("/api/build", func(r chi.Router) {
+				r.Post("/sessions", h.CreateBuildSession)
+				r.Get("/sessions/{id}", h.GetBuildSession)
+				r.Post("/sessions/{id}/answers", h.SubmitBuildAnswers)
+				r.Get("/creations", h.ListBuildCreations)
+				r.Get("/creations/{id}", h.GetBuildCreation)
+				r.Get("/creations/{id}/export.mpd", h.ExportBuildCreationMPD)
+			})
 
 			// Assignee frequency
 			r.Get("/api/assignee-frequency", h.GetAssigneeFrequency)

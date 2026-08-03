@@ -101,3 +101,27 @@ func TestRefreshCloudFrontCookies_SkipsWhenCookiePresent(t *testing.T) {
 		t.Error("should not refresh cookies when CloudFront-Policy is already present")
 	}
 }
+
+func TestRefreshCloudFrontCookies_ExpiresParentCookiesForChildSession(t *testing.T) {
+	signer := testSigner(t)
+	handler := RefreshCloudFrontCookies(signer)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	req := httptest.NewRequest(http.MethodGet, "/api/build/creations", nil)
+	req.Header.Set("X-Actor-Source", "child_session")
+	req.AddCookie(&http.Cookie{Name: "CloudFront-Policy", Value: "parent-policy"})
+	rec := httptest.NewRecorder()
+
+	handler.ServeHTTP(rec, req)
+
+	cookies := rec.Result().Cookies()
+	if len(cookies) != 3 {
+		t.Fatalf("expected all three CloudFront cookies to be expired, got %d", len(cookies))
+	}
+	for _, cookie := range cookies {
+		if cookie.MaxAge >= 0 || cookie.Value != "" {
+			t.Errorf("cookie %q was not expired: max-age=%d value=%q", cookie.Name, cookie.MaxAge, cookie.Value)
+		}
+	}
+}

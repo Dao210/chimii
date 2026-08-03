@@ -174,6 +174,7 @@ type Handler struct {
 	WebhookIPRateLimiter         WebhookRateLimiter
 	WebhookAbsoluteIPRateLimiter WebhookRateLimiter
 	WebhookDeliveryWorker        *WebhookDeliveryWorker
+	BuildWorker                  *BuildWorker
 	CloudRuntime                 cloudRuntimeProxy
 	// Lark integration. All three are nil when the Lark master key
 	// (CHIMII_LARK_SECRET_KEY) is unset; the corresponding HTTP
@@ -331,6 +332,7 @@ func New(queries *db.Queries, txStarter txStarter, hub *realtime.Hub, bus *event
 		cfg: cfg,
 	}
 	h.WebhookDeliveryWorker = NewWebhookDeliveryWorker(h)
+	h.BuildWorker = NewBuildWorker(h)
 
 	// GitHub API snapshot pipeline for PR cards (MUL-5265). Built
 	// unconditionally but inert (every trigger no-ops) when the App private key

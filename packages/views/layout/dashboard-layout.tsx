@@ -1,6 +1,10 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { childModeOptions } from "@chimii/core/child-mode";
+import { useWorkspacePaths } from "@chimii/core/paths";
+import { useNavigation } from "../navigation";
 import { SidebarProvider, SidebarInset } from "@chimii/ui/components/ui/sidebar";
 import { ModalRegistry } from "../modals/registry";
 import { SourceBackfillModal } from "../onboarding";
@@ -26,6 +30,16 @@ export function DashboardLayout({
   searchSlot,
   loadingIndicator,
 }: DashboardLayoutProps) {
+  const { data: childMode } = useQuery(childModeOptions());
+  const isChildMode = childMode?.mode === "child";
+  const parentModeReady = childMode?.mode === "parent";
+  const workspacePaths = useWorkspacePaths();
+  const { pathname, replace } = useNavigation();
+  useEffect(() => {
+    if (!isChildMode) return;
+    const allowed = pathname === workspacePaths.build() || pathname.startsWith(`${workspacePaths.creations()}/`) || pathname === workspacePaths.creations();
+    if (!allowed) replace(workspacePaths.build());
+  }, [isChildMode, pathname, replace, workspacePaths]);
   return (
     <DashboardGuard
       loadingFallback={
@@ -35,15 +49,15 @@ export function DashboardLayout({
       }
     >
       <SidebarProvider className="h-svh bg-app-shell">
-        <GlobalShortcuts />
-        <WorkspacePresencePrefetch />
+        {parentModeReady && <GlobalShortcuts />}
+        {parentModeReady && <WorkspacePresencePrefetch />}
         <AppSidebar searchSlot={searchSlot} />
         <SidebarInset className="relative overflow-hidden">
           <NavigationProgress />
           {children}
-          <ModalRegistry />
-          <SourceBackfillModal />
-          {extra}
+          {parentModeReady && <ModalRegistry />}
+          {parentModeReady && <SourceBackfillModal />}
+          {parentModeReady && extra}
         </SidebarInset>
       </SidebarProvider>
     </DashboardGuard>

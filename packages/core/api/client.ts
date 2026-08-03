@@ -166,6 +166,28 @@ import type {
   CreateBillingPortalSessionResponse,
 } from "../types";
 import type { OnboardingCompletionPath } from "../onboarding/types";
+import type { BuildCreation, BuildCreationList, BuildSession } from "../build/types";
+import type { ChildMode, ChildProfile, ChildProfileList, EnterChildModeResponse, ExitChildModeResponse } from "../child-mode/types";
+import {
+  ChildModeSchema,
+  ChildProfileListSchema,
+  ChildProfileSchema,
+  EMPTY_CHILD_PROFILE,
+  EMPTY_CHILD_PROFILES,
+  EMPTY_ENTER_CHILD_MODE,
+  EMPTY_EXIT_CHILD_MODE,
+  EnterChildModeResponseSchema,
+  ExitChildModeResponseSchema,
+  PARENT_MODE,
+} from "../child-mode/schemas";
+import {
+  BuildCreationListSchema,
+  BuildCreationSchema,
+  BuildSessionSchema,
+  EMPTY_BUILD_CREATION,
+  EMPTY_BUILD_CREATIONS,
+  EMPTY_BUILD_SESSION,
+} from "../build/schemas";
 import type { CreateFeedbackResponse, FeedbackKind } from "../feedback/types";
 import type {
   CloudRuntimeNode,
@@ -3048,5 +3070,77 @@ export class ApiClient {
       method: "POST",
       body: JSON.stringify({ token }),
     });
+  }
+
+  // Build Studio
+  async createBuildSession(prompt: string, clientRequestId: string): Promise<BuildSession> {
+    const raw = await this.fetch<unknown>("/api/build/sessions", {
+      method: "POST",
+      body: JSON.stringify({ prompt, client_request_id: clientRequestId }),
+    });
+    return parseWithFallback(raw, BuildSessionSchema, EMPTY_BUILD_SESSION, {
+      endpoint: "POST /api/build/sessions",
+    });
+  }
+
+  async getBuildSession(id: string): Promise<BuildSession> {
+    const raw = await this.fetch<unknown>(`/api/build/sessions/${encodeURIComponent(id)}`);
+    return parseWithFallback(raw, BuildSessionSchema, EMPTY_BUILD_SESSION, {
+      endpoint: "GET /api/build/sessions/{id}",
+    });
+  }
+
+  async submitBuildAnswers(id: string, answers: Record<string, string>): Promise<BuildSession> {
+    const raw = await this.fetch<unknown>(`/api/build/sessions/${encodeURIComponent(id)}/answers`, {
+      method: "POST",
+      body: JSON.stringify({ answers }),
+    });
+    return parseWithFallback(raw, BuildSessionSchema, EMPTY_BUILD_SESSION, {
+      endpoint: "POST /api/build/sessions/{id}/answers",
+    });
+  }
+
+  async listBuildCreations(): Promise<BuildCreationList> {
+    const raw = await this.fetch<unknown>("/api/build/creations");
+    return parseWithFallback(raw, BuildCreationListSchema, EMPTY_BUILD_CREATIONS, {
+      endpoint: "GET /api/build/creations",
+    });
+  }
+
+  async getBuildCreation(id: string): Promise<BuildCreation> {
+    const raw = await this.fetch<unknown>(`/api/build/creations/${encodeURIComponent(id)}`);
+    return parseWithFallback(raw, BuildCreationSchema, EMPTY_BUILD_CREATION, {
+      endpoint: "GET /api/build/creations/{id}",
+    });
+  }
+
+  async downloadBuildMPD(id: string): Promise<Blob> {
+    const response = await this.fetchRaw(`/api/build/creations/${encodeURIComponent(id)}/export.mpd`);
+    return response.blob();
+  }
+
+  async getChildMode(): Promise<ChildMode> {
+    const raw = await this.fetch<unknown>("/api/child-mode");
+    return parseWithFallback(raw, ChildModeSchema, PARENT_MODE, { endpoint: "GET /api/child-mode" });
+  }
+
+  async listChildProfiles(): Promise<ChildProfileList> {
+    const raw = await this.fetch<unknown>("/api/child-profiles/");
+    return parseWithFallback(raw, ChildProfileListSchema, EMPTY_CHILD_PROFILES, { endpoint: "GET /api/child-profiles" });
+  }
+
+  async createChildProfile(data: { display_name: string; pin: string; avatar_seed?: string }): Promise<ChildProfile> {
+    const raw = await this.fetch<unknown>("/api/child-profiles/", { method: "POST", body: JSON.stringify(data) });
+    return parseWithFallback(raw, ChildProfileSchema, EMPTY_CHILD_PROFILE, { endpoint: "POST /api/child-profiles" });
+  }
+
+  async enterChildMode(profileId: string): Promise<EnterChildModeResponse> {
+    const raw = await this.fetch<unknown>(`/api/child-profiles/${encodeURIComponent(profileId)}/enter`, { method: "POST" });
+    return parseWithFallback(raw, EnterChildModeResponseSchema, EMPTY_ENTER_CHILD_MODE, { endpoint: "POST /api/child-profiles/{id}/enter" });
+  }
+
+  async exitChildMode(pin: string): Promise<ExitChildModeResponse> {
+    const raw = await this.fetch<unknown>("/api/child-mode/exit", { method: "POST", body: JSON.stringify({ pin }) });
+    return parseWithFallback(raw, ExitChildModeResponseSchema, EMPTY_EXIT_CHILD_MODE, { endpoint: "POST /api/child-mode/exit" });
   }
 }

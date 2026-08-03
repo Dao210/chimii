@@ -49,6 +49,23 @@ func (h *Handler) revokeAndRemoveMember(ctx context.Context, workspaceID, userID
 	defer tx.Rollback(ctx)
 
 	qtx := h.Queries.WithTx(tx)
+	if _, err := qtx.LockWorkspaceMemberForRevocation(ctx, db.LockWorkspaceMemberForRevocationParams{
+		ID:          memberID,
+		WorkspaceID: workspaceID,
+		UserID:      userID,
+	}); err != nil {
+		return empty, err
+	}
+
+	// Build Studio and child-mode tables deliberately carry no foreign keys.
+	// The member row lock above conflicts with every scoped writer, so this
+	// cleanup cannot miss a concurrent creation that is still committing.
+	if err := qtx.DeleteBuildAndChildDataForParentInWorkspace(ctx, db.DeleteBuildAndChildDataForParentInWorkspaceParams{
+		WorkspaceID:  workspaceID,
+		ParentUserID: userID,
+	}); err != nil {
+		return empty, err
+	}
 
 	runtimes, err := qtx.ListAgentRuntimesByOwner(ctx, db.ListAgentRuntimesByOwnerParams{
 		WorkspaceID: workspaceID,

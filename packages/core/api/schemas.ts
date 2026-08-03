@@ -295,6 +295,8 @@ export interface AppConfigResponse {
   vcs_integration_available?: boolean;
   feature_flags?: Record<string, boolean>;
   server_version?: string;
+  build_available: boolean;
+  build_unavailable_reason?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -446,6 +448,8 @@ export const AppConfigSchema = z.object({
   vcs_integration_available: BooleanWithDefaultSchema(false).optional(),
   feature_flags: FeatureFlagsSchema,
   server_version: OptionalStringSchema,
+  build_available: BooleanWithDefaultSchema(false),
+  build_unavailable_reason: OptionalStringSchema,
 }).loose();
 
 export const EMPTY_APP_CONFIG: AppConfigResponse = {
@@ -458,6 +462,8 @@ export const EMPTY_APP_CONFIG: AppConfigResponse = {
   workspace_creation_disabled: false,
   vcs_integration_available: false,
   feature_flags: {},
+  build_available: false,
+  build_unavailable_reason: "llm_not_configured",
 };
 
 // Preference keys may grow over time, so keep both the key and value spaces

@@ -51,8 +51,8 @@ export async function saveQuestionnaire(
  * `createAgent` / `createIssue` calls, AFTER this call has returned
  * and the user has been navigated into the workspace.
  *
- * `completionPath` is the client's view of which Step-3 exit the user
- * took; the server funnel-splits `onboarding_completed` on this value.
+ * `completionPath` is the client's view of whether the automatic runtime
+ * probe resolved; the server funnel-splits `onboarding_completed` on it.
  * Legacy callers that don't pass a path get recorded as `unknown`.
  */
 export async function completeOnboarding(
@@ -69,8 +69,8 @@ export async function completeOnboarding(
 
 /**
  * Records interest in cloud runtimes. Pure side effect — does NOT
- * complete onboarding; the user still has to pick a real Step 3
- * path (CLI with a detected runtime) or Skip to move on.
+ * complete onboarding. This legacy waitlist action is no longer part of
+ * the onboarding route; runtime setup lives in the workspace instead.
  *
  * Returned user object is not synced into the auth store because no
  * user-visible field (`onboarded_at`, anything in `UserResponse`)

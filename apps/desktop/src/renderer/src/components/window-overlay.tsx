@@ -7,7 +7,6 @@ import { useNavigation } from "@chimii/views/navigation";
 import { paths } from "@chimii/core/paths";
 import { workspaceListOptions } from "@chimii/core/workspace/queries";
 import { useWindowOverlayStore } from "@/stores/window-overlay-store";
-import { useLocalRuntimesPending } from "../platform/use-local-runtimes-pending";
 
 /**
  * Window-level transition overlay: renders above the tab system when the
@@ -38,10 +37,6 @@ function WindowOverlayInner() {
   const close = useWindowOverlayStore((s) => s.close);
   const { push } = useNavigation();
   const { data: wsList = [] } = useQuery(workspaceListOptions());
-  // Live local-daemon signal for the onboarding runtime step so it doesn't
-  // flash "no runtime found" while the daemon is still probing CLI versions.
-  const runtimesPending = useLocalRuntimesPending();
-
   if (!overlay) return null;
 
   // Back is only meaningful when there's somewhere to go — i.e. the user
@@ -53,7 +48,7 @@ function WindowOverlayInner() {
     <div className="fixed inset-0 z-50 flex flex-col overflow-auto bg-background">
       {overlay.type === "new-workspace" && (
         <NewWorkspacePage
-          onSuccess={(ws) => push(paths.workspace(ws.slug).issues())}
+          onSuccess={(ws) => push(paths.workspace(ws.slug).build())}
           onBack={onBack}
         />
       )}
@@ -73,19 +68,11 @@ function WindowOverlayInner() {
             if (ws && issueId) {
               push(paths.workspace(ws.slug).issueDetail(issueId));
             } else if (ws) {
-              push(paths.workspace(ws.slug).issues());
+              push(paths.workspace(ws.slug).build());
             } else {
               push(paths.root());
             }
           }}
-          // Restart the bundled daemon when the user hits Refresh on
-          // Step 3. The daemon's PATH probe runs once at boot, so a
-          // newly-installed CLI (Claude / Codex / Cursor) doesn't show
-          // up until the daemon is bounced.
-          onRuntimeRefresh={async () => {
-            await window.daemonAPI?.restart?.();
-          }}
-          runtimesPending={runtimesPending}
         />
       )}
     </div>

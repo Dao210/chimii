@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { getApi } from "../api";
 import { useAuthStore } from "../auth";
@@ -28,6 +28,7 @@ export function AuthInitializer({
   storage = defaultStorage,
   cookieAuth,
   identity,
+  enabled = true,
 }: {
   children: ReactNode;
   onLogin?: () => void;
@@ -35,10 +36,27 @@ export function AuthInitializer({
   storage?: StorageAdapter;
   cookieAuth?: boolean;
   identity?: ClientIdentity;
+  enabled?: boolean;
 }) {
   const qc = useQueryClient();
+  const initializedRef = useRef(false);
 
   useEffect(() => {
+    if (!enabled) {
+      // Public shells still consume the auth store for CTA labels. Resolve its
+      // loading state without making config/session requests to the backend.
+      if (!initializedRef.current) {
+        useAuthStore.setState({ user: null, isLoading: false });
+      }
+      return;
+    }
+
+    // A provider can stay mounted while Next.js navigates from a public route
+    // to /login or an app route. Initialize once when that transition happens.
+    if (initializedRef.current) return;
+    initializedRef.current = true;
+    useAuthStore.setState({ isLoading: true });
+
     const api = getApi();
 
     // Stamp attribution before anything else — the signup event (server-side)
@@ -71,6 +89,10 @@ export function AuthInitializer({
         });
         configStore.getState().setFeatureFlags(cfg.feature_flags);
         configStore.getState().setServerVersion(cfg.server_version);
+        configStore.getState().setBuildConfig({
+          available: cfg.build_available,
+          reason: cfg.build_unavailable_reason,
+        });
         if (cfg.posthog_key) {
           initAnalytics({
             key: cfg.posthog_key,
@@ -81,7 +103,9 @@ export function AuthInitializer({
         }
       })
       .catch(() => {
-        /* config is optional — legacy file card matching degrades gracefully */
+        // Resolve Build's capability gate even when config cannot be loaded;
+        // otherwise the child-facing page would remain in a false loading state.
+        configStore.getState().setBuildConfig({ available: false, reason: "config_unavailable" });
       });
 
     const onAuthSuccess = (user: User) => {
@@ -140,8 +164,10 @@ export function AuthInitializer({
         storage.removeItem("chimii_token");
         onAuthFailure();
       });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    // Core dependencies are fixed at app boot; `enabled` is the only value
+    // expected to change when navigating between public and app routes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enabled]);
 
   return <>{children}</>;
 }

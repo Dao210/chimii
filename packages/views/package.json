@@ -29,6 +29,7 @@
     "./runtimes": "./runtimes/index.ts",
     "./billing": "./billing/index.ts",
     "./dashboard": "./dashboard/index.ts",
+    "./build": "./build/index.ts",
     "./squads": "./squads/index.ts",
     "./squads/components": "./squads/components/index.ts",
     "./workspace/workspace-avatar": "./workspace/workspace-avatar.tsx",
@@ -105,7 +106,8 @@
     "remark-breaks": "^4.0.0",
     "remark-gfm": "^4.0.1",
     "remark-math": "catalog:",
-    "sonner": "^2.0.7"
+    "sonner": "^2.0.7",
+    "three": "catalog:"
   },
   "peerDependencies": {
     "@tanstack/react-query": "catalog:",
@@ -125,6 +127,7 @@
     "@testing-library/user-event": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
+    "@types/three": "catalog:",
     "@vitejs/plugin-react": "catalog:",
     "eslint-plugin-i18next": "catalog:",
     "jsdom": "catalog:",

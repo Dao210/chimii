@@ -39,9 +39,9 @@ describe("StepHeader", () => {
   });
 
   it("sets accessible progressbar attrs", () => {
-    render(<StepHeader currentStep="runtime" />);
+    render(<StepHeader currentStep="workspace" />);
     const bar = screen.getByRole("progressbar");
-    expect(bar).toHaveAttribute("aria-valuenow", "3"); // runtime is index 2 → step 3
+    expect(bar).toHaveAttribute("aria-valuenow", "2");
     expect(bar).toHaveAttribute("aria-valuemax", String(ONBOARDING_STEP_ORDER.length));
   });
 

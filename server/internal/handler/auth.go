@@ -431,6 +431,24 @@ func (h *Handler) GetMe(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, "user not found")
 		return
 	}
+	if r.Header.Get("X-Actor-Source") == "child_session" {
+		response := userToResponse(user)
+		// The restricted session needs a truthy user and the parent's completed
+		// onboarding state for route guards, but must not expose parent profile
+		// data to the child surface.
+		response.ID = r.Header.Get("X-Child-Profile-ID")
+		response.Name = r.Header.Get("X-Child-Display-Name")
+		response.Email = ""
+		response.AvatarURL = nil
+		response.OnboardingQuestionnaire = json.RawMessage(`{}`)
+		response.StarterContentState = nil
+		response.ProfileDescription = ""
+		response.Timezone = nil
+		response.CreatedAt = ""
+		response.UpdatedAt = ""
+		writeJSON(w, http.StatusOK, response)
+		return
+	}
 
 	writeJSON(w, http.StatusOK, userToResponse(user))
 }

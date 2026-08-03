@@ -19,12 +19,15 @@ import { isGlobalPath, isReservedSlug } from "@chimii/core/paths";
  * as intentional. Only "/issues/..." style paths get auto-prefixed.
  */
 const WORKSPACE_ROUTE_SEGMENTS = new Set([
+  "build",
+  "creations",
   "usage",
   "issues",
   "projects",
   "autopilots",
   "agents",
   "chat",
+  "squads",
   "inbox",
   "my-issues",
   "runtimes",

@@ -1,4 +1,4 @@
-import { githubUrl, discordUrl } from "../components/shared";
+import { githubUrl } from "../components/shared";
 import type { LandingDict } from "./types";
 
 export function createEnDict(allowSignup: boolean): LandingDict {
@@ -374,7 +374,6 @@ export function createEnDict(allowSignup: boolean): LandingDict {
         links: [
           { label: "API", href: githubUrl },
           { label: "X (Twitter)", href: "https://x.com/MeridianOSAI" },
-          { label: "Discord", href: discordUrl },
         ],
       },
       company: {

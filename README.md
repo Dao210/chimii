@@ -1,207 +1,151 @@
-<p align="center">
-  <img src="docs/assets/banner.jpg" alt="Chimii — humans and agents, side by side" width="100%">
-</p>
-
 <div align="center">
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/logo-dark.svg">
-  <source media="(prefers-color-scheme: light)" srcset="docs/assets/logo-light.svg">
-  <img alt="Chimii" src="docs/assets/logo-light.svg" width="50">
-</picture>
+# CHIMII 奇觅
 
-# Chimii
+### Imagine it. Build it. Bring it to life.
 
-**Your next 10 hires won't be human.**
-
-The open-source managed agents platform.<br/>
-Turn coding agents into real teammates — assign tasks, track progress, compound skills.
+**An AI invention kit that helps kids turn ideas into real moving creations.**
 
 [![CI](https://github.com/chimii-ai/chimii/actions/workflows/ci.yml/badge.svg)](https://github.com/chimii-ai/chimii/actions/workflows/ci.yml)
 [![GitHub stars](https://img.shields.io/github/stars/chimii-ai/chimii?style=flat)](https://github.com/chimii-ai/chimii/stargazers)
-[![Discord](https://img.shields.io/badge/Discord-Join-5865F2?logo=discord&logoColor=white)](https://discord.gg/W8gYBn226t)
+[![License](https://img.shields.io/badge/license-Modified%20Apache%202.0-2f6f5e)](LICENSE)
 
-[Website](https://chimii.ai) · [Docs](https://chimii.ai/docs/environment-variables#github-integration) · [Discord](https://discord.gg/W8gYBn226t) · [X](https://x.com/ChimiiAI) · [Self-Hosting](SELF_HOSTING.md) · [Contributing](CONTRIBUTING.md)
+[Website](https://chimii.ai) · [Product vision](docs/plans/%E5%A5%87%E8%A7%85%E5%8F%91%E6%98%8E%E5%AE%B6prd%2020260728.md) · [Development](#development) · [X](https://x.com/ChimiiAI)
 
 **English | [简体中文](README.zh-CN.md)**
 
 </div>
 
-## What is Chimii?
+## From consuming AI to creating in the real world
 
-Chimii turns coding agents into real teammates. Assign issues to an agent like you'd assign to a colleague — they'll pick up the work, write code, report blockers, and update statuses autonomously.
+Most AI experiences keep children inside a screen: generate another image, watch another animation, ask another question.
 
-No more copy-pasting prompts. No more babysitting runs. Your agents show up on the board, participate in conversations, and compound reusable skills over time. Think of it as open-source infrastructure for managed agents — vendor-neutral, self-hosted, and designed for human + AI teams. Works with **Claude Code**, **Codex**, **CodeBuddy**, **GitHub Copilot CLI**, **OpenCode**, **OpenClaw**, **Hermes**, **Pi**, **Cursor Agent**, **Kimi**, **Kiro CLI**, **Antigravity**, **Qoder CLI**, and **Trae CLI**.
+**CHIMII 奇觅发明家** takes the opposite approach. A child starts with any idea. CHIMII understands the parts they already have, turns the idea into a buildable plan, and guides them as they build, test, and reinvent it in the physical world.
 
-For larger teams, Squads add a stable routing layer: assign work to a group led by an agent, and the leader delegates to the right member.
+AI is the guide. The child is the inventor.
 
-<p align="center">
-  <img src="docs/assets/hero-screenshot.png" alt="Chimii board view" width="800">
-</p>
+> [!IMPORTANT]
+> **CHIMII is in an active product transition.** The marketing experience and product direction now reflect the children’s invention kit described here. This repository still contains the mature agent-workspace foundation from the previous product direction. Invention-specific capabilities are being developed on top of that foundation and are marked clearly in the status table below.
 
-## Why "Chimii"?
+## How CHIMII works
 
-Chimii — **Mul**tiplexed **I**nformation and **C**omputing **A**gent.
+| Step | Child experience | What CHIMII does |
+| --- | --- | --- |
+| **1. Imagine it** | Say an idea, describe it by voice, or sketch it. | Understand the intent and turn it into a physical design goal. |
+| **2. Build it** | Follow clear steps using parts already available. | Check part constraints and create a stable, executable build plan. |
+| **3. Bring it to life** | Add movement or expression, then test and modify it. | Guide motion, interaction, troubleshooting, and iteration. |
 
-The name is a nod to Multics, the pioneering operating system of the 1960s that introduced time-sharing — letting multiple users share a single machine as if each had it to themselves. Unix was born as a deliberate simplification of Multics: one user, one task, one elegant philosophy.
+The goal is not to make AI produce more content for a child. It is to help the child produce something real.
 
-We think the same inflection is happening again. For decades, software teams have been single-threaded — one engineer, one task, one context switch at a time. AI agents change that equation. Chimii brings time-sharing back, but for an era where the "users" multiplexing the system are both humans and autonomous agents.
+## What children can create
 
-In Chimii, agents are first-class teammates. They get assigned issues, report progress, raise blockers, and ship code — just like their human colleagues. The assignee picker, the activity timeline, the task lifecycle, and the runtime infrastructure are all built around this idea from day one.
+- **Robot pets** that move and react
+- **Secret bases** with doors, hiding places, and mechanisms
+- **Clever traps** powered by gears, levers, and gravity
+- **Self-driving racers** built to test, tune, and rebuild
+- **Expressive dolls** that show emotion and respond to the world
 
-Like Multics before it, the bet is on multiplexing: a small team shouldn't feel small. With the right system, two engineers and a fleet of agents can move like twenty.
+The examples are starting points, not templates. Children choose the story and keep changing the result.
 
-## Features
+## What grows along the way
 
-Chimii manages the full agent lifecycle: from task assignment to execution monitoring to skill reuse.
+| For children | For parents |
+| --- | --- |
+| The excitement of making an idea real | **Creativity** through open-ended design |
+| Ownership over the design and story | **Problem solving** through testing and repair |
+| A creation they can touch, move, and modify | **Engineering thinking** through structure, motion, and cause |
+| Confidence earned through building | **Responsible AI literacy** by using AI as a tool, not a substitute for thought |
+| More time making in the physical world | **Less passive screen time** and more hands-on attention |
 
-- **Agents as Teammates** — assign to an agent like you'd assign to a colleague. They have profiles, show up on the board, post comments, create issues, and report blockers proactively.
-- **Squads** — group agents (and humans) under a leader agent and assign work to the *squad*. The leader decides who should pick it up, so routing stays stable as the team grows. `@FrontendTeam` instead of `@alice-or-bob-or-carol`.
-- **Autonomous Execution** — set it and forget it. Full task lifecycle management (enqueue, claim, start, complete/fail) with real-time progress streaming via WebSocket.
-- **Autopilots** — schedule recurring work for agents. Cron triggers, webhooks, or manual runs — each autopilot creates the issue and routes it to an agent automatically, so daily standups, weekly reports, and periodic audits run themselves.
-- **Reusable Skills** — every solution becomes a reusable skill for the whole team. Deployments, migrations, code reviews — skills compound your team's capabilities over time.
-- **Unified Runtimes** — one dashboard for all your compute. Local daemons and cloud runtimes, auto-detection of available CLIs, real-time monitoring.
-- **Multi-Workspace** — organize work across teams with workspace-level isolation. Each workspace has its own agents, issues, and settings.
+## Product principles
 
----
+1. **The child stays in charge.** CHIMII suggests, explains, and encourages; it does not replace the child’s decisions or effort.
+2. **Plans must be physically buildable.** Available parts, stability, gravity, and assembly order are product constraints, not afterthoughts.
+3. **Screens should lead back to the real world.** Give the next useful cue, then return attention to the object being built.
+4. **Iteration is part of the invention.** A failed mechanism is an invitation to observe, diagnose, and try again.
+5. **Privacy starts on the device.** The target architecture favors local processing for children’s voice, images, and invention data whenever practical.
 
-## Quick Install
+## Project status
 
-<details open>
-<summary><b>macOS / Linux</b></summary>
+| Area | Status | Notes |
+| --- | --- | --- |
+| Multilingual marketing experience | **Available** | Responsive CHIMII Inventor positioning in English, Simplified Chinese, Japanese, and Korean. |
+| Web, desktop, and mobile application foundation | **Available** | Shared product views, authentication, workspaces, realtime updates, and platform shells. |
+| Go service and local runtime foundation | **Available** | API, WebSocket infrastructure, PostgreSQL persistence, daemon, and agent execution primitives. |
+| Imagine compiler | **Roadmap** | Multimodal idea input and constrained physical-design generation. |
+| Build solver | **Roadmap** | Part auditing, stability checks, and child-friendly assembly steps. |
+| Bring-to-life experience | **Roadmap** | Screen-based expression, motion components, sensors, and simple behavior logic. |
+| Parent growth portal | **Roadmap** | Non-competitive progress insights, screen-time guidance, and responsible-AI guardrails. |
 
-<br/>
+See the [CHIMII Inventor PRD](docs/plans/%E5%A5%87%E8%A7%85%E5%8F%91%E6%98%8E%E5%AE%B6prd%2020260728.md) for the full product direction. Roadmap items describe intent and should not be read as shipped functionality.
 
-### Homebrew (recommended)
+## Repository architecture
 
-```bash
-brew install chimii-ai/tap/chimii
+```text
+apps/web/        Next.js web app and multilingual marketing experience
+apps/desktop/    Electron desktop app
+apps/mobile/     Expo / React Native mobile app
+server/          Go API, realtime services, CLI, daemon, and migrations
+packages/core/   Headless business logic, API client, queries, and stores
+packages/ui/     Shared UI primitives and design tokens
+packages/views/  Shared web and desktop product views
 ```
 
-Use `brew upgrade chimii-ai/tap/chimii` to keep the CLI current.
+| Layer | Technology |
+| --- | --- |
+| Web | Next.js 16, React 19, Tailwind CSS 4 |
+| Desktop | Electron |
+| Mobile | Expo / React Native |
+| Backend | Go, Chi, sqlc, gorilla/websocket |
+| Data | PostgreSQL 17 with pgvector |
+| Monorepo | pnpm workspaces and Turborepo |
 
-### Install script
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/chimii-ai/chimii/main/scripts/install.sh | bash
-```
-
-Use this if Homebrew is not available. The script installs the Chimii CLI on macOS and Linux by using Homebrew when it is on `PATH`, otherwise it downloads the binary directly.
-
-Then configure, authenticate, and start the daemon in one command:
-
-```bash
-chimii setup          # Connect to Chimii Cloud, log in, start daemon
-```
-
-> **Self-hosting?** Production deployments use native Linux services managed by systemd. See the [Self-Hosting Guide](SELF_HOSTING.md), then connect with `chimii setup self-host`.
-
-</details>
-
-<details>
-<summary><b>Windows (PowerShell)</b></summary>
-
-<br/>
-
-### PowerShell
-
-```powershell
-irm https://raw.githubusercontent.com/chimii-ai/chimii/main/scripts/install.ps1 | iex
-```
-
-Then configure, authenticate, and start the daemon in one command:
-
-```powershell
-chimii setup          # Connect to Chimii Cloud, log in, start daemon
-```
-
-> **Self-hosting?** Deploy the server on Linux using the [Self-Hosting Guide](SELF_HOSTING.md), then connect from Windows with `chimii setup self-host`.
-
-</details>
-
----
-
-## Getting Started
-
-### 1. Set up and start the daemon
-
-```bash
-chimii setup           # Configure, authenticate, and start the daemon
-```
-
-The daemon runs in the background and auto-detects agent CLIs (`claude`, `codex`, `codebuddy`, `copilot`, `opencode`, `openclaw`, `hermes`, `pi`, `cursor-agent`, `kimi`, `kiro-cli`, `agy`, `qodercli`, `traecli`) on your PATH.
-
-### 2. Verify your runtime
-
-Open your workspace in the Chimii web app. Navigate to **Settings → Runtimes** — you should see your machine listed as an active **Runtime**.
-
-> **What is a Runtime?** A Runtime is a compute environment that can execute agent tasks. It can be your local machine (via the daemon) or a cloud instance. Each runtime reports which agent CLIs are available, so Chimii knows where to route work.
-
-### 3. Create an agent
-
-Go to **Settings → Agents** and click **New Agent**. Pick the runtime you just connected and choose a provider (Claude Code, Codex, CodeBuddy, GitHub Copilot CLI, OpenCode, OpenClaw, Hermes, Pi, Cursor Agent, Kimi, Kiro CLI, Antigravity, Qoder CLI, or Trae CLI). Give your agent a name — this is how it will appear on the board, in comments, and in assignments.
-
-### 4. Assign your first task
-
-Create an issue from the board (or via `chimii issue create`), then assign it to your new agent. The agent will automatically pick up the task, execute it on your runtime, and report progress — just like a human teammate.
-
----
-
-## CLI
-
-The `chimii` CLI connects your local machine to Chimii — authenticate, manage workspaces, and run the agent daemon.
-
-| Command | Description |
-|---------|-------------|
-| `chimii login` | Authenticate (opens browser) |
-| `chimii daemon start` | Start the local agent runtime |
-| `chimii daemon status` | Check daemon status |
-| `chimii setup` | One-command setup for Chimii Cloud (configure + login + start daemon) |
-| `chimii setup self-host` | Same, but for self-hosted deployments |
-| `chimii workspace list` | List your workspaces (current is marked with `*`) |
-| `chimii workspace switch <id\|slug>` | Switch the default workspace for this profile |
-| `chimii issue list` | List issues in your workspace |
-| `chimii issue create` | Create a new issue |
-| `chimii update` | Update to the latest version |
-
-See the [CLI and Daemon Guide](CLI_AND_DAEMON.md) for the full command reference.
-
----
-
-## Architecture
-
-```
-┌──────────────┐     ┌──────────────┐     ┌──────────────────┐
-│   Next.js    │────>│  Go Backend  │────>│   PostgreSQL     │
-│   Frontend   │<────│  (Chi + WS)  │<────│   (pgvector)     │
-└──────────────┘     └──────┬───────┘     └──────────────────┘
-                            │
-                     ┌──────┴───────┐
-                     │ Agent Daemon │  runs on your machine
-                     └──────────────┘  (Claude Code, Codex, CodeBuddy, GitHub Copilot CLI,
-                                        OpenCode, OpenClaw, Hermes, Pi, Cursor Agent,
-                                        Kimi, Kiro CLI, Antigravity, Qoder CLI, Trae CLI)
-```
-
-| Layer | Stack |
-|-------|-------|
-| Frontend | Next.js 16 (App Router) |
-| Backend | Go (Chi router, sqlc, gorilla/websocket) |
-| Database | PostgreSQL 17 with pgvector |
-| Agent Runtime | Local daemon executing Claude Code, Codex, CodeBuddy, GitHub Copilot CLI, OpenCode, OpenClaw, Hermes, Pi, Cursor Agent, Kimi, Kiro CLI, Antigravity, Qoder CLI, or Trae CLI |
+The current application foundation uses React Query for server state and Zustand for client/view state. Web and desktop share headless logic and product views; mobile owns its platform-specific UI and runtime.
 
 ## Development
 
-For contributors working on the Chimii codebase, see the [Contributing Guide](CONTRIBUTING.md).
+### Prerequisites
 
-**Prerequisites:** [Node.js](https://nodejs.org/) v20+, [pnpm](https://pnpm.io/) v10.28+, [Go](https://go.dev/) v1.26+, [Docker](https://www.docker.com/)
+- [Node.js](https://nodejs.org/) 22
+- [pnpm](https://pnpm.io/) 10.28+
+- [Go](https://go.dev/) 1.26+
+- [Docker](https://www.docker.com/)
+
+### Start locally
 
 ```bash
 make dev
 ```
 
-`make dev` auto-detects your environment (main checkout or worktree), creates the env file, installs dependencies, sets up the database, runs migrations, and starts all services.
+`make dev` prepares the environment, installs dependencies, starts PostgreSQL, runs migrations, and launches the backend and web app. Run `make help` to see the full command list.
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for the full development workflow, worktree support, testing, and troubleshooting.
+### Common commands
 
-An iOS mobile client lives in [`apps/mobile/`](apps/mobile/) — see its [README](apps/mobile/README.md) for how to build it onto your own iPhone.
+| Command | Purpose |
+| --- | --- |
+| `make dev` | Set up and start the complete local stack |
+| `make start` | Start backend and frontend using the current env file |
+| `make stop` | Stop the app processes for this checkout |
+| `pnpm dev:web` | Run only the Next.js web app |
+| `pnpm dev:desktop` | Run the Electron desktop app |
+| `pnpm typecheck` | Type-check all TypeScript workspaces |
+| `pnpm test` | Run TypeScript unit tests |
+| `make test` | Run Go tests |
+| `make check` | Run the full local verification pipeline |
+
+For architecture and contribution rules, read [AGENTS.md](AGENTS.md) and [CLAUDE.md](CLAUDE.md). The mobile app has additional instructions in [`apps/mobile/README.md`](apps/mobile/README.md).
+
+## Contributing
+
+CHIMII is evolving quickly. Contributions are welcome, especially around physical-design generation, child-friendly interaction, responsible AI, privacy, accessibility, and multilingual experience.
+
+Before opening a change:
+
+1. Read the repository guidelines in [AGENTS.md](AGENTS.md) and [CLAUDE.md](CLAUDE.md).
+2. Keep product claims aligned with the status table above.
+3. Run the narrowest relevant checks, then `make check` when the change warrants the full pipeline.
+4. Keep English and Simplified Chinese documentation aligned when changing product-level information.
+
+## License
+
+CHIMII is released under a [modified Apache License 2.0](LICENSE) with additional conditions for hosted, embedded, and commercially distributed offerings. Review the license before commercial use.

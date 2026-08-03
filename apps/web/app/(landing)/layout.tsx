@@ -1,40 +1,25 @@
-import { Instrument_Serif, Noto_Serif_SC } from "next/font/google";
 import { LocaleProvider } from "@/features/landing/i18n";
+import {
+  instrumentSerif,
+  notoSerifSC,
+} from "@/features/landing/fonts";
 import { getRequestLocale } from "@/lib/request-locale";
-
-const instrumentSerif = Instrument_Serif({
-  subsets: ["latin"],
-  weight: "400",
-  variable: "--font-serif",
-});
-
-const notoSerifSC = Noto_Serif_SC({
-  subsets: ["latin"],
-  weight: "400",
-  variable: "--font-serif-zh",
-});
 
 const jsonLd = {
   "@context": "https://schema.org",
   "@graph": [
     {
       "@type": "Organization",
-      name: "Chimii",
+      name: "CHIMII 奇觅",
       url: "https://www.chimii.ai",
       sameAs: ["https://github.com/chimii-ai/chimii"],
     },
     {
-      "@type": "SoftwareApplication",
-      name: "Chimii",
-      applicationCategory: "ProjectManagement",
-      operatingSystem: "Web",
+      "@type": "Product",
+      name: "CHIMII 奇觅发明家",
+      category: "Educational invention kit",
       description:
-        "Open-source project management platform that turns coding agents into real teammates.",
-      offers: {
-        "@type": "Offer",
-        price: "0",
-        priceCurrency: "USD",
-      },
+        "An AI invention kit that helps kids turn ideas into real moving creations.",
     },
   ],
 };

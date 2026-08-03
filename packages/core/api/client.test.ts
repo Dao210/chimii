@@ -69,6 +69,60 @@ describe("ApiClient pull-request response schema", () => {
   });
 });
 
+describe("ApiClient Build Studio response schema", () => {
+  it("sends a stable client request id for idempotent session creation", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({}), {
+        status: 202,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await new ApiClient("https://api.example.test").createBuildSession(
+      "会跑的月球车",
+      "019fc501-46b3-7a22-ae7e-940f2b90678b",
+    );
+
+    expect(JSON.parse(fetchMock.mock.calls[0]![1]?.body as string)).toEqual({
+      prompt: "会跑的月球车",
+      client_request_id: "019fc501-46b3-7a22-ae7e-940f2b90678b",
+    });
+  });
+
+  it("falls back safely when a build session is malformed", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ id: "session-1", status: 42 }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      ),
+    );
+
+    await expect(
+      new ApiClient("https://api.example.test").getBuildSession("session-1"),
+    ).resolves.toMatchObject({ id: "", status: "failed" });
+  });
+
+  it("falls back to an empty creation list for malformed geometry", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ creations: [{ id: "creation-1", build_plan: "invalid" }] }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      ),
+    );
+
+    await expect(
+      new ApiClient("https://api.example.test").listBuildCreations(),
+    ).resolves.toEqual({ creations: [] });
+  });
+});
+
 describe("ApiClient server Table query", () => {
   it("posts the canonical query to the group and branch endpoints", async () => {
     const fetchMock = vi

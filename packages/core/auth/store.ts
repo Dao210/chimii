@@ -104,11 +104,23 @@ export function createAuthStore(options: AuthStoreOptions) {
     },
 
     loginWithToken: async (token: string) => {
-      storage.setItem("chimii_token", token);
-      api.setToken(token);
+      if (cookieAuth) {
+        // Web child/parent mode transitions have already rotated the HttpOnly
+        // cookie in the API response. Never duplicate mch_ (or parent JWT)
+        // credentials into browser-readable storage.
+        storage.removeItem("chimii_token");
+        api.setToken(null);
+      } else {
+        storage.setItem("chimii_token", token);
+        api.setToken(token);
+      }
       const user = await api.getMe();
       onLogin?.();
-      identifyAnalytics(user.id, { email: user.email, name: user.name });
+      if (token.startsWith("mch_")) {
+        resetAnalytics();
+      } else {
+        identifyAnalytics(user.id, { email: user.email, name: user.name });
+      }
       set({ user, isLoading: false });
       return user;
     },

@@ -55,3 +55,81 @@
     --scrollbar-thumb-hover: oklch(0 0 0 / 18%);
     --scrollbar-track: transparent;
 }
+
+/* CHIMII Inventor marketing page ------------------------------------------ */
+.invention-grid {
+    background-image:
+        linear-gradient(rgb(18 19 15 / 7%) 1px, transparent 1px),
+        linear-gradient(90deg, rgb(18 19 15 / 7%) 1px, transparent 1px);
+    background-size: 28px 28px;
+}
+
+.invention-blueprint {
+    background-image:
+        linear-gradient(rgb(255 255 255 / 12%) 1px, transparent 1px),
+        linear-gradient(90deg, rgb(255 255 255 / 12%) 1px, transparent 1px);
+    background-size: 20px 20px;
+}
+
+.invention-dots {
+    background-image: radial-gradient(rgb(18 19 15 / 12%) 1px, transparent 1px);
+    background-size: 16px 16px;
+}
+
+.invention-nav-link {
+    position: relative;
+    color: rgb(18 19 15 / 62%);
+    font-size: 0.8125rem;
+    font-weight: 700;
+    transition: color 180ms ease;
+}
+
+.invention-nav-link::after {
+    position: absolute;
+    right: 0;
+    bottom: -0.5rem;
+    left: 0;
+    height: 2px;
+    border-radius: 999px;
+    background: #f05a3f;
+    content: "";
+    opacity: 0;
+    transform: scaleX(0.45);
+    transition: opacity 180ms ease, transform 180ms ease;
+}
+
+.invention-nav-link:hover,
+.invention-nav-link:focus-visible {
+    color: #12130f;
+    outline: none;
+}
+
+.invention-nav-link:hover::after,
+.invention-nav-link:focus-visible::after {
+    opacity: 1;
+    transform: scaleX(1);
+}
+
+@keyframes invention-tail-wag {
+    0%, 100% { transform: rotate(-24deg); }
+    50% { transform: rotate(18deg); }
+}
+
+@keyframes invention-gear-turn {
+    to { transform: rotate(360deg); }
+}
+
+.invention-tail {
+    animation: invention-tail-wag 1.15s ease-in-out infinite;
+}
+
+.invention-gear {
+    animation: invention-gear-turn 10s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .invention-tail,
+    .invention-gear {
+        animation: none;
+    }
+}

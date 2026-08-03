@@ -91,3 +91,28 @@ describe("authStore.initialize — token mode", () => {
     expect(storage.snapshot().chimii_token).toBe("t");
   });
 });
+
+describe("authStore.loginWithToken", () => {
+  it("keeps mode-transition tokens out of browser storage in cookie mode", async () => {
+    const storage = makeStorage({ chimii_token: "stale-token" });
+    const api = makeApi(() => Promise.resolve(fakeUser));
+    const store = createAuthStore({ api, storage, cookieAuth: true });
+
+    await store.getState().loginWithToken("mch_super-secret");
+
+    expect(storage.snapshot().chimii_token).toBeUndefined();
+    expect(api.setToken).toHaveBeenCalledWith(null);
+    expect(store.getState().user).toEqual(fakeUser);
+  });
+
+  it("persists mode-transition tokens for the desktop token transport", async () => {
+    const storage = makeStorage();
+    const api = makeApi(() => Promise.resolve(fakeUser));
+    const store = createAuthStore({ api, storage, cookieAuth: false });
+
+    await store.getState().loginWithToken("mch_desktop-child");
+
+    expect(storage.snapshot().chimii_token).toBe("mch_desktop-child");
+    expect(api.setToken).toHaveBeenCalledWith("mch_desktop-child");
+  });
+});

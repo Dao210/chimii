@@ -5,6 +5,12 @@ describe("paths.workspace(slug)", () => {
   const ws = paths.workspace("acme");
 
   it("builds workspace paths with slug prefix", () => {
+    expect(ws.root()).toBe("/acme/build");
+    expect(ws.build()).toBe("/acme/build");
+    expect(ws.creations()).toBe("/acme/creations");
+    expect(ws.creationDetail("creation 1")).toBe(
+      "/acme/creations/creation%201",
+    );
     expect(ws.usage()).toBe("/acme/usage");
     expect(ws.issues()).toBe("/acme/issues");
     expect(ws.issueDetail("abc-123")).toBe("/acme/issues/abc-123");

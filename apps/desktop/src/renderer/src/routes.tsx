@@ -31,6 +31,8 @@ import { DaemonSettingsTab } from "./components/daemon-settings-tab";
 import { UpdatesSettingsTab } from "./components/updates-settings-tab";
 import { WorkspaceRouteLayout } from "./components/workspace-route-layout";
 import { DesktopRouteErrorPage } from "./components/route-error-page";
+import { BuildPage, CreationsPage } from "@chimii/views/build";
+import { CreationDetailPage } from "./pages/creation-detail-page";
 
 /**
  * Wraps `SettingsPage` so the desktop-only extra tabs can pull their labels
@@ -116,12 +118,27 @@ export const appRoutes: RouteObject[] = [
         path: ":workspaceSlug",
         element: <WorkspaceRouteLayout />,
         children: [
-          // A bare `/{slug}` URL is normalized to `/{slug}/issues` by
+          // A bare `/{slug}` URL is normalized to `/{slug}/build` by
           // sanitizeTabPath before it ever becomes a session, so the index
           // route is unreachable in practice; null keeps it a harmless
           // safety net instead of an in-router <Navigate> (MUL-4741
           // invariant 1: the router never self-navigates).
           { index: true, element: null },
+          {
+            path: "build",
+            element: <BuildPage />,
+            handle: { title: "Build" },
+          },
+          {
+            path: "creations",
+            element: <CreationsPage />,
+            handle: { title: "Creations" },
+          },
+          {
+            path: "creations/:id",
+            element: <CreationDetailPage />,
+            handle: { title: "Creation" },
+          },
           {
             path: "issues",
             element: <IssuesPage />,

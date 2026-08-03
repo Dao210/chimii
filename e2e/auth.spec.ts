@@ -4,12 +4,20 @@ import { createTestApi, loginAsDefault, openWorkspaceMenu, waitForPageText } fro
 test.describe("Authentication", () => {
   test("login page renders correctly", async ({ page }) => {
     await page.goto("/login", { waitUntil: "domcontentloaded" });
-    await waitForPageText(page, "Sign in to Chimii");
+    await waitForPageText(page, "Sign in or create a parent account");
 
-    await expect(page.getByText("Sign in to Chimii")).toBeVisible();
+    await expect(
+      page.getByRole("heading", {
+        name: "Sign in or create a parent account",
+      }),
+    ).toBeVisible();
     await expect(page.getByRole("textbox", { name: "Email" })).toBeVisible();
     await expect(page.getByPlaceholder("you@example.com")).toBeVisible();
-    await expect(page.getByRole("button", { name: "Continue" })).toBeDisabled();
+    await expect(
+      page.getByRole("button", { name: "Send sign-in code" }),
+    ).toBeEnabled();
+    await expect(page.getByRole("banner")).toBeVisible();
+    await expect(page.getByRole("contentinfo")).toBeVisible();
   });
 
   test("login and redirect to /issues", async ({ page }) => {
@@ -28,7 +36,7 @@ test.describe("Authentication", () => {
 
     await page.goto(`/${workspace.slug}/issues`, { waitUntil: "domcontentloaded" });
     await page.waitForURL("**/login", { timeout: 10000, waitUntil: "domcontentloaded" });
-    await waitForPageText(page, "Sign in to Chimii");
+    await waitForPageText(page, "Sign in or create a parent account");
   });
 
   test("logout redirects to /login", async ({ page }) => {
@@ -40,7 +48,7 @@ test.describe("Authentication", () => {
     await page.getByRole("menuitem", { name: "Log out" }).click();
 
     await page.waitForURL("**/login", { timeout: 10000, waitUntil: "domcontentloaded" });
-    await waitForPageText(page, "Sign in to Chimii");
+    await waitForPageText(page, "Sign in or create a parent account");
     await expect(page).toHaveURL(/\/login/);
   });
 });

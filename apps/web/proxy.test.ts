@@ -54,6 +54,8 @@ describe("proxy legacy workspace route redirects", () => {
   };
 
   it.each([
+    ["build", "/acme/build"],
+    ["creations", "/acme/creations"],
     ["issues", "/acme/issues"],
     ["projects", "/acme/projects"],
     ["agents", "/acme/agents"],
@@ -98,7 +100,7 @@ describe("proxy legacy workspace route redirects", () => {
 
   it("redirects app-host root URLs to the last workspace", () => {
     expect(redirectLocation("/", sessionCookies)).toBe(
-      "https://app.chimii.test/acme/issues",
+      "https://app.chimii.test/acme/build",
     );
   });
 
@@ -187,7 +189,7 @@ describe("proxy root and locale handling", () => {
 
     expect(res.status).toBe(307);
     expect(res.headers.get("location")).toBe(
-      "https://app.chimii.test/acme/issues",
+      "https://app.chimii.test/acme/build",
     );
   });
 
