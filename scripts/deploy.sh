@@ -890,6 +890,15 @@ location ^~ /.well-known/acme-challenge/ {
   try_files \$uri =404;
 }
 location ~ ^/(health|healthz|readyz)\$ { proxy_pass http://127.0.0.1:$BACKEND_PORT; }
+location = /api/daemon/ws {
+  proxy_http_version 1.1;
+  proxy_set_header Upgrade \$http_upgrade;
+  proxy_set_header Connection "upgrade";
+  proxy_connect_timeout 10s;
+  proxy_read_timeout 86400s;
+  proxy_send_timeout 86400s;
+  proxy_pass http://127.0.0.1:$BACKEND_PORT;
+}
 location /api/ {
   proxy_http_version 1.1;
   proxy_connect_timeout 10s;
