@@ -1062,6 +1062,9 @@ func (h *Handler) CreateAgent(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusForbidden, "this runtime is private; only its owner or a workspace admin can create agents on it")
 		return
 	}
+	if !h.requireRuntimeExecutionAvailable(w, runtime) {
+		return
+	}
 
 	// thinking_level validation: fixed-enum providers reject unknown literals;
 	// dynamic-catalog providers (Codex/OpenCode) reject malformed tokens here.
@@ -1599,6 +1602,9 @@ func (h *Handler) UpdateAgent(w http.ResponseWriter, r *http.Request) {
 		}
 		if !canUseRuntimeForAgent(member, runtime) {
 			writeError(w, http.StatusForbidden, "this runtime is private; only its owner or a workspace admin can move agents onto it")
+			return
+		}
+		if !h.requireRuntimeExecutionAvailable(w, runtime) {
 			return
 		}
 		params.RuntimeID = runtime.ID

@@ -2,6 +2,8 @@ export type AgentStatus = "idle" | "working" | "blocked" | "error" | "offline";
 
 export type AgentRuntimeMode = "local" | "cloud";
 
+export type AgentRuntimeExecutionType = "cli" | "cloud";
+
 export type AgentVisibility = "workspace" | "private";
 
 // ---------------------------------------------------------------------------
@@ -66,6 +68,8 @@ export interface RuntimeDevice {
    */
   custom_name?: string | null;
   runtime_mode: AgentRuntimeMode;
+  /** Execution engine. Older servers omit it; consumers must default to CLI. */
+  execution_type?: AgentRuntimeExecutionType;
   provider: string;
   launch_header: string;
   status: "online" | "offline";
@@ -178,6 +182,14 @@ export type TaskFailureReason =
   | "codex_semantic_inactivity"
   | "runtime_offline"
   | "runtime_recovery"
+  | "cloud_runtime_unavailable"
+  | "cloud_provider_auth"
+  | "cloud_provider_rate_limited"
+  | "cloud_provider_error"
+  | "cloud_sandbox_violation"
+  | "cloud_session_corrupt"
+  | "cloud_workdir_prepare"
+  | "cloud_runtime_timeout"
   | "manual";
 
 // One daily bucket for the Agents-list ACTIVITY sparkline. The back-end

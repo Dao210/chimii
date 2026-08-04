@@ -1,7 +1,7 @@
 {
   "page": {
     "title": "런타임",
-    "tagline": "에이전트의 CLI 세션을 실행하는 기기와 클라우드 워커입니다.",
+    "tagline": "에이전트용 CLI 기기와 관리형 Cloud SDK 런타임입니다.",
     "learn_more": "자세히 보기 →",
     "connect_remote": "컴퓨터 추가",
     "search_placeholder": "런타임 검색...",
@@ -197,9 +197,9 @@
     "create_agent": "에이전트 만들기"
   },
   "cloud_runtime": {
-    "action": "클라우드 런타임",
-    "title": "클라우드 런타임",
-    "description": "관리형 클라우드 노드를 시작하고 Fleet 상태를 확인합니다.",
+    "action": "클라우드 CLI 머신",
+    "title": "클라우드 CLI 머신",
+    "description": "데몬과 CLI provider를 실행하는 관리형 머신을 시작하고 Fleet 상태를 확인합니다.",
     "create_title": "새 노드",
     "create_hint": "이름, 인스턴스 유형, 디스크 크기를 선택하세요. 나머지는 Fleet이 적용합니다.",
     "nodes_title": "Fleet 노드",
@@ -235,6 +235,21 @@
       "instance_type_required": "인스턴스 유형은 필수입니다",
       "disk_size_invalid": "디스크 크기는 양의 정수여야 합니다"
     }
+  },
+  "managed_cloud_runtime": {
+    "action": "Cloud runtime 만들기",
+    "title": "Cloud runtime 만들기",
+    "description": "Chimii가 관리하는 Anthropic 또는 OpenAI 연결로 실행합니다. 현재 릴리스는 텍스트 실행만 지원하며 호스트 셸과 파일 시스템 도구는 비활성화됩니다. CLI runtime으로 대체 실행되지 않습니다.",
+    "provider": "Provider",
+    "name": "이름",
+    "name_placeholder": "선택 표시 이름",
+    "visibility": "접근 범위",
+    "private": "비공개 — 나와 워크스페이스 관리자만",
+    "public": "워크스페이스 — 모든 멤버가 에이전트 연결 가능",
+    "cancel": "취소",
+    "create": "runtime 만들기",
+    "toast_created": "Cloud runtime을 만들었습니다",
+    "toast_create_failed": "Cloud runtime을 만들지 못했습니다"
   },
   "update": {
     "cli_version_label": "CLI 버전:",

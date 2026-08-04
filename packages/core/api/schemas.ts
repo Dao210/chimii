@@ -297,6 +297,12 @@ export interface AppConfigResponse {
   server_version?: string;
   build_available: boolean;
   build_unavailable_reason?: string;
+	/** Execution-plane capabilities. Older servers omit this and are CLI-only. */
+	runtime?: {
+	  default_type: "cli" | "cloud";
+	  enabled_types: Array<"cli" | "cloud">;
+	  cloud_providers: string[];
+	};
 }
 
 // ---------------------------------------------------------------------------
@@ -450,6 +456,14 @@ export const AppConfigSchema = z.object({
   server_version: OptionalStringSchema,
   build_available: BooleanWithDefaultSchema(false),
   build_unavailable_reason: OptionalStringSchema,
+  runtime: z
+    .object({
+      default_type: z.enum(["cli", "cloud"]).catch("cli"),
+      enabled_types: z.array(z.enum(["cli", "cloud"])).catch(["cli"]),
+      cloud_providers: z.array(z.string()).catch([]),
+    })
+    .catch({ default_type: "cli", enabled_types: ["cli"], cloud_providers: [] })
+    .optional(),
 }).loose();
 
 export const EMPTY_APP_CONFIG: AppConfigResponse = {
@@ -464,6 +478,11 @@ export const EMPTY_APP_CONFIG: AppConfigResponse = {
   feature_flags: {},
   build_available: false,
   build_unavailable_reason: "llm_not_configured",
+  runtime: {
+    default_type: "cli",
+    enabled_types: ["cli"],
+    cloud_providers: [],
+  },
 };
 
 // Preference keys may grow over time, so keep both the key and value spaces

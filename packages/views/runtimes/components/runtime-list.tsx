@@ -468,7 +468,7 @@ export function CliCell({ runtime }: { runtime: AgentRuntime }) {
     );
   }
 
-  if (runtime.runtime_mode === "cloud") {
+  if (runtime.execution_type === "cloud") {
     return <span className="text-xs text-muted-foreground/50">—</span>;
   }
   const meta = runtime.metadata as Record<string, unknown> | null;

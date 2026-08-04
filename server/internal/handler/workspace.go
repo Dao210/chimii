@@ -806,6 +806,16 @@ func (h *Handler) DeleteWorkspace(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "failed to delete workspace")
 		return
 	}
+	if err := qtx.DeleteCloudRuntimeSessionMessagesByWorkspace(r.Context(), requester.WorkspaceID); err != nil {
+		slog.Warn("delete workspace cloud runtime session messages failed", append(logger.RequestAttrs(r), "error", err, "workspace_id", workspaceID)...)
+		writeError(w, http.StatusInternalServerError, "failed to delete workspace")
+		return
+	}
+	if err := qtx.DeleteCloudRuntimeSessionsByWorkspace(r.Context(), requester.WorkspaceID); err != nil {
+		slog.Warn("delete workspace cloud runtime sessions failed", append(logger.RequestAttrs(r), "error", err, "workspace_id", workspaceID)...)
+		writeError(w, http.StatusInternalServerError, "failed to delete workspace")
+		return
+	}
 
 	// At this point workspaceMember has resolved → workspaceID is a valid UUID
 	// (the lookup would have errored otherwise), so reuse the resolved value.

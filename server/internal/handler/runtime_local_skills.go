@@ -11,12 +11,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-chi/chi/v5"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/chimii-ai/chimii/server/internal/runtimeconfig"
 	"github.com/chimii-ai/chimii/server/internal/util"
 	db "github.com/chimii-ai/chimii/server/pkg/db/generated"
 	"github.com/chimii-ai/chimii/server/pkg/protocol"
+	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type RuntimeLocalSkillRequestStatus string
@@ -569,11 +570,12 @@ func (h *Handler) requireRuntimeCapabilityReadAccess(w http.ResponseWriter, r *h
 	}
 
 	return runtimeIDAndWorkspace{
-		runtimeID:   uuidToString(rt.ID),
-		workspaceID: wsID,
-		provider:    rt.Provider,
-		status:      rt.Status,
-		ownerID:     uuidToString(rt.OwnerID),
+		runtimeID:     uuidToString(rt.ID),
+		workspaceID:   wsID,
+		provider:      rt.Provider,
+		status:        rt.Status,
+		ownerID:       uuidToString(rt.OwnerID),
+		executionType: rt.ExecutionType,
 	}, member, true
 }
 
@@ -595,17 +597,22 @@ func (h *Handler) requireRuntimeLocalSkillAccess(w http.ResponseWriter, r *http.
 }
 
 type runtimeIDAndWorkspace struct {
-	runtimeID   string
-	workspaceID string
-	provider    string
-	status      string
-	ownerID     string
+	runtimeID     string
+	workspaceID   string
+	provider      string
+	status        string
+	ownerID       string
+	executionType string
 }
 
 func (h *Handler) InitiateListLocalSkills(w http.ResponseWriter, r *http.Request) {
 	runtimeID := chi.URLParam(r, "runtimeId")
 	rt, _, ok := h.requireRuntimeCapabilityReadAccess(w, r, runtimeID)
 	if !ok {
+		return
+	}
+	if rt.executionType == string(runtimeconfig.ExecutionTypeCloud) {
+		writeError(w, http.StatusConflict, "server-side cloud runtimes do not expose local skills")
 		return
 	}
 	if rt.status != "online" {
@@ -646,6 +653,10 @@ func (h *Handler) InitiateImportLocalSkill(w http.ResponseWriter, r *http.Reques
 	runtimeID := chi.URLParam(r, "runtimeId")
 	rt, ok := h.requireRuntimeLocalSkillAccess(w, r, runtimeID)
 	if !ok {
+		return
+	}
+	if rt.executionType == string(runtimeconfig.ExecutionTypeCloud) {
+		writeError(w, http.StatusConflict, "server-side cloud runtimes do not expose local skills")
 		return
 	}
 	if rt.status != "online" {

@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/chimii-ai/chimii/server/internal/runtimeconfig"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -290,8 +291,9 @@ func modelListRequestTerminal(status ModelListStatus) bool {
 // Handlers
 // ---------------------------------------------------------------------------
 
-// InitiateListModels creates a pending model list request for a runtime.
-// Called by the frontend; the daemon picks it up on its next heartbeat.
+// InitiateListModels creates a model list request for a runtime. CLI requests
+// are picked up by the daemon; server-side Cloud requests are completed
+// immediately from startup-validated provider configuration.
 func (h *Handler) InitiateListModels(w http.ResponseWriter, r *http.Request) {
 	runtimeID := chi.URLParam(r, "runtimeId")
 	runtimeUUID, ok := parseUUIDOrBadRequest(w, runtimeID, "runtime_id")
@@ -316,6 +318,30 @@ func (h *Handler) InitiateListModels(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to enqueue model list request: "+err.Error())
 		return
+	}
+	if rt.ExecutionType == string(runtimeconfig.ExecutionTypeCloud) {
+		providerCfg, configured := h.cfg.RuntimeConfig.CloudProviders[rt.Provider]
+		if !configured || providerCfg.DefaultModel == "" {
+			_ = h.ModelListStore.Fail(r.Context(), req.ID, "cloud runtime provider model is not configured")
+			writeError(w, http.StatusServiceUnavailable, "cloud runtime provider model is not configured")
+			return
+		}
+		models := []ModelEntry{{
+			ID:       providerCfg.DefaultModel,
+			Label:    providerCfg.DefaultModel,
+			Provider: rt.Provider,
+			Default:  true,
+		}}
+		if err := h.ModelListStore.Complete(r.Context(), req.ID, models, true); err != nil {
+			writeError(w, http.StatusInternalServerError, "failed to complete cloud model list request: "+err.Error())
+			return
+		}
+		completed, err := h.ModelListStore.Get(r.Context(), req.ID)
+		if err != nil || completed == nil {
+			writeError(w, http.StatusInternalServerError, "failed to load cloud model list request")
+			return
+		}
+		req = completed
 	}
 	writeJSON(w, http.StatusOK, req)
 }

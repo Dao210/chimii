@@ -19,7 +19,7 @@ import (
 
 	"github.com/chimii-ai/chimii/server/internal/analytics"
 	"github.com/chimii-ai/chimii/server/internal/auth"
-	"github.com/chimii-ai/chimii/server/internal/cloudruntime"
+	"github.com/chimii-ai/chimii/server/internal/cloudfleet"
 	"github.com/chimii-ai/chimii/server/internal/daemonws"
 	"github.com/chimii-ai/chimii/server/internal/events"
 	"github.com/chimii-ai/chimii/server/internal/featureflags"
@@ -32,6 +32,7 @@ import (
 	obsmetrics "github.com/chimii-ai/chimii/server/internal/metrics"
 	"github.com/chimii-ai/chimii/server/internal/middleware"
 	"github.com/chimii-ai/chimii/server/internal/realtime"
+	"github.com/chimii-ai/chimii/server/internal/runtimeconfig"
 	"github.com/chimii-ai/chimii/server/internal/service"
 	"github.com/chimii-ai/chimii/server/internal/storage"
 	"github.com/chimii-ai/chimii/server/internal/util"
@@ -199,6 +200,7 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 	cfSigner := auth.NewCloudFrontSignerFromEnv()
 	origins := allowedOrigins()
 
+	runtimeConfig := runtimeconfig.MustLoadFromEnv()
 	signupConfig := handler.Config{
 		AllowSignup:              os.Getenv("ALLOW_SIGNUP") != "false",
 		AllowedEmails:            splitAndTrim(os.Getenv("ALLOWED_EMAILS")),
@@ -215,6 +217,7 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 		LLMAPIKey:                strings.TrimSpace(os.Getenv("CHIMII_LLM_API_KEY")),
 		LLMBaseURL:               strings.TrimSpace(os.Getenv("CHIMII_LLM_BASE_URL")),
 		LLMDefaultModel:          strings.TrimSpace(os.Getenv("CHIMII_LLM_DEFAULT_MODEL")),
+		RuntimeConfig:            runtimeConfig,
 		ServerVersion:            normalizeServerVersion(version),
 	}
 	h := handler.New(queries, pool, hub, bus, emailSvc, store, cfSigner, analyticsClient, signupConfig, daemonHub)
@@ -227,7 +230,7 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 		// Wire the BusinessMetrics receiver into the cloud runtime client
 		// so every outbound Fleet/Gateway request feeds the
 		// chimii_cloudruntime_request_* histograms.
-		if client, ok := h.CloudRuntime.(*cloudruntime.Client); ok {
+		if client, ok := h.CloudRuntime.(*cloudfleet.Client); ok {
 			client.SetRecorder(opts.BusinessMetrics)
 		}
 	}
@@ -1346,7 +1349,9 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 			// Runtimes
 			r.Route("/api/runtimes", func(r chi.Router) {
 				r.Get("/", h.ListAgentRuntimes)
+				r.Post("/cloud", h.CreateCloudAgentRuntime)
 				r.Route("/{runtimeId}", func(r chi.Router) {
+					r.Get("/", h.GetAgentRuntime)
 					r.Patch("/", h.UpdateAgentRuntime)
 					r.Get("/usage", h.GetRuntimeUsage)
 					r.Get("/usage/by-agent", h.GetRuntimeUsageByAgent)

@@ -175,7 +175,7 @@ export function RuntimePicker({
                     ? runtimeDisplayName(selectedRuntime)
                     : t(($) => $.create_dialog.runtime_none)}
               </span>
-              {selectedRuntime?.runtime_mode === "cloud" && (
+              {selectedRuntime?.execution_type === "cloud" && (
                 <span className="shrink-0 rounded bg-info/10 px-1.5 py-0.5 text-xs font-medium text-info">
                   {t(($) => $.create_dialog.runtime_cloud_badge)}
                 </span>
@@ -269,7 +269,7 @@ export function RuntimePicker({
                             <span className="truncate font-medium">
                               {runtimeRowLabel(device, machine.title)}
                             </span>
-                            {device.runtime_mode === "cloud" && (
+                            {device.execution_type === "cloud" && (
                               <span className="shrink-0 rounded bg-info/10 px-1.5 py-0.5 text-xs font-medium text-info">
                                 {t(($) => $.create_dialog.runtime_cloud_badge)}
                               </span>

@@ -28,6 +28,9 @@ interface ConfigState {
   buildConfigLoaded: boolean;
   buildAvailable: boolean;
   buildUnavailableReason: string;
+  runtimeDefaultType: "cli" | "cloud";
+  runtimeEnabledTypes: Array<"cli" | "cloud">;
+  cloudRuntimeProviders: string[];
   setCdnConfig: (config: { cdnDomain: string; cdnSigned?: boolean }) => void;
   setAuthConfig: (config: {
     allowSignup: boolean;
@@ -42,6 +45,11 @@ interface ConfigState {
   setFeatureFlags: (flags?: Record<string, boolean>) => void;
   setServerVersion: (version?: string) => void;
   setBuildConfig: (config: { available?: boolean; reason?: string }) => void;
+  setRuntimeConfig: (config?: {
+    default_type?: "cli" | "cloud";
+    enabled_types?: Array<"cli" | "cloud">;
+    cloud_providers?: string[];
+  }) => void;
 }
 
 export const configStore = createStore<ConfigState>((set) => ({
@@ -58,6 +66,9 @@ export const configStore = createStore<ConfigState>((set) => ({
   buildConfigLoaded: false,
   buildAvailable: false,
   buildUnavailableReason: "llm_not_configured",
+  runtimeDefaultType: "cli",
+  runtimeEnabledTypes: ["cli"],
+  cloudRuntimeProviders: [],
   setCdnConfig: ({ cdnDomain, cdnSigned = false }) => set({ cdnDomain, cdnSigned }),
   setAuthConfig: ({
     allowSignup,
@@ -74,6 +85,14 @@ export const configStore = createStore<ConfigState>((set) => ({
     buildAvailable: available,
     buildUnavailableReason: reason,
   }),
+  setRuntimeConfig: (config) =>
+    set({
+      runtimeDefaultType: config?.default_type === "cloud" ? "cloud" : "cli",
+      runtimeEnabledTypes: config?.enabled_types?.length
+        ? [...config.enabled_types]
+        : ["cli"],
+      cloudRuntimeProviders: [...(config?.cloud_providers ?? [])],
+    }),
 }));
 
 export function useConfigStore(): ConfigState;

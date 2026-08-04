@@ -5,8 +5,8 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/chimii-ai/chimii/server/internal/cloudfleet"
 	"github.com/go-chi/chi/v5"
-	"github.com/chimii-ai/chimii/server/internal/cloudruntime"
 )
 
 // Cloud billing endpoints proxy to the same chimii-cloud HTTP service
@@ -266,7 +266,7 @@ func (h *Handler) HandleCloudBillingStripeWebhook(w http.ResponseWriter, r *http
 	// verification doesn't care (HMAC is over the body), but
 	// preserving the exact header is cheap and removes a debug-time
 	// "why does this header look different?" surprise. Caller-
-	// supplied Headers in cloudruntime.Request override defaults, so
+	// supplied Headers in cloudfleet.Request override defaults, so
 	// putting Content-Type here is enough.
 	headers := http.Header{}
 	if sigs := r.Header.Values(stripeSignatureHeader); len(sigs) > 0 {
@@ -276,7 +276,7 @@ func (h *Handler) HandleCloudBillingStripeWebhook(w http.ResponseWriter, r *http
 		headers["Content-Type"] = cts
 	}
 
-	resp, err := h.CloudRuntime.Do(r.Context(), cloudruntime.Request{
+	resp, err := h.CloudRuntime.Do(r.Context(), cloudfleet.Request{
 		Method:    http.MethodPost,
 		Path:      "/api/v1/webhooks/stripe",
 		Body:      body,

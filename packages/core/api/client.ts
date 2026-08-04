@@ -1234,6 +1234,21 @@ export class ApiClient {
     return this.fetch(`/api/runtimes?${search}`);
   }
 
+  async getRuntime(runtimeId: string): Promise<AgentRuntime> {
+    return this.fetch(`/api/runtimes/${runtimeId}`);
+  }
+
+  async createCloudRuntime(data: {
+    provider: "anthropic" | "openai";
+    name?: string;
+    visibility?: "private" | "public";
+  }): Promise<AgentRuntime> {
+    return this.fetch("/api/runtimes/cloud", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
   async listCloudRuntimeNodes(
     params?: ListCloudRuntimeNodesParams,
   ): Promise<CloudRuntimeNode[]> {

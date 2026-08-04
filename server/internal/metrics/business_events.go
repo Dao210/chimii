@@ -16,7 +16,7 @@ import (
 var runtimeReadyBuckets = []float64{1, 2.5, 5, 10, 30, 60, 120, 300, 600}
 
 // cloudRuntimeRequestBuckets covers outbound Fleet/Gateway calls from sub-100ms
-// (status pings) to ~30s (provision). Aligns with cloudruntime.defaultTimeout.
+// (status pings) to ~30s (provision). Aligns with cloudfleet.defaultTimeout.
 var cloudRuntimeRequestBuckets = []float64{0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10, 20, 30}
 
 // prMergeSecondsBuckets covers PR-open → PR-merged latency from minutes to weeks.

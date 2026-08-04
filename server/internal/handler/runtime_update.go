@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/chimii-ai/chimii/server/internal/runtimeconfig"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -227,6 +228,10 @@ func (h *Handler) InitiateUpdate(w http.ResponseWriter, r *http.Request) {
 	}
 	if !canEditRuntime(member, rt) {
 		writeError(w, http.StatusForbidden, "only runtime owners and workspace admins can update runtimes")
+		return
+	}
+	if rt.ExecutionType == string(runtimeconfig.ExecutionTypeCloud) {
+		writeError(w, http.StatusConflict, "server-side cloud runtimes do not have an updateable CLI")
 		return
 	}
 

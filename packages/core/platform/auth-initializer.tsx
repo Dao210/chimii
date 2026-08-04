@@ -93,6 +93,7 @@ export function AuthInitializer({
           available: cfg.build_available,
           reason: cfg.build_unavailable_reason,
         });
+        configStore.getState().setRuntimeConfig(cfg.runtime);
         if (cfg.posthog_key) {
           initAnalytics({
             key: cfg.posthog_key,

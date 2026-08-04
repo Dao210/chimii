@@ -6,12 +6,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/chimii-ai/chimii/server/internal/events"
 	db "github.com/chimii-ai/chimii/server/pkg/db/generated"
 	"github.com/chimii-ai/chimii/server/pkg/taskfailure"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 // mockRow implements pgx.Row, returning either a scanned task or pgx.ErrNoRows.
@@ -256,6 +256,14 @@ func TestTaskFailureClassifiers(t *testing.T) {
 		// resume-safe so the retry continues the truncated conversation.
 		{reason: "agent_error.provider_network", wantType: "agent_error", wantResumeOK: true, wantRetry: true},
 		{reason: "runtime_recovery", wantType: "runtime", wantResumeOK: true, wantRetry: true},
+		{reason: "cloud_runtime_unavailable", wantType: "runtime", wantResumeOK: true, wantRetry: true},
+		{reason: "cloud_provider_auth", wantType: "agent_error", wantResumeOK: true, wantRetry: false},
+		{reason: "cloud_provider_rate_limited", wantType: "agent_error", wantResumeOK: true, wantRetry: true},
+		{reason: "cloud_provider_error", wantType: "agent_error", wantResumeOK: true, wantRetry: true},
+		{reason: "cloud_sandbox_violation", wantType: "runtime", wantResumeOK: true, wantRetry: false},
+		{reason: "cloud_session_corrupt", wantType: "runtime", wantResumeOK: false, wantRetry: false},
+		{reason: "cloud_workdir_prepare", wantType: "runtime", wantResumeOK: true, wantRetry: true},
+		{reason: "cloud_runtime_timeout", wantType: "timeout", wantResumeOK: true, wantRetry: true},
 		{reason: "iteration_limit", wantType: "agent_output", wantResumeOK: false, wantRetry: false},
 		{reason: "api_invalid_request", wantType: "agent_error", wantResumeOK: false, wantRetry: false},
 		{reason: "agent_error.context_overflow", wantType: "agent_error", wantResumeOK: false, wantRetry: false},

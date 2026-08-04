@@ -3,6 +3,29 @@ SELECT * FROM agent_runtime
 WHERE workspace_id = $1
 ORDER BY created_at ASC;
 
+-- name: ListOnlineCloudAgentRuntimes :many
+-- Logical SDK runtimes are polled by every API worker replica. Task claim
+-- uses row locks, so returning the same runtime to multiple replicas is safe.
+SELECT * FROM agent_runtime
+WHERE execution_type = 'cloud' AND status = 'online'
+ORDER BY created_at ASC;
+
+-- name: ReconcileCloudAgentRuntimeStatuses :exec
+-- Logical Cloud runtimes have no daemon heartbeat. Their online state is a
+-- projection of startup-validated server configuration, reconciled once per
+-- API process boot. An empty provider list makes every SDK runtime offline.
+UPDATE agent_runtime
+SET status = CASE
+        WHEN provider = ANY(@enabled_providers::text[]) THEN 'online'
+        ELSE 'offline'
+    END,
+    updated_at = now()
+WHERE execution_type = 'cloud'
+  AND status IS DISTINCT FROM CASE
+        WHEN provider = ANY(@enabled_providers::text[]) THEN 'online'
+        ELSE 'offline'
+    END;
+
 -- name: GetAgentRuntime :one
 SELECT * FROM agent_runtime
 WHERE id = $1;
@@ -37,6 +60,39 @@ FOR UPDATE;
 -- name: GetAgentRuntimeForWorkspace :one
 SELECT * FROM agent_runtime
 WHERE id = $1 AND workspace_id = $2;
+
+-- name: CreateCloudAgentRuntime :one
+-- Server-side SDK runtimes are logical workspace resources, not daemon
+-- registrations. Provider credentials remain deployment secrets and are never
+-- persisted in metadata/runtime_config.
+INSERT INTO agent_runtime (
+    workspace_id,
+    daemon_id,
+    name,
+    runtime_mode,
+    execution_type,
+    provider,
+    status,
+    device_info,
+    metadata,
+    owner_id,
+    visibility,
+    last_seen_at
+) VALUES (
+    @workspace_id,
+    NULL,
+    @name,
+    'cloud',
+    'cloud',
+    @provider,
+    'online',
+    'Chimii server-side runtime',
+    '{}'::jsonb,
+    @owner_id,
+    @visibility,
+    NULL
+)
+RETURNING *;
 
 -- name: UpsertAgentRuntime :one
 -- (xmax = 0) AS inserted distinguishes a fresh insert (true) from an upsert
@@ -205,6 +261,7 @@ WHERE id = $1;
 -- record means the DB row is just lagging, not actually dead).
 SELECT id, workspace_id, owner_id, daemon_id, provider FROM agent_runtime
 WHERE status = 'online'
+	AND execution_type = 'cli'
   AND last_seen_at < now() - make_interval(secs => @stale_seconds::double precision);
 
 -- name: MarkRuntimesOfflineByIDs :many

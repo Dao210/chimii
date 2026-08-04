@@ -1,0 +1,1 @@
+DROP INDEX CONCURRENTLY IF EXISTS cloud_runtime_session_message_key;

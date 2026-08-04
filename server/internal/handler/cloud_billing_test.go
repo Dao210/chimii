@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/chimii-ai/chimii/server/internal/cloudruntime"
+	"github.com/chimii-ai/chimii/server/internal/cloudfleet"
 )
 
 // proxyExpectation captures the assertions every standard
@@ -109,7 +109,7 @@ func TestCloudBillingProxiesForwardCorrectly(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			proxy := &fakeCloudRuntimeProxy{
 				enabled: true,
-				resp: &cloudruntime.Response{
+				resp: &cloudfleet.Response{
 					StatusCode: http.StatusOK,
 					Body:       []byte(`{"ok":true}`),
 				},
@@ -156,7 +156,7 @@ func TestCloudBillingProxiesForwardCorrectly(t *testing.T) {
 func TestGetCloudBillingCheckoutSession_AppendsSessionIDToPath(t *testing.T) {
 	proxy := &fakeCloudRuntimeProxy{
 		enabled: true,
-		resp: &cloudruntime.Response{
+		resp: &cloudfleet.Response{
 			StatusCode: http.StatusOK,
 			Body:       []byte(`{"order_id":"o","status":"credited"}`),
 		},
@@ -263,7 +263,7 @@ func TestStripeWebhookForwardsRawBodyAndSignature(t *testing.T) {
 
 	proxy := &fakeCloudRuntimeProxy{
 		enabled: true,
-		resp: &cloudruntime.Response{
+		resp: &cloudfleet.Response{
 			StatusCode: http.StatusOK,
 			Body:       []byte(`{"received":true}`),
 		},
@@ -340,7 +340,7 @@ func TestStripeWebhookMissingSignatureRejectedLocally(t *testing.T) {
 func TestStripeWebhookForwardsEmptyBody(t *testing.T) {
 	proxy := &fakeCloudRuntimeProxy{
 		enabled: true,
-		resp: &cloudruntime.Response{
+		resp: &cloudfleet.Response{
 			StatusCode: http.StatusBadRequest,
 			Body:       []byte(`{"error":"empty body"}`),
 		},
@@ -399,7 +399,6 @@ func TestStripeWebhookDisabledReturnsUnavailable(t *testing.T) {
 		t.Fatalf("status = %d, body = %s", w.Code, w.Body.String())
 	}
 }
-
 
 // TestStripeWebhookRateLimited pins the per-IP rate-limit fast
 // path. With a denying limiter installed the handler must 429

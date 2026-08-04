@@ -8,13 +8,13 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/chimii-ai/chimii/server/internal/cloudruntime"
+	"github.com/chimii-ai/chimii/server/internal/cloudfleet"
 )
 
 type fakeCloudRuntimeProxy struct {
 	enabled bool
-	req     cloudruntime.Request
-	resp    *cloudruntime.Response
+	req     cloudfleet.Request
+	resp    *cloudfleet.Response
 	err     error
 	called  bool
 }
@@ -23,7 +23,7 @@ func (f *fakeCloudRuntimeProxy) Enabled() bool {
 	return f.enabled
 }
 
-func (f *fakeCloudRuntimeProxy) Do(ctx context.Context, req cloudruntime.Request) (*cloudruntime.Response, error) {
+func (f *fakeCloudRuntimeProxy) Do(ctx context.Context, req cloudfleet.Request) (*cloudfleet.Response, error) {
 	f.called = true
 	f.req = req
 	if f.err != nil {
@@ -49,7 +49,7 @@ func useCloudRuntimeProxy(t *testing.T, proxy cloudRuntimeProxy) {
 func TestCreateCloudRuntimeNodeForwardsBody(t *testing.T) {
 	proxy := &fakeCloudRuntimeProxy{
 		enabled: true,
-		resp: &cloudruntime.Response{
+		resp: &cloudfleet.Response{
 			StatusCode: http.StatusCreated,
 			Header:     http.Header{"X-Request-Id": []string{"fleet-request-id"}},
 			Body:       []byte(`{"status":"launching"}`),
@@ -101,7 +101,7 @@ func TestCloudRuntimeDisabledReturnsUnavailable(t *testing.T) {
 func TestListCloudRuntimeNodesForwardsQuery(t *testing.T) {
 	proxy := &fakeCloudRuntimeProxy{
 		enabled: true,
-		resp: &cloudruntime.Response{
+		resp: &cloudfleet.Response{
 			StatusCode: http.StatusOK,
 			Body:       []byte(`[]`),
 		},
@@ -130,7 +130,7 @@ func TestListCloudRuntimeNodesForwardsQuery(t *testing.T) {
 func TestCloudRuntimeNonJSONResponseIsWrapped(t *testing.T) {
 	proxy := &fakeCloudRuntimeProxy{
 		enabled: true,
-		resp: &cloudruntime.Response{
+		resp: &cloudfleet.Response{
 			StatusCode: http.StatusBadGateway,
 			Body:       []byte("fleet failed\n"),
 		},
@@ -156,7 +156,7 @@ func TestCloudRuntimeNonJSONResponseIsWrapped(t *testing.T) {
 func TestCloudRuntimeEmptyResponseKeepsStatus(t *testing.T) {
 	proxy := &fakeCloudRuntimeProxy{
 		enabled: true,
-		resp: &cloudruntime.Response{
+		resp: &cloudfleet.Response{
 			StatusCode: http.StatusNoContent,
 			Body:       nil,
 		},
@@ -179,7 +179,7 @@ func TestCloudRuntimeEmptyResponseKeepsStatus(t *testing.T) {
 func TestCreateCloudRuntimeNodeRejectsLargeBody(t *testing.T) {
 	proxy := &fakeCloudRuntimeProxy{
 		enabled: true,
-		resp: &cloudruntime.Response{
+		resp: &cloudfleet.Response{
 			StatusCode: http.StatusCreated,
 			Body:       []byte(`{"status":"launching"}`),
 		},

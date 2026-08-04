@@ -1,7 +1,7 @@
 {
   "page": {
     "title": "ランタイム",
-    "tagline": "エージェントの CLI セッションを実行するマシンとクラウドワーカーです。",
+    "tagline": "エージェント用の CLI マシンとマネージド Cloud SDK ランタイムです。",
     "learn_more": "詳しく見る →",
     "connect_remote": "コンピュータを追加",
     "search_placeholder": "ランタイムを検索…",
@@ -197,9 +197,9 @@
     "create_agent": "エージェントを作成"
   },
   "cloud_runtime": {
-    "action": "クラウドランタイム",
-    "title": "クラウドランタイム",
-    "description": "マネージドなクラウドノードを起動し、その Fleet ステータスを確認します。",
+    "action": "クラウド CLI マシン",
+    "title": "クラウド CLI マシン",
+    "description": "デーモンと CLI provider を実行するマネージドマシンを起動し、Fleet ステータスを確認します。",
     "create_title": "新規ノード",
     "create_hint": "名前、インスタンスタイプ、ディスクサイズを選んでください。残りは Fleet が適用します。",
     "nodes_title": "Fleet ノード",
@@ -235,6 +235,21 @@
       "instance_type_required": "インスタンスタイプは必須です",
       "disk_size_invalid": "ディスクサイズは正の整数である必要があります"
     }
+  },
+  "managed_cloud_runtime": {
+    "action": "Cloud runtime を作成",
+    "title": "Cloud runtime を作成",
+    "description": "Chimii が管理する Anthropic または OpenAI 接続で実行します。現リリースはテキスト実行のみで、ホストのシェルとファイルシステムツールは無効です。CLI runtime へフォールバックしません。",
+    "provider": "Provider",
+    "name": "名前",
+    "name_placeholder": "任意の表示名",
+    "visibility": "アクセス",
+    "private": "非公開 — 自分とワークスペース管理者のみ",
+    "public": "ワークスペース — 全メンバーが利用可能",
+    "cancel": "キャンセル",
+    "create": "runtime を作成",
+    "toast_created": "Cloud runtime を作成しました",
+    "toast_create_failed": "Cloud runtime を作成できませんでした"
   },
   "update": {
     "cli_version_label": "CLI バージョン:",

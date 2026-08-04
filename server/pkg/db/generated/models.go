@@ -82,6 +82,7 @@ type AgentRuntime struct {
 	Visibility     string             `json:"visibility"`
 	ProfileID      pgtype.UUID        `json:"profile_id"`
 	CustomName     pgtype.Text        `json:"custom_name"`
+	ExecutionType  string             `json:"execution_type"`
 }
 
 type AgentSkill struct {
@@ -502,6 +503,29 @@ type ClientUsageDaily struct {
 	OfflineCount    pgtype.Int4        `json:"offline_count"`
 	CreatedAt       pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt       pgtype.Timestamptz `json:"updated_at"`
+}
+
+type CloudRuntimeSession struct {
+	ID          string             `json:"id"`
+	WorkspaceID pgtype.UUID        `json:"workspace_id"`
+	RuntimeID   pgtype.UUID        `json:"runtime_id"`
+	AgentID     pgtype.UUID        `json:"agent_id"`
+	Provider    string             `json:"provider"`
+	Model       string             `json:"model"`
+	ContextType string             `json:"context_type"`
+	ContextID   string             `json:"context_id"`
+	Status      string             `json:"status"`
+	LastError   pgtype.Text        `json:"last_error"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+}
+
+type CloudRuntimeSessionMessage struct {
+	SessionID string             `json:"session_id"`
+	Seq       int64              `json:"seq"`
+	Role      string             `json:"role"`
+	Payload   []byte             `json:"payload"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
 }
 
 type Comment struct {

@@ -4,19 +4,21 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/go-chi/chi/v5"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/chimii-ai/chimii/server/internal/runtimeconfig"
 	"github.com/chimii-ai/chimii/server/internal/util"
 	"github.com/chimii-ai/chimii/server/pkg/agent"
 	db "github.com/chimii-ai/chimii/server/pkg/db/generated"
 	"github.com/chimii-ai/chimii/server/pkg/protocol"
+	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type AgentRuntimeResponse struct {
@@ -27,14 +29,15 @@ type AgentRuntimeResponse struct {
 	// CustomName is the user-set display override (MUL-4217); null when the
 	// runtime still uses its daemon-proposed Name. Clients show
 	// CustomName ?? Name and seed the rename field from this raw value.
-	CustomName   *string `json:"custom_name"`
-	RuntimeMode  string  `json:"runtime_mode"`
-	Provider     string  `json:"provider"`
-	LaunchHeader string  `json:"launch_header"`
-	Status       string  `json:"status"`
-	DeviceInfo   string  `json:"device_info"`
-	Metadata     any     `json:"metadata"`
-	OwnerID      *string `json:"owner_id"`
+	CustomName    *string `json:"custom_name"`
+	RuntimeMode   string  `json:"runtime_mode"`
+	ExecutionType string  `json:"execution_type"`
+	Provider      string  `json:"provider"`
+	LaunchHeader  string  `json:"launch_header"`
+	Status        string  `json:"status"`
+	DeviceInfo    string  `json:"device_info"`
+	Metadata      any     `json:"metadata"`
+	OwnerID       *string `json:"owner_id"`
 	// Visibility is "private" (default — only the owner / workspace admins
 	// can bind agents) or "public" (any workspace member can). See migration
 	// 083 and canUseRuntimeForAgent.
@@ -56,25 +59,100 @@ func runtimeToResponse(rt db.AgentRuntime) AgentRuntimeResponse {
 		metadata = map[string]any{}
 	}
 
-	return AgentRuntimeResponse{
-		ID:           uuidToString(rt.ID),
-		WorkspaceID:  uuidToString(rt.WorkspaceID),
-		DaemonID:     textToPtr(rt.DaemonID),
-		Name:         rt.Name,
-		CustomName:   textToPtr(rt.CustomName),
-		RuntimeMode:  rt.RuntimeMode,
-		Provider:     rt.Provider,
-		LaunchHeader: agent.LaunchHeader(rt.Provider),
-		Status:       rt.Status,
-		DeviceInfo:   rt.DeviceInfo,
-		Metadata:     metadata,
-		OwnerID:      uuidToPtr(rt.OwnerID),
-		Visibility:   rt.Visibility,
-		ProfileID:    uuidToPtr(rt.ProfileID),
-		LastSeenAt:   timestampToPtr(rt.LastSeenAt),
-		CreatedAt:    timestampToString(rt.CreatedAt),
-		UpdatedAt:    timestampToString(rt.UpdatedAt),
+	executionType := rt.ExecutionType
+	if executionType == "" {
+		executionType = string(runtimeconfig.ExecutionTypeCLI)
 	}
+	launchHeader := agent.LaunchHeader(rt.Provider)
+	if executionType == string(runtimeconfig.ExecutionTypeCloud) {
+		launchHeader = "server/runtime (managed SDK)"
+	}
+
+	return AgentRuntimeResponse{
+		ID:            uuidToString(rt.ID),
+		WorkspaceID:   uuidToString(rt.WorkspaceID),
+		DaemonID:      textToPtr(rt.DaemonID),
+		Name:          rt.Name,
+		CustomName:    textToPtr(rt.CustomName),
+		RuntimeMode:   rt.RuntimeMode,
+		ExecutionType: executionType,
+		Provider:      rt.Provider,
+		LaunchHeader:  launchHeader,
+		Status:        rt.Status,
+		DeviceInfo:    rt.DeviceInfo,
+		Metadata:      metadata,
+		OwnerID:       uuidToPtr(rt.OwnerID),
+		Visibility:    rt.Visibility,
+		ProfileID:     uuidToPtr(rt.ProfileID),
+		LastSeenAt:    timestampToPtr(rt.LastSeenAt),
+		CreatedAt:     timestampToString(rt.CreatedAt),
+		UpdatedAt:     timestampToString(rt.UpdatedAt),
+	}
+}
+
+type CreateCloudRuntimeRequest struct {
+	Name       string `json:"name"`
+	Provider   string `json:"provider"`
+	Visibility string `json:"visibility"`
+}
+
+// CreateCloudAgentRuntime provisions a logical server-side SDK runtime. It
+// never accepts placement/executor fields from the client and never persists
+// provider credentials; both are deployment-controlled invariants.
+func (h *Handler) CreateCloudAgentRuntime(w http.ResponseWriter, r *http.Request) {
+	workspaceID := h.resolveWorkspaceID(r)
+	member, ok := h.workspaceMember(w, r, workspaceID)
+	if !ok {
+		return
+	}
+	if !h.cfg.RuntimeConfig.CloudEnabled {
+		writeError(w, http.StatusServiceUnavailable, "cloud runtime is not enabled")
+		return
+	}
+
+	var req CreateCloudRuntimeRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid JSON body")
+		return
+	}
+	req.Provider = strings.ToLower(strings.TrimSpace(req.Provider))
+	if !h.cfg.RuntimeConfig.SupportsCloudProvider(req.Provider) {
+		writeError(w, http.StatusBadRequest, "cloud runtime provider is not enabled")
+		return
+	}
+	if req.Visibility == "" {
+		req.Visibility = "private"
+	}
+	if req.Visibility != "private" && req.Visibility != "public" {
+		writeError(w, http.StatusBadRequest, "visibility must be 'private' or 'public'")
+		return
+	}
+	req.Name = strings.TrimSpace(req.Name)
+	if req.Name == "" {
+		req.Name = "Chimii Cloud - " + strings.ToUpper(req.Provider[:1]) + req.Provider[1:]
+	}
+	if len([]rune(req.Name)) > maxRuntimeCustomNameLen {
+		writeError(w, http.StatusBadRequest, "runtime name is too long")
+		return
+	}
+
+	rt, err := h.Queries.CreateCloudAgentRuntime(r.Context(), db.CreateCloudAgentRuntimeParams{
+		WorkspaceID: parseUUID(workspaceID),
+		Name:        req.Name,
+		Provider:    req.Provider,
+		OwnerID:     member.UserID,
+		Visibility:  req.Visibility,
+	})
+	if err != nil {
+		slog.Error("CreateCloudAgentRuntime failed", "workspace_id", workspaceID, "provider", req.Provider, "error", err)
+		writeError(w, http.StatusInternalServerError, "failed to create cloud runtime")
+		return
+	}
+	h.publish(protocol.EventDaemonRegister, workspaceID, "member", uuidToString(member.UserID), map[string]any{
+		"action":     "create",
+		"runtime_id": uuidToString(rt.ID),
+	})
+	writeJSON(w, http.StatusCreated, runtimeToResponse(rt))
 }
 
 // ---------------------------------------------------------------------------
@@ -681,6 +759,37 @@ func canUseRuntimeForAgent(member db.Member, rt db.AgentRuntime) bool {
 	return rt.OwnerID.Valid && uuidToString(rt.OwnerID) == uuidToString(member.UserID)
 }
 
+func (h *Handler) runtimeExecutionAvailable(rt db.AgentRuntime) bool {
+	executionType := runtimeconfig.ExecutionType(rt.ExecutionType)
+	if executionType == "" {
+		executionType = runtimeconfig.ExecutionTypeCLI
+	}
+	if !h.cfg.RuntimeConfig.SupportsExecutionType(executionType) {
+		return false
+	}
+	if executionType == runtimeconfig.ExecutionTypeCloud {
+		return h.cfg.RuntimeConfig.SupportsCloudProvider(rt.Provider)
+	}
+	return true
+}
+
+// requireRuntimeExecutionAvailable keeps every agent-binding entry point from
+// accepting a runtime whose execution engine is disabled by server config. A
+// runtime may remain in the database while an operator temporarily disables
+// Cloud execution; returning 409 makes that state explicit without pretending
+// the runtime does not exist or changing its ownership semantics.
+func (h *Handler) requireRuntimeExecutionAvailable(w http.ResponseWriter, rt db.AgentRuntime) bool {
+	if h.runtimeExecutionAvailable(rt) {
+		return true
+	}
+	executionType := rt.ExecutionType
+	if executionType == "" {
+		executionType = string(runtimeconfig.ExecutionTypeCLI)
+	}
+	writeError(w, http.StatusConflict, fmt.Sprintf("runtime execution type %q is not enabled or configured on this server", executionType))
+	return false
+}
+
 func (h *Handler) ListAgentRuntimes(w http.ResponseWriter, r *http.Request) {
 	workspaceID := h.resolveWorkspaceID(r)
 
@@ -711,6 +820,26 @@ func (h *Handler) ListAgentRuntimes(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, resp)
+}
+
+// GetAgentRuntime returns one workspace-scoped runtime. The runtime row is
+// resolved before membership so callers outside the workspace receive the
+// same not-found response as a missing id.
+func (h *Handler) GetAgentRuntime(w http.ResponseWriter, r *http.Request) {
+	runtimeID := chi.URLParam(r, "runtimeId")
+	runtimeUUID, ok := parseUUIDOrBadRequest(w, runtimeID, "runtime_id")
+	if !ok {
+		return
+	}
+	rt, err := h.Queries.GetAgentRuntime(r.Context(), runtimeUUID)
+	if err != nil {
+		writeError(w, http.StatusNotFound, "runtime not found")
+		return
+	}
+	if _, ok := h.requireWorkspaceMember(w, r, uuidToString(rt.WorkspaceID), "runtime not found"); !ok {
+		return
+	}
+	writeJSON(w, http.StatusOK, runtimeToResponse(rt))
 }
 
 // DeleteAgentRuntime deletes a runtime after permission and dependency checks.
@@ -869,6 +998,14 @@ func (h *Handler) DeleteAgentRuntime(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := qtx.DeleteSystemAgentsByRuntime(r.Context(), rt.ID); err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to clean up system agents")
+		return
+	}
+	if err := qtx.DeleteCloudRuntimeSessionMessagesByRuntime(r.Context(), rt.ID); err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to clean up cloud runtime session messages")
+		return
+	}
+	if err := qtx.DeleteCloudRuntimeSessionsByRuntime(r.Context(), rt.ID); err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to clean up cloud runtime sessions")
 		return
 	}
 
@@ -1142,6 +1279,14 @@ func (h *Handler) ArchiveAgentsAndDeleteRuntime(w http.ResponseWriter, r *http.R
 	}
 	if err := qtx.DeleteSystemAgentsByRuntime(r.Context(), rt.ID); err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to clean up system agents")
+		return
+	}
+	if err := qtx.DeleteCloudRuntimeSessionMessagesByRuntime(r.Context(), rt.ID); err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to clean up cloud runtime session messages")
+		return
+	}
+	if err := qtx.DeleteCloudRuntimeSessionsByRuntime(r.Context(), rt.ID); err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to clean up cloud runtime sessions")
 		return
 	}
 

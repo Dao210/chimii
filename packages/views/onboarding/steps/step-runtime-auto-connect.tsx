@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Cloud, Monitor, Sparkles } from "lucide-react";
+import { useConfigStore } from "@chimii/core/config";
 import { useWSEvent } from "@chimii/core/realtime";
 import {
   runtimeKeys,
@@ -16,24 +17,27 @@ const AUTO_RUNTIME_TIMEOUT_MS = 12_000;
 
 /**
  * Pick a runtime without asking the child or parent to understand runtime
- * setup. A remotely prepared cloud runtime is the product default; an
- * already-online local runtime is a supported fallback. Offline runtimes
- * are never selected because Helper creation needs a runnable target.
+ * setup. The deployment's explicit execution default controls selection;
+ * this function never crosses from Cloud SDK to CLI (or vice versa) as an
+ * implicit fallback. Older servers and clients default to CLI.
  */
 export function pickAutomaticRuntime(
   runtimes: readonly AgentRuntime[],
+  defaultType: "cli" | "cloud" = "cli",
 ): AgentRuntime | null {
-  return (
-    runtimes.find(
-      (runtime) =>
-        runtime.status === "online" && runtime.runtime_mode === "cloud",
-    ) ??
-    runtimes.find(
-      (runtime) =>
-        runtime.status === "online" && runtime.runtime_mode === "local",
-    ) ??
-    null
+  const candidates = runtimes.filter(
+    (runtime) =>
+      runtime.status === "online" &&
+      (runtime.execution_type ?? "cli") === defaultType,
   );
+  if (defaultType === "cli") {
+    return (
+      candidates.find((runtime) => runtime.runtime_mode === "local") ??
+      candidates[0] ??
+      null
+    );
+  }
+  return candidates[0] ?? null;
 }
 
 /**
@@ -49,6 +53,7 @@ export function StepRuntimeAutoConnect({
   onResolved: (runtime: AgentRuntime | null) => Promise<void>;
 }) {
   const { t } = useT("onboarding");
+  const runtimeDefaultType = useConfigStore((state) => state.runtimeDefaultType);
   const queryClient = useQueryClient();
   const resolvedRef = useRef(false);
   const resolvingRef = useRef(false);
@@ -57,7 +62,9 @@ export function StepRuntimeAutoConnect({
   const { data: runtimes = [] } = useQuery({
     ...runtimeListOptions(wsId),
     refetchInterval: (query) =>
-      pickAutomaticRuntime(query.state.data ?? []) ? false : 1_500,
+      pickAutomaticRuntime(query.state.data ?? [], runtimeDefaultType)
+        ? false
+        : 1_500,
   });
 
   const refreshRuntimes = useCallback(() => {
@@ -87,9 +94,9 @@ export function StepRuntimeAutoConnect({
   );
 
   useEffect(() => {
-    const runtime = pickAutomaticRuntime(runtimes);
+    const runtime = pickAutomaticRuntime(runtimes, runtimeDefaultType);
     if (runtime) void resolveOnce(runtime);
-  }, [resolveOnce, runtimes]);
+  }, [resolveOnce, runtimeDefaultType, runtimes]);
 
   useEffect(() => {
     const timeout = window.setTimeout(

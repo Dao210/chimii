@@ -70,6 +70,15 @@ const RT_CODEX = makeRuntime({
   custom_name: "Jiayuan's MacBook Pro",
   provider: "codex",
 });
+const RT_CLOUD = makeRuntime({
+  id: "rt-cloud",
+  daemon_id: null,
+  name: "Managed OpenAI",
+  custom_name: "Managed OpenAI",
+  runtime_mode: "cloud",
+  execution_type: "cloud",
+  provider: "openai",
+});
 
 // Another member's public machine.
 const RT_OTHER_PUBLIC = makeRuntime({
@@ -179,6 +188,21 @@ describe("RuntimePicker (agent settings)", () => {
     const row = await screen.findByRole("button", { name: /^Claude/ });
     fireEvent.click(row);
     expect(onChange).toHaveBeenCalledWith("rt-other-claude");
+  });
+
+  it("requires confirmation before switching execution types", async () => {
+    const { onChange } = renderPicker({
+      runtimes: [RT_CLAUDE, RT_CLOUD],
+    });
+    openPicker();
+    fireEvent.click(screen.getByRole("button", { name: "Back to machines" }));
+    fireEvent.click(screen.getByRole("button", { name: /^Managed OpenAI/ }));
+    fireEvent.click(await screen.findByRole("button", { name: /^Managed OpenAI/ }));
+
+    expect(onChange).not.toHaveBeenCalled();
+    expect(screen.getByRole("alertdialog")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Switch runtime" }));
+    expect(onChange).toHaveBeenCalledWith("rt-cloud");
   });
 
   it("widens to the All scope when the selection belongs to someone else", () => {

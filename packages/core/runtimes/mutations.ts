@@ -4,6 +4,22 @@ import { runtimeKeys } from "./queries";
 import { workspaceKeys } from "../workspace/queries";
 import { agentTaskSnapshotKeys } from "../agents/queries";
 
+export interface CreateCloudRuntimeRequest {
+  provider: "anthropic" | "openai";
+  name?: string;
+  visibility?: "private" | "public";
+}
+
+export function useCreateCloudRuntime(wsId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: CreateCloudRuntimeRequest) => api.createCloudRuntime(data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: runtimeKeys.all(wsId) });
+    },
+  });
+}
+
 export function useDeleteRuntime(wsId: string) {
   const qc = useQueryClient();
   return useMutation({

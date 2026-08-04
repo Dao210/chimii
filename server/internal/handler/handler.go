@@ -14,7 +14,7 @@ import (
 
 	"github.com/chimii-ai/chimii/server/internal/analytics"
 	"github.com/chimii-ai/chimii/server/internal/auth"
-	"github.com/chimii-ai/chimii/server/internal/cloudruntime"
+	"github.com/chimii-ai/chimii/server/internal/cloudfleet"
 	"github.com/chimii-ai/chimii/server/internal/daemonws"
 	"github.com/chimii-ai/chimii/server/internal/events"
 	"github.com/chimii-ai/chimii/server/internal/integrations/channel/engine"
@@ -25,6 +25,7 @@ import (
 	obsmetrics "github.com/chimii-ai/chimii/server/internal/metrics"
 	"github.com/chimii-ai/chimii/server/internal/middleware"
 	"github.com/chimii-ai/chimii/server/internal/realtime"
+	"github.com/chimii-ai/chimii/server/internal/runtimeconfig"
 	"github.com/chimii-ai/chimii/server/internal/service"
 	"github.com/chimii-ai/chimii/server/internal/storage"
 	"github.com/chimii-ai/chimii/server/internal/util"
@@ -119,6 +120,10 @@ type Config struct {
 	LLMAPIKey       string
 	LLMBaseURL      string
 	LLMDefaultModel string
+	// RuntimeConfig is the validated execution-plane configuration. It is
+	// parsed once at server startup; handlers use it to expose public
+	// capabilities and to reject disabled Cloud runtime mutations.
+	RuntimeConfig runtimeconfig.Config
 	// ServerVersion is the build version of the running API binary (the same
 	// value main.go stamps via -X main.version and reports on /metrics).
 	// Surfaced through /api/config so self-hosted operators can confirm which
@@ -128,7 +133,7 @@ type Config struct {
 
 type cloudRuntimeProxy interface {
 	Enabled() bool
-	Do(ctx context.Context, req cloudruntime.Request) (*cloudruntime.Response, error)
+	Do(ctx context.Context, req cloudfleet.Request) (*cloudfleet.Response, error)
 }
 
 type RuntimeProfileRefreshNotifier interface {
@@ -263,6 +268,13 @@ type Handler struct {
 	cfg       Config
 }
 
+// RuntimeExecutionConfig exposes the startup-validated execution-plane
+// configuration to the process owner so it can bind background worker
+// lifecycle to the API server without parsing environment variables twice.
+func (h *Handler) RuntimeExecutionConfig() runtimeconfig.Config {
+	return h.cfg.RuntimeConfig
+}
+
 func New(queries *db.Queries, txStarter txStarter, hub *realtime.Hub, bus *events.Bus, emailService *service.EmailService, store storage.Storage, cfSigner *auth.CloudFrontSigner, analyticsClient analytics.Client, cfg Config, daemonHubs ...*daemonws.Hub) *Handler {
 	var executor dbExecutor
 	if candidate, ok := txStarter.(dbExecutor); ok {
@@ -320,7 +332,7 @@ func New(queries *db.Queries, txStarter txStarter, hub *realtime.Hub, bus *event
 		WebhookRateLimiter:           NewMemoryWebhookRateLimiter(DefaultWebhookRateLimit()),
 		WebhookIPRateLimiter:         NewMemoryWebhookIPRateLimiter(DefaultWebhookIPRateLimit()),
 		WebhookAbsoluteIPRateLimiter: NewMemoryWebhookAbsoluteIPRateLimiter(DefaultWebhookAbsoluteIPRateLimit()),
-		CloudRuntime: cloudruntime.NewClient(cloudruntime.Config{
+		CloudRuntime: cloudfleet.NewClient(cloudfleet.Config{
 			BaseURL: cfg.CloudRuntimeFleetURL,
 			Timeout: cfg.CloudRuntimeFleetTimeout,
 		}),

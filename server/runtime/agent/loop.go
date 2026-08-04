@@ -60,7 +60,9 @@ func (a *Agent) runLoop(ctx context.Context, prompt string, eventCh chan<- types
 		UUID:      uuid.New().String(),
 		Timestamp: time.Now(),
 	}
-	a.messages = append(a.messages, userMsg)
+	if err := a.appendMessage(ctx, userMsg); err != nil {
+		return err
+	}
 
 	// Build tool params - filter by allowedTools and disallowedTools
 	allTools := a.toolRegistry.All()
@@ -257,7 +259,9 @@ func (a *Agent) runLoop(ctx context.Context, prompt string, eventCh chan<- types
 		}
 
 		// Store assistant message
-		a.messages = append(a.messages, *assistantMsg)
+		if err := a.appendMessage(ctx, *assistantMsg); err != nil {
+			return err
+		}
 
 		// Emit assistant event
 		eventCh <- types.SDKMessage{
@@ -318,7 +322,9 @@ func (a *Agent) runLoop(ctx context.Context, prompt string, eventCh chan<- types
 			UUID:      uuid.New().String(),
 			Timestamp: time.Now(),
 		}
-		a.messages = append(a.messages, toolResultMsg)
+		if err := a.appendMessage(ctx, toolResultMsg); err != nil {
+			return err
+		}
 
 		// Emit tool result events so SSE consumers can display them
 		for _, result := range results {
@@ -330,8 +336,8 @@ func (a *Agent) runLoop(ctx context.Context, prompt string, eventCh chan<- types
 				}
 			}
 			eventCh <- types.SDKMessage{
-				Type: "tool_result",
-				Text: textContent,
+				Type:  "tool_result",
+				Text:  textContent,
 				Usage: &types.Usage{},
 				Message: &types.Message{
 					Type: "tool_result",

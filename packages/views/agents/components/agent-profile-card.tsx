@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import type { Agent, AgentRuntime } from "@chimii/core/types";
+import type { AgentRuntime } from "@chimii/core/types";
 import { useAgentPresenceDetail } from "@chimii/core/agents";
 import { useWorkspaceId } from "@chimii/core/hooks";
 import {
@@ -118,7 +118,7 @@ export function AgentProfileCard({ agentId }: AgentProfileCardProps) {
           are surfaced here so a quick hover answers "which model is this
           agent running?" without opening the detail page. */}
       <div className="flex flex-col gap-1.5 text-xs">
-        <RuntimeRow agent={agent} runtime={runtime} />
+        <RuntimeRow runtime={runtime} />
         <ModelRow model={agent.model} thinkingLevel={agent.thinking_level} />
         {agent.skills.length > 0 && (
           <SkillsRow skills={agent.skills.map((s) => s.name)} />
@@ -156,30 +156,27 @@ function AgentAvailabilityLine({
 
 // Compact runtime row — wifi-style health icon + runtime name. The icon
 // shape (Wifi / WifiOff) plus colour reflects the live runtime health
-// derived from runtime + clock; cloud runtimes always read as online.
+// derived from runtime + clock; managed Cloud SDK runtimes are logical
+// server resources and always read as online while enabled.
 // This is duplicate signal with the availability dot above by design —
 // the dot is the agent's effective availability (which mostly tracks
 // runtime health), and seeing the same wifi icon next to the runtime
 // name confirms WHICH runtime is the one currently in the dot's state.
 function RuntimeRow({
-  agent,
   runtime,
 }: {
-  agent: Agent;
   runtime: AgentRuntime | null;
 }) {
   const { t } = useT("agents");
-  const isCloud = agent.runtime_mode === "cloud";
-  const health: RuntimeHealth = isCloud
+  const isManagedCloud = runtime?.execution_type === "cloud";
+  const health: RuntimeHealth = isManagedCloud
     ? "online"
     : runtime
       ? deriveRuntimeHealth(runtime, Date.now())
       : "offline";
   const label = runtime
     ? runtimeDisplayLabel(runtime)
-    : isCloud
-      ? t(($) => $.row.fallback_runtime_cloud)
-      : t(($) => $.profile_card.unknown_runtime);
+    : t(($) => $.profile_card.unknown_runtime);
   return (
     <div className="flex items-center gap-1.5">
       <span className="w-12 shrink-0 text-muted-foreground">{t(($) => $.profile_card.runtime_label)}</span>

@@ -196,6 +196,9 @@ func (h *Handler) BootstrapOnboardingRuntime(w http.ResponseWriter, r *http.Requ
 		writeError(w, http.StatusForbidden, "this runtime is private; only its owner or a workspace admin can create agents on it")
 		return
 	}
+	if !h.requireRuntimeExecutionAvailable(w, runtime) {
+		return
+	}
 
 	agents, err := qtx.ListAgents(r.Context(), wsUUID)
 	if err != nil {

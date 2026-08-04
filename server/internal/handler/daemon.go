@@ -93,6 +93,13 @@ func (h *Handler) requireDaemonRuntimeAccess(w http.ResponseWriter, r *http.Requ
 	if !h.requireDaemonWorkspaceAccess(w, r, uuidToString(rt.WorkspaceID)) {
 		return db.AgentRuntime{}, false
 	}
+	// Server-side Cloud runtimes are claimed in-process and must never be
+	// exposed through the daemon execution protocol. Empty preserves fixtures
+	// and pre-migration rows as CLI-backed during rolling deploys.
+	if rt.ExecutionType != "" && rt.ExecutionType != "cli" {
+		writeError(w, http.StatusConflict, "runtime is not daemon-executable")
+		return db.AgentRuntime{}, false
+	}
 	return rt, true
 }
 
@@ -1301,7 +1308,11 @@ func logClaimEndpointSlow(runtimeID, outcome string, start time.Time, authMs, cl
 // requestHasClientCapability reports whether the caller advertised a capability
 // in X-Client-Capabilities. Daemons and app clients share the header.
 func requestHasClientCapability(r *http.Request, capability string) bool {
-	for _, part := range strings.Split(r.Header.Get("X-Client-Capabilities"), ",") {
+	return clientCapabilitiesContain(r.Header.Get("X-Client-Capabilities"), capability)
+}
+
+func clientCapabilitiesContain(capabilities, capability string) bool {
+	for _, part := range strings.Split(capabilities, ",") {
 		if strings.TrimSpace(part) == capability {
 			return true
 		}
@@ -1466,10 +1477,13 @@ func (h *Handler) ClaimTasksByRuntime(w http.ResponseWriter, r *http.Request) {
 		if !h.verifyDaemonWorkspaceAccess(r, uuidToString(rt.WorkspaceID)) {
 			continue
 		}
+		if rt.ExecutionType != "" && rt.ExecutionType != "cli" {
+			continue
+		}
 		// Group-ownership check (mirrors the WS path, daemon_ws.go): a runtime
-		// bound to a different daemon must not be claimed by this one. Runtimes
-		// with a NULL daemon_id (e.g. cloud runtimes) are not machine-pinned, so
-		// they stay claimable — same tolerance as the WS handler.
+		// bound to a different daemon must not be claimed by this one. Legacy CLI
+		// rows with a NULL daemon_id keep the WS handler's tolerant behavior;
+		// server-side Cloud rows were already excluded by execution_type above.
 		if rt.DaemonID.Valid && rt.DaemonID.String != req.DaemonID {
 			continue
 		}
@@ -1506,7 +1520,7 @@ func (h *Handler) ClaimTasksByRuntime(w http.ResponseWriter, r *http.Request) {
 		if handled, _ := h.repairStaleCommentPlanIfNeeded(r.Context(), &task, rtWorkspaceID); handled {
 			continue
 		}
-		resp, deliveredCommentIDs, _, _, failure := h.buildClaimedTaskResponse(r, &task, rt, uuidToString(task.RuntimeID), rtWorkspaceID)
+		resp, deliveredCommentIDs, _, _, failure := h.buildClaimedTaskResponse(r.Context(), r.Header.Get("X-Client-Capabilities"), &task, rt, uuidToString(task.RuntimeID), rtWorkspaceID)
 		if failure != nil {
 			// Builder rejected this task (workspace isolation / chat-input);
 			// it has already cancelled the task where the failure requires it.
@@ -1579,6 +1593,12 @@ type claimBuildFailure struct {
 	message string
 }
 
+type claimBuildContext struct {
+	ctx context.Context
+}
+
+func (c claimBuildContext) Context() context.Context { return c.ctx }
+
 // buildClaimedTaskResponse assembles the full daemon claim payload for a
 // single already-claimed task and computes the exact comment ids embedded in
 // it (deliveredCommentIDs). Shared by the per-runtime handler
@@ -1587,10 +1607,14 @@ type claimBuildFailure struct {
 // feed the same delivery receipt into FinalizeTaskClaim. A non-nil failure
 // means the task must not be dispatched; the builder has already cancelled it
 // where the failure semantics require it.
-func (h *Handler) buildClaimedTaskResponse(r *http.Request, task *db.AgentTaskQueue, runtime db.AgentRuntime, runtimeID, runtimeWorkspaceID string) (resp AgentTaskResponse, deliveredCommentIDs []pgtype.UUID, agentSkillCount, builtinSkillCount int, failure *claimBuildFailure) {
+func (h *Handler) buildClaimedTaskResponse(ctx context.Context, capabilities string, task *db.AgentTaskQueue, runtime db.AgentRuntime, runtimeID, runtimeWorkspaceID string) (resp AgentTaskResponse, deliveredCommentIDs []pgtype.UUID, agentSkillCount, builtinSkillCount int, failure *claimBuildFailure) {
+	// Keep the existing context-only call sites below compact while making the
+	// builder reusable by the in-process Cloud coordinator without fabricating
+	// an HTTP request.
+	r := claimBuildContext{ctx: ctx}
 	// Build response with fresh agent data (name + skills + custom_env + custom_args).
 	resp = taskToResponse(*task, runtimeWorkspaceID)
-	supportsCoalescedComments := requestHasClientCapability(r, protocol.DaemonCapabilityCoalescedCommentsV1)
+	supportsCoalescedComments := clientCapabilitiesContain(capabilities, protocol.DaemonCapabilityCoalescedCommentsV1)
 	// Empty-but-non-nil so pgx persists '{}' rather than NULL for tasks without
 	// comment input. Comment tasks replace this with the ids actually embedded
 	// in the capability-aware response built below.
@@ -1600,7 +1624,7 @@ func (h *Handler) buildClaimedTaskResponse(r *http.Request, task *db.AgentTaskQu
 		resp.ConnectedApps = parseRuntimeConnectedAppsForClaim(task.RuntimeConnectedApps, task.ID)
 	}
 	if agent, err := h.Queries.GetAgent(r.Context(), task.AgentID); err == nil {
-		useSkillRefs := requestHasClientCapability(r, protocol.DaemonCapabilitySkillBundlesV1)
+		useSkillRefs := clientCapabilitiesContain(capabilities, protocol.DaemonCapabilitySkillBundlesV1)
 		var customEnv map[string]string
 		if agent.CustomEnv != nil {
 			if err := json.Unmarshal(agent.CustomEnv, &customEnv); err != nil {
@@ -2569,7 +2593,7 @@ func (h *Handler) ClaimTaskByRuntime(w http.ResponseWriter, r *http.Request) {
 	outcome = "claimed"
 	buildStart = time.Now()
 
-	resp, deliveredCommentIDs, agentSkillCount, builtinSkillCount, failure := h.buildClaimedTaskResponse(r, task, runtime, runtimeID, runtimeWorkspaceID)
+	resp, deliveredCommentIDs, agentSkillCount, builtinSkillCount, failure := h.buildClaimedTaskResponse(r.Context(), r.Header.Get("X-Client-Capabilities"), task, runtime, runtimeID, runtimeWorkspaceID)
 	if failure != nil {
 		outcome = failure.outcome
 		writeError(w, failure.status, failure.message)
@@ -2954,7 +2978,7 @@ func (h *Handler) CompleteTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.emitIssueExecutedOnFirstCompletion(r, task)
+	h.emitIssueExecutedOnFirstCompletion(r.Context(), task)
 
 	// MUL-4195: guarantee at-least-once processing. If a member posted a
 	// deliberate comment while this run was executing (or one was merged into
@@ -2987,11 +3011,11 @@ func (h *Handler) CompleteTask(w http.ResponseWriter, r *http.Request) {
 // the issue to reach terminal done. Retries / re-assignments / comment-
 // triggered follow-ups hit the WHERE first_executed_at IS NULL clause and
 // no-op, so the funnel counts unique issues, not tasks.
-func (h *Handler) emitIssueExecutedOnFirstCompletion(r *http.Request, task *db.AgentTaskQueue) {
+func (h *Handler) emitIssueExecutedOnFirstCompletion(ctx context.Context, task *db.AgentTaskQueue) {
 	if task == nil {
 		return
 	}
-	marked, err := h.Queries.MarkIssueFirstExecuted(r.Context(), task.IssueID)
+	marked, err := h.Queries.MarkIssueFirstExecuted(ctx, task.IssueID)
 	if err != nil {
 		if !isNotFound(err) {
 			slog.Warn("analytics: mark issue first-executed failed", "issue_id", uuidToString(task.IssueID), "error", err)
@@ -3002,7 +3026,7 @@ func (h *Handler) emitIssueExecutedOnFirstCompletion(r *http.Request, task *db.A
 	if task.StartedAt.Valid && task.CompletedAt.Valid {
 		durationMS = task.CompletedAt.Time.Sub(task.StartedAt.Time).Milliseconds()
 	}
-	taskContext := h.TaskService.AnalyticsContextForTask(r.Context(), *task)
+	taskContext := h.TaskService.AnalyticsContextForTask(ctx, *task)
 	// distinct_id prefers the human creator so agent-driven events flow into
 	// the issue-author's person profile (same place signup and
 	// workspace_created land). Agent-created issues keep the agent id with a

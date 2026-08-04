@@ -197,6 +197,7 @@ function finalizeRuntimeMachine(
     a.provider.localeCompare(b.provider),
   );
   const first = runtimes[0];
+  const managedCloud = first?.execution_type === "cloud";
   const providerNames = Array.from(new Set(runtimes.map((r) => r.provider))).sort();
   // Device-name consolidation is only safe for the current user's own
   // local runtimes — the list spans the whole workspace, so a host-name
@@ -223,6 +224,7 @@ function finalizeRuntimeMachine(
     deviceInfo,
     daemonId: draft.daemonId,
     mode: draft.mode,
+    managedCloud,
   });
   const healthByRuntime = runtimes.map((runtime) =>
     deriveRuntimeHealth(runtime, options.now),
@@ -271,6 +273,7 @@ function finalizeRuntimeMachine(
 }
 
 function runtimeMachineId(runtime: AgentRuntime): string {
+  if (runtime.execution_type === "cloud") return `cloud-sdk:${runtime.id}`;
   if (runtime.daemon_id) return `${runtime.runtime_mode}:${runtime.daemon_id}`;
   const deviceName = runtimeDeviceName(runtime);
   if (deviceName) return `${runtime.runtime_mode}:device:${deviceName}`;
@@ -315,6 +318,10 @@ function machineTitle(
   const first = runtimes[0];
   if (!first) return "Unknown machine";
 
+  if (first.execution_type === "cloud") {
+    return first.custom_name?.trim() || first.name;
+  }
+
   const deviceName = runtimeDeviceName(first);
   if (deviceName) return deviceName;
 
@@ -329,15 +336,18 @@ function machineSubtitle({
   deviceInfo,
   daemonId,
   mode,
+  managedCloud,
 }: {
   title: string;
   deviceInfo: string | null;
   daemonId: string | null;
   mode: AgentRuntime["runtime_mode"];
+  managedCloud: boolean;
 }): string | null {
   const compact = compactDeviceInfo(deviceInfo, title);
   if (compact) return compact;
   if (daemonId) return `daemon ${shortDaemonId(daemonId)}`;
+  if (managedCloud) return "Managed SDK runtime";
   return mode === "cloud" ? "Cloud worker" : null;
 }
 

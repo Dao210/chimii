@@ -27,6 +27,14 @@ func TestReasonStringWireValues(t *testing.T) {
 		{ReasonAgentBlocked, "agent_blocked"},
 		{ReasonAPIInvalidRequest, "api_invalid_request"},
 		{ReasonSkillBundleUnavailable, "skill_bundle_unavailable"},
+		{ReasonCloudRuntimeUnavailable, "cloud_runtime_unavailable"},
+		{ReasonCloudProviderAuth, "cloud_provider_auth"},
+		{ReasonCloudProviderRateLimited, "cloud_provider_rate_limited"},
+		{ReasonCloudProviderError, "cloud_provider_error"},
+		{ReasonCloudSandboxViolation, "cloud_sandbox_violation"},
+		{ReasonCloudSessionCorrupt, "cloud_session_corrupt"},
+		{ReasonCloudWorkDirPrepare, "cloud_workdir_prepare"},
+		{ReasonCloudRuntimeTimeout, "cloud_runtime_timeout"},
 		// Agent-side.
 		{ReasonAgentProviderAuthOrAccess, "agent_error.provider_auth_or_access"},
 		{ReasonAgentProviderQuotaLimit, "agent_error.provider_quota_limit"},
@@ -44,7 +52,7 @@ func TestReasonStringWireValues(t *testing.T) {
 		{ReasonAgentUnknown, "agent_error.unknown"},
 	}
 
-	if got, want := len(cases), 22; got != want {
+	if got, want := len(cases), 30; got != want {
 		t.Fatalf("constant count = %d, want %d (canonical taxonomy size)", got, want)
 	}
 
@@ -72,6 +80,14 @@ func TestIsAgentError(t *testing.T) {
 		ReasonAgentBlocked,
 		ReasonAPIInvalidRequest,
 		ReasonSkillBundleUnavailable,
+		ReasonCloudRuntimeUnavailable,
+		ReasonCloudProviderAuth,
+		ReasonCloudProviderRateLimited,
+		ReasonCloudProviderError,
+		ReasonCloudSandboxViolation,
+		ReasonCloudSessionCorrupt,
+		ReasonCloudWorkDirPrepare,
+		ReasonCloudRuntimeTimeout,
 	}
 	for _, r := range platformSide {
 		if r.IsAgentError() {
@@ -112,8 +128,8 @@ func TestAllReasonsContents(t *testing.T) {
 	t.Parallel()
 
 	got := AllReasons()
-	if len(got) != 22 {
-		t.Fatalf("AllReasons() returned %d entries, want 22", len(got))
+	if len(got) != 30 {
+		t.Fatalf("AllReasons() returned %d entries, want 30", len(got))
 	}
 
 	seen := make(map[Reason]bool, len(got))
@@ -130,8 +146,8 @@ func TestAllReasonsContents(t *testing.T) {
 		}
 	}
 
-	if platformCount != 8 {
-		t.Errorf("AllReasons(): platform-side count = %d, want 8", platformCount)
+	if platformCount != 16 {
+		t.Errorf("AllReasons(): platform-side count = %d, want 16", platformCount)
 	}
 	if agentCount != 14 {
 		t.Errorf("AllReasons(): agent-side count = %d, want 14", agentCount)
@@ -145,6 +161,10 @@ func TestAllReasonsContents(t *testing.T) {
 		ReasonQueuedExpired, ReasonRuntimeOffline, ReasonRuntimeRecovery,
 		ReasonTimeout, ReasonIterationLimit, ReasonAgentBlocked,
 		ReasonAPIInvalidRequest, ReasonSkillBundleUnavailable,
+		ReasonCloudRuntimeUnavailable, ReasonCloudProviderAuth,
+		ReasonCloudProviderRateLimited, ReasonCloudProviderError,
+		ReasonCloudSandboxViolation, ReasonCloudSessionCorrupt,
+		ReasonCloudWorkDirPrepare, ReasonCloudRuntimeTimeout,
 		ReasonAgentProviderAuthOrAccess, ReasonAgentProviderQuotaLimit,
 		ReasonAgentProviderCapacityOrRateLimit, ReasonAgentProviderServerError,
 		ReasonAgentProviderNetwork, ReasonAgentProcessFailure,

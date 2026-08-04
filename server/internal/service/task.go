@@ -910,9 +910,9 @@ func taskFailureReason(task db.AgentTaskQueue) string {
 
 func taskErrorType(reason string) string {
 	switch reason {
-	case "runtime_offline", "runtime_recovery":
+	case "runtime_offline", "runtime_recovery", string(taskfailure.ReasonCloudRuntimeUnavailable), string(taskfailure.ReasonCloudWorkDirPrepare), string(taskfailure.ReasonCloudSandboxViolation), string(taskfailure.ReasonCloudSessionCorrupt):
 		return "runtime"
-	case "timeout", "codex_semantic_inactivity":
+	case "timeout", "codex_semantic_inactivity", string(taskfailure.ReasonCloudRuntimeTimeout):
 		return "timeout"
 	case "iteration_limit", "agent_fallback_message":
 		return "agent_output"
@@ -3331,8 +3331,13 @@ var retryableReasons = map[string]bool{
 	"runtime_recovery":          true,
 	"timeout":                   true,
 	"codex_semantic_inactivity": true,
-	string(taskfailure.ReasonAgentProviderNetwork):   true,
-	string(taskfailure.ReasonSkillBundleUnavailable): true,
+	string(taskfailure.ReasonAgentProviderNetwork):     true,
+	string(taskfailure.ReasonSkillBundleUnavailable):   true,
+	string(taskfailure.ReasonCloudRuntimeUnavailable):  true,
+	string(taskfailure.ReasonCloudProviderRateLimited): true,
+	string(taskfailure.ReasonCloudProviderError):       true,
+	string(taskfailure.ReasonCloudWorkDirPrepare):      true,
+	string(taskfailure.ReasonCloudRuntimeTimeout):      true,
 }
 
 // Transient provider stream cuts (provider_network) get a bespoke three-tier
@@ -3387,7 +3392,7 @@ func resumeUnsafeFailureReason(reason string) bool {
 	// blacklists. (CreateRetryTask's fresh-session CASE WHEN only needs the
 	// subset of these that is also auto-retryable, currently
 	// codex_semantic_inactivity.)
-	case "iteration_limit", "agent_fallback_message", "api_invalid_request", "codex_semantic_inactivity", "agent_error.context_overflow":
+	case "iteration_limit", "agent_fallback_message", "api_invalid_request", "codex_semantic_inactivity", "agent_error.context_overflow", string(taskfailure.ReasonCloudSessionCorrupt):
 		return true
 	default:
 		return false

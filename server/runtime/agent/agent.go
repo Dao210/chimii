@@ -95,6 +95,20 @@ type Options struct {
 	// Custom tools to add
 	CustomTools []types.Tool
 
+	// DisableDefaultTools starts with an empty registry instead of the SDK's
+	// built-in host tools. Server-side runtimes should enable this unless an
+	// external sandbox supplies an equivalent containment boundary.
+	DisableDefaultTools bool
+
+	// InitialMessages restores durable conversation history before the next
+	// query. The slice is copied so callers may safely reuse their buffer.
+	InitialMessages []types.Message
+
+	// OnMessage is called synchronously after each user, assistant, or tool
+	// result message is appended. Returning an error stops the query, allowing
+	// server runtimes to fail closed when durable session persistence fails.
+	OnMessage func(context.Context, types.Message) error
+
 	// Hook configuration
 	Hooks hooks.HookConfig
 
@@ -140,19 +154,19 @@ type Options struct {
 
 // AgentDefinition defines a subagent configuration.
 type AgentDefinition struct {
-	Description     string                          `json:"description"`
-	Instructions    string                          `json:"instructions"`
-	Tools           []string                        `json:"tools,omitempty"`
-	DisallowedTools []string                        `json:"disallowedTools,omitempty"`
-	Model           string                          `json:"model,omitempty"`
-	Skills          []string                        `json:"skills,omitempty"`
-	Memory          string                          `json:"memory,omitempty"`
-	Effort          Effort                          `json:"effort,omitempty"`
-	MaxTurns        int                             `json:"maxTurns,omitempty"`
-	Background      bool                            `json:"background,omitempty"`
-	PermissionMode  types.PermissionMode            `json:"permissionMode,omitempty"`
+	Description     string                           `json:"description"`
+	Instructions    string                           `json:"instructions"`
+	Tools           []string                         `json:"tools,omitempty"`
+	DisallowedTools []string                         `json:"disallowedTools,omitempty"`
+	Model           string                           `json:"model,omitempty"`
+	Skills          []string                         `json:"skills,omitempty"`
+	Memory          string                           `json:"memory,omitempty"`
+	Effort          Effort                           `json:"effort,omitempty"`
+	MaxTurns        int                              `json:"maxTurns,omitempty"`
+	Background      bool                             `json:"background,omitempty"`
+	PermissionMode  types.PermissionMode             `json:"permissionMode,omitempty"`
 	MCPServers      map[string]types.MCPServerConfig `json:"mcpServers,omitempty"`
-	InitialPrompt   string                          `json:"initialPrompt,omitempty"`
+	InitialPrompt   string                           `json:"initialPrompt,omitempty"`
 }
 
 // Agent is the main agent that runs the agentic loop.
@@ -184,7 +198,10 @@ func New(opts Options) *Agent {
 		TimeoutMs:     opts.TimeoutMs,
 	})
 
-	registry := tools.DefaultRegistry()
+	registry := tools.NewRegistry()
+	if !opts.DisableDefaultTools {
+		registry = tools.DefaultRegistry()
+	}
 	for _, t := range opts.CustomTools {
 		registry.Register(t)
 	}
@@ -209,10 +226,14 @@ func New(opts Options) *Agent {
 		hookManager:  hookManager,
 		canUseTool:   canUseTool,
 		sessionID:    sessionID,
+		messages:     append([]types.Message(nil), opts.InitialMessages...),
 	}
 
 	// Register AgentTool with subagent spawner if definitions provided
-	if len(opts.Agents) > 0 {
+	if opts.DisableDefaultTools {
+		// Subagents inherit the same process and would otherwise re-introduce
+		// the default Bash/file tool registry through spawnSubagent.
+	} else if len(opts.Agents) > 0 {
 		defs := make(map[string]tools.SubagentDefinition, len(opts.Agents))
 		for name, def := range opts.Agents {
 			defs[name] = tools.SubagentDefinition{
@@ -333,6 +354,16 @@ func (a *Agent) GetMessages() []types.Message {
 	return append([]types.Message{}, a.messages...)
 }
 
+func (a *Agent) appendMessage(ctx context.Context, message types.Message) error {
+	a.messages = append(a.messages, message)
+	if a.opts.OnMessage != nil {
+		if err := a.opts.OnMessage(ctx, message); err != nil {
+			return fmt.Errorf("persist session message: %w", err)
+		}
+	}
+	return nil
+}
+
 // Clear resets conversation history.
 func (a *Agent) Clear() {
 	a.messages = nil
@@ -351,16 +382,17 @@ func (a *Agent) spawnSubagent(ctx context.Context, config tools.SubagentConfig) 
 	}
 
 	childOpts := Options{
-		Model:              model,
-		APIKey:             a.opts.APIKey,
-		BaseURL:            a.opts.BaseURL,
-		CWD:                config.CWD,
-		MaxTurns:           30,
-		PermissionMode:     a.opts.PermissionMode,
-		SystemPrompt:       config.SystemPrompt,
-		CustomHeaders:      a.opts.CustomHeaders,
-		ProxyURL:           a.opts.ProxyURL,
-		TimeoutMs:          a.opts.TimeoutMs,
+		Model:               model,
+		APIKey:              a.opts.APIKey,
+		BaseURL:             a.opts.BaseURL,
+		CWD:                 config.CWD,
+		MaxTurns:            30,
+		PermissionMode:      a.opts.PermissionMode,
+		SystemPrompt:        config.SystemPrompt,
+		CustomHeaders:       a.opts.CustomHeaders,
+		ProxyURL:            a.opts.ProxyURL,
+		TimeoutMs:           a.opts.TimeoutMs,
+		DisableDefaultTools: a.opts.DisableDefaultTools,
 	}
 
 	if childOpts.CWD == "" {

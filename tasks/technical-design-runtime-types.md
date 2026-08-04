@@ -1,10 +1,17 @@
 # CLI / Cloud Runtime 可切换执行方案
 
-> 状态：Proposed
+> 状态：Implemented（首版为安全的 text-only Cloud runtime；宿主工具模式仍处于安全门禁后）
 >
 > 决策：采用“方案 A”——CLI runtime 与 Cloud runtime 是两种并列、显式选择的执行类型，绝不在两者之间自动 fallback。
 >
 > 默认：CLI runtime。Cloud runtime 需由运维配置显式启用，首期仅支持 `anthropic` / `openai`。
+
+### 当前落地范围（2026-08-04）
+
+- 已完成方案 A 的数据、配置、CRUD、调度、持久化 session、消息/usage、取消、失败分类和前端显式切换。
+- Cloud worker 直接使用 `server/runtime`，不会经 daemon、不会创建 `pkg/agent` backend，也没有 Cloud → CLI fallback。
+- 当前 Cloud executor 固定 `DisableDefaultTools=true`、`MaxTurns=1`，因此可安全用于 chat、分析和生成建议文本，但不能读写仓库、执行 shell 或声称完成外部副作用。
+- 工具型 Cloud runtime 仍需完成本文件第 6 节的真正隔离执行器后才能开放；该延期不影响 CLI runtime 的全部现有 provider 能力。
 
 ## 1. 目标与边界
 
@@ -120,7 +127,7 @@ CHIMII_CLOUD_RUNTIME_OPENAI_DEFAULT_MODEL=
 配置解析规则：
 
 - `CHIMII_RUNTIME_DEFAULT` 仅接受 `cli | cloud`，默认 `cli`。
-- `default=cloud` 时，Cloud runtime 必须已启用且至少有一个 provider 密钥，否则 server 启动失败。
+- `default=cloud` 时，Cloud runtime 必须已启用；每个启用 provider 的 API key 与 default model 都必须配置，否则 server 启动失败。
 - Cloud 开关关闭时，server 不启动 Cloud worker，API 不允许新建/绑定 Cloud runtime，但保留已有数据供管理员处理。
 - Cloud 开关不作为运行中 kill switch；优雅关机先取消/结束本进程的正在执行任务，不将它们转给 CLI。
 - 密钥只来自 server secret/environment，不进入 `agent_runtime.metadata`、`agent.runtime_config`、API 响应或日志。
@@ -197,7 +204,7 @@ cloud_runtime_session_message
 
 - 不使用 DB foreign key；删除 runtime/agent/workspace 时由应用服务在同一事务中清理。
 - session id 使用 `crs_<uuid>` 前缀，防止与 CLI 原生 session id 混淆。
-- `server/runtime/agent` 增加可注入的 `SessionStore`，每轮 API/tool 完成后增量持久化，不等 task 终态才一次性写入。
+- `server/runtime/agent.Options` 提供 `InitialMessages` 与同步、fail-closed 的 `OnMessage`；`internal/cloudruntime.SessionStore` 用这些 hook 在每条 SDK message 后增量持久化，不等 task 终态才一次性写入。
 - 在第一次 LLM API 请求前创建 session 并调用共享 task lifecycle 服务 pin 到 `agent_task_queue.session_id`。
 - resume 只加载同一 `runtime_id` 下的 `crs_` session；对 CLI session id 或其他 runtime 的 session 直接拒绝，不做格式猜测。
 
@@ -214,16 +221,15 @@ server/internal/cloudfleet/
 
 server/internal/cloudruntime/
   manager.go                # worker 启停、并发、优雅关机
-  registry.go               # Cloud runtime 创建/状态/provider 校验
   executor.go               # TaskRun -> server/runtime agent.Options
   messages.go               # SDKMessage -> task message
   sessions.go               # PostgreSQL SessionStore adapter
   workdir.go                # 任务工作目录与 repo 准备
   errors.go                 # 稳定 failure_reason 分类
 
-server/internal/taskexecution/
-  coordinator.go            # claim/finalize/start/complete/fail 共享业务编排
-  reporter.go               # progress/message/usage/session/cancel 内部接口
+server/internal/handler/
+  cloud_execution.go        # 内部 Coordinator；复用 TaskService，不伪造 HTTP
+  runtime.go                # Cloud runtime CRUD/provider/可用性校验
 ```
 
 `internal/cloudruntime` 当前名称已被 Fleet HTTP client 占用。先将现有 client/handler 语义重命名为 `cloudfleet`，再把 `cloudruntime` 专用于 SDK 执行，避免新旧“cloud runtime”在同一 package 中继续混用。
@@ -232,7 +238,8 @@ server/internal/taskexecution/
 
 现有 claim payload 构建与 lifecycle 大量实现在 `internal/handler/daemon.go`。Cloud worker 不应使用 loopback HTTP 、伪造 daemon token 或直接调 handler。
 
-将业务逻辑下沉为可内部调用的服务：
+首版将业务编排做成可内部调用的 Coordinator 接口；实现位于 handler 层并复用
+`TaskService` 的原子 lifecycle，Cloud worker 不走 loopback HTTP：
 
 ```go
 type ClaimedRun struct {
@@ -254,9 +261,9 @@ type Coordinator interface {
 }
 ```
 
-- daemon HTTP handlers 改为“鉴权 + decode/encode + 调用 Coordinator”。
 - Cloud worker 直接调 Coordinator。
-- claim token 生成、comment receipt、workspace isolation、session resume 判断只保留一份实现。
+- claim 复用 daemon 的 payload builder、comment receipt 与 task token finalization；终态复用 `TaskService`。
+- daemon HTTP 协议与线上行为保持不变；后续可继续把两条入口的薄编排统一下沉，但这不是方案 A 路由安全性的前置条件。
 - CLI daemon 线上协议与行为不变。
 
 ### 5.3 Cloud worker 生命周期
@@ -277,13 +284,15 @@ type Coordinator interface {
 
 - runtime 级 provider 只允许 `anthropic | openai`。
 - API key/base URL 由 server 运维配置提供，不允许 workspace/agent 覆盖 key。
-- agent 保留 model/thinking 选择，但必须通过 provider 对应的服务端白名单验证。
+- 首版每个 provider 只公开并接受其 `DEFAULT_MODEL`；未来扩展 model/thinking 选择时必须通过服务端显式 allowlist 验证。
 - `server/runtime/api` 不再依赖 key 前缀/model 名称猜 provider；Cloud executor 必须显式传 `Provider`。
 - 任何 provider/model 错误都只在当前 Cloud runtime 上失败。不设置 SDK `FallbackModel`，以免引入另一层隐式降级语义。
 
 ## 6. 安全与工作目录
 
-Cloud runtime 不得在当前 SDK 的宿主直执行模式下上线。生产启用前必须完成：
+当前首版只允许 text-only Cloud runtime：executor 固定关闭 SDK 默认工具，因而没有
+shell、文件系统、宿主环境或网络工具入口。以下要求是“工具型 Cloud runtime”的生产
+启用门禁，而不是 text-only 模式的启动前提：
 
 1. 每个 task 独立工作目录，路径必须位于 `CHIMII_CLOUD_RUNTIME_WORK_ROOT/<workspace>/<task>`。
 2. 工具执行始终经过可注入 `SandboxExecutor`，不得由 `tools.Bash` 直接 `exec.Command("bash", "-c", ...)`。
@@ -296,7 +305,10 @@ Cloud runtime 不得在当前 SDK 的宿主直执行模式下上线。生产启�
 9. `PermissionModeBypassPermissions` 不得用于 Cloud production executor；即使上层已校验，底层工具仍需实施沙箱约束。
 10. `local_directory` 资源只能绑定 CLI runtime。Cloud runtime 仅处理 server 能够在沙箱中拉取的 repo/project 资源。
 
-上述任一门禁未完成时，`CHIMII_CLOUD_RUNTIME_ENABLED=true` 必须启动失败，而不是记录 warning 后继续。
+上述任一门禁未完成时不得把 Cloud executor 切换为 tool-capable。text-only 模式可以
+在 Cloud 开关打开时运行，但必须保持 `DisableDefaultTools=true`，并在 UI/文档中明确
+不能检查或修改仓库。未来若增加 tool-mode 配置，门禁不完整时 server 必须启动失败，
+不能只记录 warning。
 
 ## 7. API 与前端
 
@@ -360,7 +372,7 @@ cloud_runtime_timeout
 
 ## 9. 观测与计费
 
-- 现有 `runtime_mode` 指标不足以区分 Fleet CLI 与 SDK Cloud；所有 runtime/task 指标新增低基数 label `execution_type=cli|cloud`。
+- 现有 `runtime_mode` 指标不足以区分 Fleet CLI 与 SDK Cloud；为 runtime/task 指标新增低基数 label `execution_type=cli|cloud` 属于上线观测剩余项。
 - Cloud usage 沿用 `task_usage` 持久化，provider/model/token/cost 从 SDK result 映射。
 - 费用归属由 `execution_type` 决定：CLI 为用户 CLI 账号；Cloud 为 Chimii 托管账号。一个 task 只能出现一种归属。
 - 日志包含 `runtime_id/task_id/execution_type/provider/model`，不包含 API key、完整 prompt 或未脱敏 tool 输入。
@@ -368,14 +380,14 @@ cloud_runtime_timeout
 
 ## 10. 实施分阶段
 
-### Phase 0：纠正执行边界
+### Phase 0：纠正执行边界（已完成）
 
 - 删除 `server/pkg/agent/openagent.go` 及其 daemon backend 测试。
 - 从 `agent.New()`、`SupportedTypes`、launch header、custom runtime 列表中移除 `openagent`。
 - 新 migration 将已有 `runtime_profile.protocol_family='openagent'` 设为 `enabled=false`，然后用新的 NOT VALID CHECK 禁止新增 `openagent`；不修改已发布的 migration 233。
 - 保留 `server/runtime` module，但在 Cloud production gate 完成前不接入任务执行。
 
-### Phase 1：配置与控制面
+### Phase 1：配置与控制面（已完成）
 
 - 新增严格 `runtimeconfig`、`.env.example` 文档和 `/api/config` capability。
 - 新增 `execution_type`、backfill 和 concurrent index。
@@ -383,27 +395,27 @@ cloud_runtime_timeout
 - Cloud runtime CRUD 和 provider 白名单。
 - agent create/update 校验 runtime 是否被当前部署启用。
 
-### Phase 2：SDK 生产化
+### Phase 2：SDK 生产化（text-only 已完成，工具模式待安全门禁）
 
 - 实现 `SessionStore`、恢复、增量持久化与 crash test。
-- 将 tool 执行抽象为 fail-closed `SandboxExecutor`。
-- 补齐路径越界、symlink、env、network、resource limit 安全测试。
+- text-only executor 固定禁用默认 tool；tool-capable 版本仍需抽象 fail-closed `SandboxExecutor`。
+- 工具模式仍需补齐路径越界、symlink、env、network、resource limit 安全测试。
 - 完成 Anthropic/OpenAI 显式 provider 和错误分类。
 
-### Phase 3：任务执行面
+### Phase 3：任务执行面（text-only 已完成）
 
-- 从 daemon handler 抽取 `taskexecution.Coordinator`。
+- 已实现内部 Coordinator 并复用 `TaskService`；未使用 loopback HTTP。
 - 实现 Cloud worker pool、取消、优雅关机、usage/message adapter。
-- 实现 repo/workdir 准备与跨租户隔离。
-- 跑通 issue/chat/autopilot/quick-create 四类 task。
+- 已实现 UUID scope 的私有 workdir；repo checkout 与仓库工具访问留给 sandbox 阶段。
+- issue/chat/autopilot/quick-create 均可进入文本执行；quick-create 返回建议内容，不伪称已创建 issue。
 
-### Phase 4：前端与运维
+### Phase 4：前端与运维（核心 UI 已完成，观测/runbook 待续）
 
 - Runtime 创建类型选择、agent picker、切换会话提示。
 - onboarding 使用 server default，CLI 保持默认。
 - 指标、dashboard、容量告警、费用告警和 runbook。
 
-### Phase 5：canary
+### Phase 5：canary（待真实 provider 集成验证后执行）
 
 - 先仅内部 workspace，再按 workspace allowlist 开放。
 - 分 provider 设置任务/日费用上限。
@@ -442,7 +454,7 @@ cloud_runtime_timeout
 ### 发布前验证
 
 ```bash
-(cd server && go test ./internal/runtimeconfig ./internal/cloudruntime ./internal/taskexecution)
+(cd server && go test ./internal/runtimeconfig ./internal/cloudruntime ./internal/handler)
 (cd server/runtime && go test ./...)
 (cd server && go test ./internal/handler ./internal/service ./pkg/agent)
 pnpm typecheck
@@ -454,16 +466,25 @@ make check
 
 ## 12. 上线验收标准
 
+### 12.1 当前 text-only Cloud 版本
+
 1. 不配置任何新 env 时，系统行为与现在一致：CLI-only、daemon + `pkg/agent`。
 2. 启用 Cloud 后，CLI runtime 和 Cloud runtime 可在同一 workspace 并存，agent 可显式选择任一类型。
 3. 任何 task 的 `execution_type` 在整个生命周期内不变。
 4. 代码库中不存在 Cloud -> CLI 或 CLI -> Cloud fallback 分支。
 5. daemon 不链接/创建 `server/runtime/agent` 实例；API server Cloud worker 不创建 `pkg/agent` backend。
-6. Anthropic/OpenAI 均完成 stream、tool、cancel、usage、session resume 集成测试。
+6. Anthropic/OpenAI 使用显式 provider 配置；完成 message、cancel、usage、session resume 的单元/服务集成测试，真实账号 smoke test 在 canary 前单独执行。
 7. Cloud session 能够跨 API server 副本恢复，不依赖本地 JSONL 文件。
-8. sandbox escape 测试全部通过，tool 进程不可读取 server 密钥或其他 task 目录。
+8. SDK 默认工具全部关闭；Cloud 进程没有宿主 shell/文件工具入口，UI 明示 text-only 能力。
 9. 现有 Fleet 云节点仍按 CLI runtime 执行，不被 SDK worker claim。
-10. UI/API/metrics 都能区分 placement (`runtime_mode`) 和执行类型 (`execution_type`)。
+10. UI/API 能区分 placement (`runtime_mode`) 和执行类型 (`execution_type`)；生产 canary 前补齐 metrics 的 `execution_type` label。
+
+### 12.2 未来 tool-capable Cloud 附加门禁
+
+1. Anthropic/OpenAI 均完成真实 stream、tool、cancel、usage、session resume 集成测试。
+2. sandbox escape 测试全部通过，tool 进程不可读取 server 密钥或其他 task 目录。
+3. repo checkout、egress、资源限制和进程组取消均在 API server 进程外 fail-closed。
+4. 只有满足以上条件的部署才能启用工具模式；不能通过降级到宿主直执行绕过门禁。
 
 ## 13. 需要同步的主要文件
 
@@ -472,7 +493,7 @@ make check
 | 配置 | `.env.example`, `server/cmd/server/router.go`, `server/internal/handler/config.go`, `packages/core/config/` |
 | 数据库 | `server/migrations/`, `server/pkg/db/queries/runtime.sql`, `server/pkg/db/queries/agent.sql`, sqlc generated files |
 | 边界纠正 | `server/pkg/agent/openagent.go`, `server/pkg/agent/agent.go`, migration 233 的后续迁移 |
-| 任务编排 | `server/internal/handler/daemon.go`, `server/internal/service/task.go`, 新 `server/internal/taskexecution/` |
+| 任务编排 | `server/internal/handler/daemon.go`, `server/internal/handler/cloud_execution.go`, `server/internal/service/task.go` |
 | Cloud SDK | `server/runtime/`, 新 `server/internal/cloudruntime/` |
 | 现有 Fleet | `server/internal/cloudruntime/` -> `server/internal/cloudfleet/`, `server/internal/handler/cloud_runtime.go` |
 | 前端 | `packages/core/types/agent.ts`, `packages/core/runtimes/`, `packages/views/runtimes/`, `packages/views/agents/`, onboarding |

@@ -10,7 +10,8 @@ dist
 out
 build
 bin
-docs/
+docs/*
+!docs/runtime-execution-types.md
 dist-electron
 *.tsbuildinfo
 # Build Studio uses `build` as a product-domain source directory. Keep these

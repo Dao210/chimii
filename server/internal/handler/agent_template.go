@@ -223,6 +223,9 @@ func (h *Handler) CreateAgentFromTemplate(w http.ResponseWriter, r *http.Request
 		writeError(w, http.StatusForbidden, "this runtime is private; only its owner or a workspace admin can create agents on it")
 		return
 	}
+	if !h.requireRuntimeExecutionAvailable(w, runtime) {
+		return
+	}
 
 	// Resolve invocation permission (MUL-3963) — mirrors CreateAgent so the
 	// two entry points can't drift. permission_mode is authoritative when

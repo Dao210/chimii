@@ -22,6 +22,16 @@ import {
   type RuntimeMachine,
 } from "../../../runtimes/components/runtime-machines";
 import { Label } from "@chimii/ui/components/ui/label";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@chimii/ui/components/ui/alert-dialog";
 import { CHIP_CLASS } from "./chip";
 import { useT } from "../../../i18n";
 
@@ -62,6 +72,7 @@ export function RuntimePicker({
   const { t } = useT("agents");
   const [open, setOpen] = useState(false);
   const [filter, setFilter] = useState<Filter>("mine");
+  const [pendingRuntimeId, setPendingRuntimeId] = useState<string | null>(null);
   // Level 2 target. `null` shows the machine list; a machine id shows that
   // machine's runtimes. Falls back to the machine list at render time when
   // the id no longer resolves (e.g. the daemon was GC'd over WS).
@@ -221,7 +232,23 @@ export function RuntimePicker({
 
   const select = async (id: string) => {
     setOpen(false);
-    if (id !== value) await onChange(id);
+    if (id === value) return;
+
+    const target = runtimes.find((runtime) => runtime.id === id);
+    const currentExecutionType = selected?.execution_type ?? "cli";
+    const targetExecutionType = target?.execution_type ?? "cli";
+    if (selected && currentExecutionType !== targetExecutionType) {
+      setPendingRuntimeId(id);
+      return;
+    }
+
+    await onChange(id);
+  };
+
+  const confirmExecutionTypeSwitch = async () => {
+    const id = pendingRuntimeId;
+    setPendingRuntimeId(null);
+    if (id) await onChange(id);
   };
 
   const drilled = machineId
@@ -381,7 +408,7 @@ export function RuntimePicker({
               <span className="min-w-0 flex-1 truncate text-sm font-medium">
                 {label}
               </span>
-              {rt.runtime_mode === "cloud" && (
+              {rt.execution_type === "cloud" && (
                 <span className="shrink-0 rounded bg-info/10 px-1 text-[10px] font-medium text-info">
                   {t(($) => $.create_dialog.runtime_cloud_badge)}
                 </span>
@@ -426,7 +453,9 @@ export function RuntimePicker({
                   <span className="truncate text-sm font-medium">
                     {machine.title}
                   </span>
-                  {machine.mode === "cloud" && (
+                  {machine.runtimes.some(
+                    (runtime) => runtime.execution_type === "cloud",
+                  ) && (
                     <span className="shrink-0 rounded bg-info/10 px-1 text-[10px] font-medium text-info">
                       {t(($) => $.create_dialog.runtime_cloud_badge)}
                     </span>
@@ -480,17 +509,64 @@ export function RuntimePicker({
     </PropertyPicker>
   );
 
+  const confirmation = (
+    <AlertDialog
+      open={pendingRuntimeId !== null}
+      onOpenChange={(next) => {
+        if (!next) setPendingRuntimeId(null);
+      }}
+    >
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>
+            {t(($) => $.inspector.runtime_execution_switch_title)}
+          </AlertDialogTitle>
+          <AlertDialogDescription>
+            {t(($) => $.inspector.runtime_execution_switch_description)}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>
+            {t(($) => $.inspector.runtime_execution_switch_cancel)}
+          </AlertDialogCancel>
+          <AlertDialogAction
+            onClick={() => {
+              void confirmExecutionTypeSwitch();
+            }}
+          >
+            {t(($) => $.inspector.runtime_execution_switch_confirm)}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+
   if (variant === "field") {
-    if (!showLabel) return picker;
+    if (!showLabel) {
+      return (
+        <>
+          {picker}
+          {confirmation}
+        </>
+      );
+    }
     return (
-      <div className="flex min-w-0 flex-col">
-        <Label>{t(($) => $.inspector.prop_runtime)}</Label>
-        {picker}
-      </div>
+      <>
+        <div className="flex min-w-0 flex-col">
+          <Label>{t(($) => $.inspector.prop_runtime)}</Label>
+          {picker}
+        </div>
+        {confirmation}
+      </>
     );
   }
 
-  return picker;
+  return (
+    <>
+      {picker}
+      {confirmation}
+    </>
+  );
 }
 
 function FilterButton({

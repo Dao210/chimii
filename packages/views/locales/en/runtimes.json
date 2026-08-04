@@ -1,7 +1,7 @@
 {
   "page": {
     "title": "Runtimes",
-    "tagline": "Machines and cloud workers running CLI sessions for your agents.",
+    "tagline": "CLI machines and managed Cloud SDK runtimes for your agents.",
     "learn_more": "Learn more →",
     "connect_remote": "Add a computer",
     "search_placeholder": "Search runtimes…",
@@ -209,9 +209,9 @@
     "create_agent": "Create an agent"
   },
   "cloud_runtime": {
-    "action": "Cloud Runtime",
-    "title": "Cloud Runtime",
-    "description": "Launch a managed cloud node and watch its Fleet status.",
+    "action": "Cloud CLI machine",
+    "title": "Cloud CLI machines",
+    "description": "Launch a managed cloud machine that runs the daemon and CLI providers, and watch its Fleet status.",
     "create_title": "New node",
     "create_hint": "Choose a name, instance type, and disk size. Fleet applies the rest.",
     "nodes_title": "Fleet nodes",
@@ -247,6 +247,21 @@
       "instance_type_required": "Instance type is required",
       "disk_size_invalid": "Disk size must be a positive integer"
     }
+  },
+  "managed_cloud_runtime": {
+    "action": "Create Cloud runtime",
+    "title": "Create Cloud runtime",
+    "description": "Run this agent inside Chimii with a managed Anthropic or OpenAI connection. This release is text-only: host shell and filesystem tools are disabled, and sessions never fall back to CLI.",
+    "provider": "Provider",
+    "name": "Name",
+    "name_placeholder": "Optional display name",
+    "visibility": "Access",
+    "private": "Private — only me and workspace admins",
+    "public": "Workspace — all members can bind agents",
+    "cancel": "Cancel",
+    "create": "Create runtime",
+    "toast_created": "Cloud runtime created",
+    "toast_create_failed": "Failed to create Cloud runtime"
   },
   "update": {
     "cli_version_label": "CLI Version:",

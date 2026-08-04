@@ -169,6 +169,9 @@ func (h *Handler) resolveBuilderRuntime(w http.ResponseWriter, r *http.Request, 
 		writeError(w, http.StatusForbidden, "this runtime is private; only its owner or a workspace admin can use it")
 		return db.AgentRuntime{}, false
 	}
+	if !h.requireRuntimeExecutionAvailable(w, runtime) {
+		return db.AgentRuntime{}, false
+	}
 	if runtime.Status != "online" {
 		writeError(w, http.StatusConflict, fmt.Sprintf("runtime must be online to %s an agent builder session", verb))
 		return db.AgentRuntime{}, false

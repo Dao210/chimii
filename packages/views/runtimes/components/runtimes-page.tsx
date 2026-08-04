@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuthStore } from "@chimii/core/auth";
+import { useConfigStore } from "@chimii/core/config";
 import { useWorkspaceId } from "@chimii/core/hooks";
 import { useWorkspacePaths } from "@chimii/core/paths";
 import { agentTaskSnapshotOptions } from "@chimii/core/agents";
@@ -28,6 +29,7 @@ import { PageHeader } from "../../layout/page-header";
 import { AppLink } from "../../navigation";
 import { ConnectRemoteDialog } from "./connect-remote-dialog";
 import { CloudRuntimeDialog } from "./cloud-runtime-dialog";
+import { ManagedCloudRuntimeDialog } from "./managed-cloud-runtime-dialog";
 import { ProviderLogo } from "./provider-logo";
 import { buildWorkloadIndex, RuntimeList } from "./runtime-list";
 import { pendingRuntimeFromProfile } from "./pending-runtime";
@@ -71,6 +73,11 @@ export function RuntimesPage({
   const qc = useQueryClient();
   const [showConnectDialog, setShowConnectDialog] = useState(false);
   const [showCloudRuntimeDialog, setShowCloudRuntimeDialog] = useState(false);
+  const [showManagedCloudRuntimeDialog, setShowManagedCloudRuntimeDialog] =
+    useState(false);
+  const managedCloudRuntimeEnabled = useConfigStore((state) =>
+    state.runtimeEnabledTypes.includes("cloud"),
+  );
 
   const { data: runtimes = [], isLoading: runtimesLoading } = useQuery(
     runtimeListOptions(wsId),
@@ -140,6 +147,8 @@ export function RuntimesPage({
         onConnectRemote={() => setShowConnectDialog(true)}
         cloudRuntimeEnabled={cloudRuntimeEnabled}
         onOpenCloudRuntime={() => setShowCloudRuntimeDialog(true)}
+        managedCloudRuntimeEnabled={managedCloudRuntimeEnabled}
+        onCreateManagedCloudRuntime={() => setShowManagedCloudRuntimeDialog(true)}
       />
 
       {showEmpty ? (
@@ -171,6 +180,11 @@ export function RuntimesPage({
       )}
       {cloudRuntimeEnabled && showCloudRuntimeDialog && (
         <CloudRuntimeDialog onClose={() => setShowCloudRuntimeDialog(false)} />
+      )}
+      {managedCloudRuntimeEnabled && showManagedCloudRuntimeDialog && (
+        <ManagedCloudRuntimeDialog
+          onClose={() => setShowManagedCloudRuntimeDialog(false)}
+        />
       )}
     </div>
   );
@@ -208,11 +222,15 @@ function PageHeaderBar({
   onConnectRemote,
   cloudRuntimeEnabled,
   onOpenCloudRuntime,
+  managedCloudRuntimeEnabled,
+  onCreateManagedCloudRuntime,
 }: {
   totalCount: number;
   onConnectRemote: () => void;
   cloudRuntimeEnabled: boolean;
   onOpenCloudRuntime: () => void;
+  managedCloudRuntimeEnabled: boolean;
+  onCreateManagedCloudRuntime: () => void;
 }) {
   const { t, i18n } = useT("runtimes");
   return (
@@ -227,6 +245,13 @@ function PageHeaderBar({
       }}
       actions={
         <>
+          {managedCloudRuntimeEnabled && (
+            <CollectionPageHeaderAction
+              icon={Cloud}
+              label={t(($) => $.managed_cloud_runtime.action)}
+              onClick={onCreateManagedCloudRuntime}
+            />
+          )}
           {cloudRuntimeEnabled && (
             <CollectionPageHeaderAction
               icon={Cloud}

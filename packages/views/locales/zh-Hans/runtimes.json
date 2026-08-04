@@ -1,7 +1,7 @@
 {
   "page": {
     "title": "运行时",
-    "tagline": "为智能体跑 CLI 会话的机器和云端 worker。",
+    "tagline": "为智能体提供 CLI 机器与托管的 Cloud SDK 运行时。",
     "learn_more": "了解更多 →",
     "connect_remote": "添加电脑",
     "search_placeholder": "搜索运行时...",
@@ -197,9 +197,9 @@
     "create_agent": "创建智能体"
   },
   "cloud_runtime": {
-    "action": "云端运行时",
-    "title": "云端运行时",
-    "description": "创建托管云端节点，并查看它的 Fleet 状态。",
+    "action": "云端 CLI 机器",
+    "title": "云端 CLI 机器",
+    "description": "创建运行 daemon 与 CLI provider 的托管云端机器，并查看它的 Fleet 状态。",
     "create_title": "新节点",
     "create_hint": "只需要填写名称、实例规格和磁盘大小，其余配置由 Fleet 默认处理。",
     "nodes_title": "Fleet 节点",
@@ -235,6 +235,21 @@
       "instance_type_required": "实例规格不能为空",
       "disk_size_invalid": "磁盘大小必须是正整数"
     }
+  },
+  "managed_cloud_runtime": {
+    "action": "创建 Cloud runtime",
+    "title": "创建 Cloud runtime",
+    "description": "由 Chimii 托管的 Anthropic 或 OpenAI 连接执行。当前版本仅支持文本执行，宿主 shell 与文件系统工具均已禁用，且会话不会回退到 CLI runtime。",
+    "provider": "Provider",
+    "name": "名称",
+    "name_placeholder": "可选显示名称",
+    "visibility": "访问范围",
+    "private": "私有 — 仅自己和工作区管理员",
+    "public": "工作区 — 所有成员都可绑定智能体",
+    "cancel": "取消",
+    "create": "创建 runtime",
+    "toast_created": "Cloud runtime 已创建",
+    "toast_create_failed": "创建 Cloud runtime 失败"
   },
   "update": {
     "cli_version_label": "CLI 版本：",

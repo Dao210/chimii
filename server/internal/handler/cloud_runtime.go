@@ -10,9 +10,9 @@ import (
 	"net/http"
 	"net/url"
 
-	chimw "github.com/go-chi/chi/v5/middleware"
-	"github.com/chimii-ai/chimii/server/internal/cloudruntime"
+	"github.com/chimii-ai/chimii/server/internal/cloudfleet"
 	"github.com/chimii-ai/chimii/server/internal/logger"
+	chimw "github.com/go-chi/chi/v5/middleware"
 )
 
 const maxCloudRuntimeRequestBodySize = 1 << 20
@@ -129,7 +129,7 @@ func (h *Handler) proxyCloudRuntime(w http.ResponseWriter, r *http.Request, meth
 		query = r.URL.Query()
 	}
 
-	resp, err := h.CloudRuntime.Do(r.Context(), cloudruntime.Request{
+	resp, err := h.CloudRuntime.Do(r.Context(), cloudfleet.Request{
 		Method:    method,
 		Path:      path,
 		Query:     query,
@@ -175,7 +175,7 @@ func cloudRuntimeRequestID(r *http.Request) string {
 	return chimw.GetReqID(r.Context())
 }
 
-func writeCloudRuntimeResponse(w http.ResponseWriter, resp *cloudruntime.Response) {
+func writeCloudRuntimeResponse(w http.ResponseWriter, resp *cloudfleet.Response) {
 	if requestID := resp.Header.Get("X-Request-ID"); requestID != "" {
 		w.Header().Set("X-Request-ID", requestID)
 	}
@@ -195,9 +195,9 @@ func writeCloudRuntimeResponse(w http.ResponseWriter, resp *cloudruntime.Respons
 
 func writeCloudRuntimeError(w http.ResponseWriter, r *http.Request, err error) {
 	switch {
-	case errors.Is(err, cloudruntime.ErrDisabled):
+	case errors.Is(err, cloudfleet.ErrDisabled):
 		writeError(w, http.StatusServiceUnavailable, "cloud runtime is not configured")
-	case errors.Is(err, cloudruntime.ErrInvalidBaseURL):
+	case errors.Is(err, cloudfleet.ErrInvalidBaseURL):
 		writeError(w, http.StatusServiceUnavailable, "cloud runtime is misconfigured")
 	case errors.Is(err, context.DeadlineExceeded):
 		writeError(w, http.StatusGatewayTimeout, "cloud runtime request timed out")

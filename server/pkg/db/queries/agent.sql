@@ -703,7 +703,8 @@ RETURNING *;
 -- Tasks that ended in a known "poisoned" terminal state are also excluded
 -- here so even auto-retry does not inherit the bad session. The daemon
 -- classifies these failures (iteration_limit, agent_fallback_message,
--- api_invalid_request, codex_semantic_inactivity, agent_error.context_overflow)
+-- api_invalid_request, codex_semantic_inactivity, agent_error.context_overflow,
+-- cloud_session_corrupt)
 -- when it detects either an agent fallback marker in the output, an upstream
 -- API 400 that means the conversation history itself is unprocessable
 -- (oversized image, malformed base64, etc.), a Codex semantic inactivity
@@ -758,7 +759,7 @@ WHERE (
     status = 'completed'
     OR (
       status = 'failed'
-      AND COALESCE(failure_reason, '') NOT IN ('iteration_limit', 'agent_fallback_message', 'api_invalid_request', 'codex_semantic_inactivity', 'agent_error.context_overflow')
+      AND COALESCE(failure_reason, '') NOT IN ('iteration_limit', 'agent_fallback_message', 'api_invalid_request', 'codex_semantic_inactivity', 'agent_error.context_overflow', 'cloud_session_corrupt')
       AND NOT (COALESCE(error, '') ILIKE '%400%' AND COALESCE(error, '') ILIKE '%invalid_request_error%')
       AND NOT (COALESCE(error, '') ILIKE '%image dimensions exceed max allowed size%' AND COALESCE(error, '') ILIKE '%image.source.base64.data%')
     )

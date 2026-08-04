@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/chimii-ai/chimii/server/internal/analytics"
+	sdkcloudruntime "github.com/chimii-ai/chimii/server/internal/cloudruntime"
 	"github.com/chimii-ai/chimii/server/internal/daemonws"
 	"github.com/chimii-ai/chimii/server/internal/events"
 	"github.com/chimii-ai/chimii/server/internal/handler"
@@ -415,6 +416,28 @@ func main() {
 
 	// Start background workers.
 	sweepCtx, sweepCancel := context.WithCancel(context.Background())
+	var cloudRuntimeDone chan struct{}
+	runtimeCfg := h.RuntimeExecutionConfig()
+	enabledCloudProviders := make([]string, 0, len(runtimeCfg.CloudProviders))
+	if runtimeCfg.CloudEnabled {
+		for provider := range runtimeCfg.CloudProviders {
+			enabledCloudProviders = append(enabledCloudProviders, provider)
+		}
+	}
+	if err := queries.ReconcileCloudAgentRuntimeStatuses(ctx, enabledCloudProviders); err != nil {
+		slog.Error("unable to reconcile Cloud runtime availability", "error", err)
+		os.Exit(1)
+	}
+	if runtimeCfg.CloudEnabled {
+		sessionStore := sdkcloudruntime.NewSessionStore(queries)
+		executor := sdkcloudruntime.NewExecutor(runtimeCfg, sessionStore)
+		manager := sdkcloudruntime.NewManager(runtimeCfg, queries, h, executor)
+		cloudRuntimeDone = make(chan struct{})
+		go func() {
+			defer close(cloudRuntimeDone)
+			manager.Run(sweepCtx)
+		}()
+	}
 	autopilotCtx, autopilotCancel := context.WithCancel(context.Background())
 	taskSvc := service.NewTaskService(queries, pool, hub, bus, daemonWakeup)
 	taskSvc.Analytics = analyticsClient
@@ -540,6 +563,13 @@ func main() {
 	// final batch of queued heartbeat bumps.
 	sweepCancel()
 	heartbeatScheduler.Stop()
+	if cloudRuntimeDone != nil {
+		select {
+		case <-cloudRuntimeDone:
+		case <-time.After(12 * time.Second):
+			slog.Warn("cloud runtime worker did not exit within shutdown timeout")
+		}
+	}
 	if h.WebhookDeliveryWorker != nil && !h.WebhookDeliveryWorker.WaitWithTimeout(5*time.Second) {
 		slog.Warn("webhook delivery worker did not exit within shutdown timeout")
 	}

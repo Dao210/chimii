@@ -10,9 +10,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-chi/chi/v5"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/chimii-ai/chimii/server/internal/analytics"
 	obsmetrics "github.com/chimii-ai/chimii/server/internal/metrics"
 	"github.com/chimii-ai/chimii/server/internal/middleware"
@@ -20,6 +17,9 @@ import (
 	"github.com/chimii-ai/chimii/server/internal/util"
 	db "github.com/chimii-ai/chimii/server/pkg/db/generated"
 	"github.com/chimii-ai/chimii/server/pkg/protocol"
+	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 // chatSessionTitleMaxLen caps the rename input. Long enough to fit a
@@ -623,6 +623,21 @@ func (h *Handler) DeleteChatSession(w http.ResponseWriter, r *http.Request) {
 	// this sweep (see LockChatSessionForTask in chat.sql).
 	if err := qtx.DeleteChatDraftRestoresBySession(r.Context(), session.ID); err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to delete chat session draft restores")
+		return
+	}
+	cloudSessionContext := uuidToString(session.ID)
+	if err := qtx.DeleteCloudRuntimeSessionMessagesByContext(r.Context(), db.DeleteCloudRuntimeSessionMessagesByContextParams{
+		ContextType: "chat",
+		ContextID:   cloudSessionContext,
+	}); err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to delete chat cloud runtime session messages")
+		return
+	}
+	if err := qtx.DeleteCloudRuntimeSessionsByContext(r.Context(), db.DeleteCloudRuntimeSessionsByContextParams{
+		ContextType: "chat",
+		ContextID:   cloudSessionContext,
+	}); err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to delete chat cloud runtime sessions")
 		return
 	}
 

@@ -8,6 +8,7 @@ import (
 
 	"github.com/chimii-ai/chimii/server/internal/analytics"
 	"github.com/chimii-ai/chimii/server/internal/featureflags"
+	"github.com/chimii-ai/chimii/server/internal/runtimeconfig"
 )
 
 type AppConfig struct {
@@ -70,6 +71,9 @@ type AppConfig struct {
 	// to render an explicit operator-actionable unavailable state.
 	BuildAvailable         bool   `json:"build_available"`
 	BuildUnavailableReason string `json:"build_unavailable_reason,omitempty"`
+	// Runtime exposes execution-plane capabilities only. Provider credentials,
+	// base URLs, limits, and work-root paths are deliberately absent.
+	Runtime runtimeconfig.PublicConfig `json:"runtime"`
 }
 
 // GetConfig is mounted on the public (unauthenticated) route group because
@@ -88,6 +92,7 @@ func (h *Handler) GetConfig(w http.ResponseWriter, r *http.Request) {
 	config.CdnSigned = h.CFSigner != nil
 	config.DaemonServerURL, config.DaemonAppURL = daemonSetupURLsFromEnv()
 	config.VCSIntegrationAvailable = h.cfg.VCSIntegrationEnabled
+	config.Runtime = h.cfg.RuntimeConfig.Public()
 	config.BuildAvailable = h.LLM != nil && h.LLM.Enabled()
 	if !config.BuildAvailable {
 		config.BuildUnavailableReason = "llm_not_configured"
