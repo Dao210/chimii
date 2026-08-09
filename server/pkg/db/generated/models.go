@@ -262,21 +262,42 @@ type AutopilotTrigger struct {
 	PublishedByID pgtype.UUID `json:"published_by_id"`
 }
 
-type BuildCreation struct {
+type BrickInventory struct {
 	ID             pgtype.UUID        `json:"id"`
 	WorkspaceID    pgtype.UUID        `json:"workspace_id"`
-	CreatorUserID  pgtype.UUID        `json:"creator_user_id"`
-	ChildProfileID pgtype.UUID        `json:"child_profile_id"`
-	SessionID      pgtype.UUID        `json:"session_id"`
-	Title          string             `json:"title"`
-	Prompt         string             `json:"prompt"`
-	Archetype      string             `json:"archetype"`
-	Recipe         []byte             `json:"recipe"`
-	BuildPlan      []byte             `json:"build_plan"`
-	Validation     []byte             `json:"validation"`
-	LdrawMpd       string             `json:"ldraw_mpd"`
+	CatalogVersion string             `json:"catalog_version"`
+	Configured     bool               `json:"configured"`
+	Revision       int32              `json:"revision"`
+	UpdatedBy      pgtype.UUID        `json:"updated_by"`
 	CreatedAt      pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
+}
+
+type BrickInventoryItem struct {
+	InventoryID pgtype.UUID        `json:"inventory_id"`
+	PartKey     string             `json:"part_key"`
+	ColorCode   int32              `json:"color_code"`
+	Quantity    int32              `json:"quantity"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+}
+
+type BuildCreation struct {
+	ID                pgtype.UUID        `json:"id"`
+	WorkspaceID       pgtype.UUID        `json:"workspace_id"`
+	CreatorUserID     pgtype.UUID        `json:"creator_user_id"`
+	ChildProfileID    pgtype.UUID        `json:"child_profile_id"`
+	SessionID         pgtype.UUID        `json:"session_id"`
+	Title             string             `json:"title"`
+	Prompt            string             `json:"prompt"`
+	Archetype         string             `json:"archetype"`
+	Recipe            []byte             `json:"recipe"`
+	BuildPlan         []byte             `json:"build_plan"`
+	Validation        []byte             `json:"validation"`
+	LdrawMpd          string             `json:"ldraw_mpd"`
+	CreatedAt         pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt         pgtype.Timestamptz `json:"updated_at"`
+	InventorySnapshot []byte             `json:"inventory_snapshot"`
 }
 
 type BuildJob struct {
@@ -294,20 +315,21 @@ type BuildJob struct {
 }
 
 type BuildSession struct {
-	ID              pgtype.UUID        `json:"id"`
-	WorkspaceID     pgtype.UUID        `json:"workspace_id"`
-	CreatorUserID   pgtype.UUID        `json:"creator_user_id"`
-	ChildProfileID  pgtype.UUID        `json:"child_profile_id"`
-	ClientRequestID pgtype.UUID        `json:"client_request_id"`
-	Prompt          string             `json:"prompt"`
-	Status          string             `json:"status"`
-	Question        []byte             `json:"question"`
-	Answers         []byte             `json:"answers"`
-	CreationID      pgtype.UUID        `json:"creation_id"`
-	Error           pgtype.Text        `json:"error"`
-	ExpiresAt       pgtype.Timestamptz `json:"expires_at"`
-	CreatedAt       pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt       pgtype.Timestamptz `json:"updated_at"`
+	ID                pgtype.UUID        `json:"id"`
+	WorkspaceID       pgtype.UUID        `json:"workspace_id"`
+	CreatorUserID     pgtype.UUID        `json:"creator_user_id"`
+	ChildProfileID    pgtype.UUID        `json:"child_profile_id"`
+	ClientRequestID   pgtype.UUID        `json:"client_request_id"`
+	Prompt            string             `json:"prompt"`
+	Status            string             `json:"status"`
+	Question          []byte             `json:"question"`
+	Answers           []byte             `json:"answers"`
+	CreationID        pgtype.UUID        `json:"creation_id"`
+	Error             pgtype.Text        `json:"error"`
+	ExpiresAt         pgtype.Timestamptz `json:"expires_at"`
+	CreatedAt         pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt         pgtype.Timestamptz `json:"updated_at"`
+	InventorySnapshot []byte             `json:"inventory_snapshot"`
 }
 
 type ChannelBindingToken struct {

@@ -89,7 +89,7 @@ const completeBuildSession = `-- name: CompleteBuildSession :one
 UPDATE build_session
 SET status = 'completed', creation_id = $1, error = NULL, updated_at = now()
 WHERE id = $2
-RETURNING id, workspace_id, creator_user_id, child_profile_id, client_request_id, prompt, status, question, answers, creation_id, error, expires_at, created_at, updated_at
+RETURNING id, workspace_id, creator_user_id, child_profile_id, client_request_id, prompt, status, question, answers, creation_id, error, expires_at, created_at, updated_at, inventory_snapshot
 `
 
 type CompleteBuildSessionParams struct {
@@ -115,6 +115,7 @@ func (q *Queries) CompleteBuildSession(ctx context.Context, arg CompleteBuildSes
 		&i.ExpiresAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.InventorySnapshot,
 	)
 	return i, err
 }
@@ -147,26 +148,27 @@ func (q *Queries) CountActiveBuildSessions(ctx context.Context, arg CountActiveB
 const createBuildCreation = `-- name: CreateBuildCreation :one
 INSERT INTO build_creation (
     workspace_id, creator_user_id, child_profile_id, session_id, title, prompt, archetype,
-    recipe, build_plan, validation, ldraw_mpd
+    recipe, build_plan, validation, ldraw_mpd, inventory_snapshot
 ) VALUES (
     $1, $2, $3, $4, $5, $6, $7,
-    $8, $9, $10, $11
+    $8, $9, $10, $11, $12
 )
-RETURNING id, workspace_id, creator_user_id, child_profile_id, session_id, title, prompt, archetype, recipe, build_plan, validation, ldraw_mpd, created_at, updated_at
+RETURNING id, workspace_id, creator_user_id, child_profile_id, session_id, title, prompt, archetype, recipe, build_plan, validation, ldraw_mpd, created_at, updated_at, inventory_snapshot
 `
 
 type CreateBuildCreationParams struct {
-	WorkspaceID    pgtype.UUID `json:"workspace_id"`
-	CreatorUserID  pgtype.UUID `json:"creator_user_id"`
-	ChildProfileID pgtype.UUID `json:"child_profile_id"`
-	SessionID      pgtype.UUID `json:"session_id"`
-	Title          string      `json:"title"`
-	Prompt         string      `json:"prompt"`
-	Archetype      string      `json:"archetype"`
-	Recipe         []byte      `json:"recipe"`
-	BuildPlan      []byte      `json:"build_plan"`
-	Validation     []byte      `json:"validation"`
-	LdrawMpd       string      `json:"ldraw_mpd"`
+	WorkspaceID       pgtype.UUID `json:"workspace_id"`
+	CreatorUserID     pgtype.UUID `json:"creator_user_id"`
+	ChildProfileID    pgtype.UUID `json:"child_profile_id"`
+	SessionID         pgtype.UUID `json:"session_id"`
+	Title             string      `json:"title"`
+	Prompt            string      `json:"prompt"`
+	Archetype         string      `json:"archetype"`
+	Recipe            []byte      `json:"recipe"`
+	BuildPlan         []byte      `json:"build_plan"`
+	Validation        []byte      `json:"validation"`
+	LdrawMpd          string      `json:"ldraw_mpd"`
+	InventorySnapshot []byte      `json:"inventory_snapshot"`
 }
 
 func (q *Queries) CreateBuildCreation(ctx context.Context, arg CreateBuildCreationParams) (BuildCreation, error) {
@@ -182,6 +184,7 @@ func (q *Queries) CreateBuildCreation(ctx context.Context, arg CreateBuildCreati
 		arg.BuildPlan,
 		arg.Validation,
 		arg.LdrawMpd,
+		arg.InventorySnapshot,
 	)
 	var i BuildCreation
 	err := row.Scan(
@@ -199,16 +202,18 @@ func (q *Queries) CreateBuildCreation(ctx context.Context, arg CreateBuildCreati
 		&i.LdrawMpd,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.InventorySnapshot,
 	)
 	return i, err
 }
 
 const createBuildSession = `-- name: CreateBuildSession :one
 INSERT INTO build_session (
-    workspace_id, creator_user_id, child_profile_id, client_request_id, prompt, status, question, answers
+    workspace_id, creator_user_id, child_profile_id, client_request_id, prompt, status, question, answers,
+    inventory_snapshot
 ) VALUES (
     $1, $2, $3, $4, $5, $6,
-    $7, COALESCE($8, '{}'::jsonb)
+    $7, COALESCE($8, '{}'::jsonb), $9
 )
 ON CONFLICT (
     workspace_id,
@@ -217,18 +222,19 @@ ON CONFLICT (
     (COALESCE(child_profile_id, '00000000-0000-0000-0000-000000000000'::uuid))
 )
 DO UPDATE SET updated_at = build_session.updated_at
-RETURNING id, workspace_id, creator_user_id, child_profile_id, client_request_id, prompt, status, question, answers, creation_id, error, expires_at, created_at, updated_at
+RETURNING id, workspace_id, creator_user_id, child_profile_id, client_request_id, prompt, status, question, answers, creation_id, error, expires_at, created_at, updated_at, inventory_snapshot
 `
 
 type CreateBuildSessionParams struct {
-	WorkspaceID     pgtype.UUID `json:"workspace_id"`
-	CreatorUserID   pgtype.UUID `json:"creator_user_id"`
-	ChildProfileID  pgtype.UUID `json:"child_profile_id"`
-	ClientRequestID pgtype.UUID `json:"client_request_id"`
-	Prompt          string      `json:"prompt"`
-	Status          string      `json:"status"`
-	Question        []byte      `json:"question"`
-	Answers         interface{} `json:"answers"`
+	WorkspaceID       pgtype.UUID `json:"workspace_id"`
+	CreatorUserID     pgtype.UUID `json:"creator_user_id"`
+	ChildProfileID    pgtype.UUID `json:"child_profile_id"`
+	ClientRequestID   pgtype.UUID `json:"client_request_id"`
+	Prompt            string      `json:"prompt"`
+	Status            string      `json:"status"`
+	Question          []byte      `json:"question"`
+	Answers           interface{} `json:"answers"`
+	InventorySnapshot []byte      `json:"inventory_snapshot"`
 }
 
 func (q *Queries) CreateBuildSession(ctx context.Context, arg CreateBuildSessionParams) (BuildSession, error) {
@@ -241,6 +247,7 @@ func (q *Queries) CreateBuildSession(ctx context.Context, arg CreateBuildSession
 		arg.Status,
 		arg.Question,
 		arg.Answers,
+		arg.InventorySnapshot,
 	)
 	var i BuildSession
 	err := row.Scan(
@@ -258,6 +265,7 @@ func (q *Queries) CreateBuildSession(ctx context.Context, arg CreateBuildSession
 		&i.ExpiresAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.InventorySnapshot,
 	)
 	return i, err
 }
@@ -310,7 +318,7 @@ func (q *Queries) FailBuildSession(ctx context.Context, arg FailBuildSessionPara
 }
 
 const getBuildCreationInWorkspace = `-- name: GetBuildCreationInWorkspace :one
-SELECT id, workspace_id, creator_user_id, child_profile_id, session_id, title, prompt, archetype, recipe, build_plan, validation, ldraw_mpd, created_at, updated_at FROM build_creation
+SELECT id, workspace_id, creator_user_id, child_profile_id, session_id, title, prompt, archetype, recipe, build_plan, validation, ldraw_mpd, created_at, updated_at, inventory_snapshot FROM build_creation
 WHERE id = $1
   AND workspace_id = $2
   AND creator_user_id = $3
@@ -347,12 +355,13 @@ func (q *Queries) GetBuildCreationInWorkspace(ctx context.Context, arg GetBuildC
 		&i.LdrawMpd,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.InventorySnapshot,
 	)
 	return i, err
 }
 
 const getBuildSessionByClientRequest = `-- name: GetBuildSessionByClientRequest :one
-SELECT id, workspace_id, creator_user_id, child_profile_id, client_request_id, prompt, status, question, answers, creation_id, error, expires_at, created_at, updated_at FROM build_session
+SELECT id, workspace_id, creator_user_id, child_profile_id, client_request_id, prompt, status, question, answers, creation_id, error, expires_at, created_at, updated_at, inventory_snapshot FROM build_session
 WHERE workspace_id = $1
   AND creator_user_id = $2
   AND client_request_id = $3
@@ -392,12 +401,13 @@ func (q *Queries) GetBuildSessionByClientRequest(ctx context.Context, arg GetBui
 		&i.ExpiresAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.InventorySnapshot,
 	)
 	return i, err
 }
 
 const getBuildSessionForWorker = `-- name: GetBuildSessionForWorker :one
-SELECT id, workspace_id, creator_user_id, child_profile_id, client_request_id, prompt, status, question, answers, creation_id, error, expires_at, created_at, updated_at FROM build_session WHERE id = $1
+SELECT id, workspace_id, creator_user_id, child_profile_id, client_request_id, prompt, status, question, answers, creation_id, error, expires_at, created_at, updated_at, inventory_snapshot FROM build_session WHERE id = $1
 `
 
 func (q *Queries) GetBuildSessionForWorker(ctx context.Context, id pgtype.UUID) (BuildSession, error) {
@@ -418,12 +428,13 @@ func (q *Queries) GetBuildSessionForWorker(ctx context.Context, id pgtype.UUID) 
 		&i.ExpiresAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.InventorySnapshot,
 	)
 	return i, err
 }
 
 const getBuildSessionInWorkspace = `-- name: GetBuildSessionInWorkspace :one
-SELECT id, workspace_id, creator_user_id, child_profile_id, client_request_id, prompt, status, question, answers, creation_id, error, expires_at, created_at, updated_at FROM build_session
+SELECT id, workspace_id, creator_user_id, child_profile_id, client_request_id, prompt, status, question, answers, creation_id, error, expires_at, created_at, updated_at, inventory_snapshot FROM build_session
 WHERE id = $1
   AND workspace_id = $2
   AND creator_user_id = $3
@@ -460,12 +471,13 @@ func (q *Queries) GetBuildSessionInWorkspace(ctx context.Context, arg GetBuildSe
 		&i.ExpiresAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.InventorySnapshot,
 	)
 	return i, err
 }
 
 const listBuildCreations = `-- name: ListBuildCreations :many
-SELECT id, workspace_id, creator_user_id, child_profile_id, session_id, title, prompt, archetype, recipe, build_plan, validation, ldraw_mpd, created_at, updated_at FROM build_creation
+SELECT id, workspace_id, creator_user_id, child_profile_id, session_id, title, prompt, archetype, recipe, build_plan, validation, ldraw_mpd, created_at, updated_at, inventory_snapshot FROM build_creation
 WHERE workspace_id = $1
   AND creator_user_id = $2
   AND ($3::uuid IS NULL OR child_profile_id = $3)
@@ -511,6 +523,7 @@ func (q *Queries) ListBuildCreations(ctx context.Context, arg ListBuildCreations
 			&i.LdrawMpd,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.InventorySnapshot,
 		); err != nil {
 			return nil, err
 		}
@@ -600,7 +613,7 @@ WHERE id = $2
   AND ($5::uuid IS NULL OR child_profile_id = $5)
   AND expires_at > now()
   AND status = 'clarifying'
-RETURNING id, workspace_id, creator_user_id, child_profile_id, client_request_id, prompt, status, question, answers, creation_id, error, expires_at, created_at, updated_at
+RETURNING id, workspace_id, creator_user_id, child_profile_id, client_request_id, prompt, status, question, answers, creation_id, error, expires_at, created_at, updated_at, inventory_snapshot
 `
 
 type SubmitBuildSessionAnswersParams struct {
@@ -635,6 +648,7 @@ func (q *Queries) SubmitBuildSessionAnswers(ctx context.Context, arg SubmitBuild
 		&i.ExpiresAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.InventorySnapshot,
 	)
 	return i, err
 }

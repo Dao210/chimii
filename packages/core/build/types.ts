@@ -1,13 +1,46 @@
 export interface BuildPartSpec {
   id: string;
   name: string;
+  category: string;
   ldraw_id: string;
+  ldraw_status?: string;
+  license?: string;
   studs_x: number;
   studs_z: number;
   plates_y: number;
   quantity: number;
   origin_y_offset_ldu?: number;
   origin_center_z_offset_ldu?: number;
+}
+
+export interface BuildCatalogColor {
+  code: number;
+  name: string;
+  hex: string;
+}
+
+export interface BuildCatalog {
+  catalog_version: string;
+  parts: BuildPartSpec[];
+  colors: BuildCatalogColor[];
+}
+
+export interface BrickInventoryItem {
+  part_id: string;
+  color: number;
+  quantity: number;
+}
+
+export interface BrickInventory {
+  configured: boolean;
+  catalog_version: string;
+  revision: number;
+  items: BrickInventoryItem[];
+  updated_at?: string;
+}
+
+export interface BrickInventorySnapshot extends BrickInventory {
+  content_hash: string;
 }
 
 export interface BuildPlacement {
@@ -65,6 +98,7 @@ export interface BuildPlan {
   steps: BuildStep[];
   parts: Record<string, BuildPartSpec>;
   validation: BuildValidationReport;
+  inventory?: BrickInventorySnapshot;
   content_hash: string;
   generated_at: string;
 }

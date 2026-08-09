@@ -8,6 +8,7 @@ import "time"
 type PartSpec struct {
 	ID                     string `json:"id"`
 	Name                   string `json:"name"`
+	Category               string `json:"category"`
 	LDrawID                string `json:"ldraw_id"`
 	LDrawStatus            string `json:"ldraw_status"`
 	License                string `json:"license"`
@@ -17,6 +18,25 @@ type PartSpec struct {
 	Quantity               int    `json:"quantity"`
 	OriginYOffsetLDU       int    `json:"origin_y_offset_ldu,omitempty"`
 	OriginCenterZOffsetLDU int    `json:"origin_center_z_offset_ldu,omitempty"`
+}
+
+// InventoryItem is one user-owned part/color combination. Quantity is an
+// upper bound for a single generated model, not a permanently consumed count.
+type InventoryItem struct {
+	PartID   string `json:"part_id"`
+	Color    int    `json:"color"`
+	Quantity int    `json:"quantity"`
+}
+
+// InventorySnapshot freezes the physical inventory semantics for one build.
+// Configured=false deliberately means every catalog part/color is available
+// without a quantity limit.
+type InventorySnapshot struct {
+	Configured     bool            `json:"configured"`
+	CatalogVersion string          `json:"catalog_version"`
+	Revision       int32           `json:"revision"`
+	Items          []InventoryItem `json:"items"`
+	ContentHash    string          `json:"content_hash"`
 }
 
 type Placement struct {
@@ -84,6 +104,7 @@ type BuildPlan struct {
 	Steps                []BuildStep         `json:"steps"`
 	Parts                map[string]PartSpec `json:"parts"`
 	Validation           ValidationReport    `json:"validation"`
+	Inventory            InventorySnapshot   `json:"inventory"`
 	ContentHash          string              `json:"content_hash"`
 	GeneratedAt          time.Time           `json:"generated_at"`
 }

@@ -31,7 +31,7 @@ import { DaemonSettingsTab } from "./components/daemon-settings-tab";
 import { UpdatesSettingsTab } from "./components/updates-settings-tab";
 import { WorkspaceRouteLayout } from "./components/workspace-route-layout";
 import { DesktopRouteErrorPage } from "./components/route-error-page";
-import { BuildPage, CreationsPage } from "@chimii/views/build";
+import { BlockPage, BuildPage, CreationsPage } from "@chimii/views/build";
 import { CreationDetailPage } from "./pages/creation-detail-page";
 
 /**
@@ -133,6 +133,11 @@ export const appRoutes: RouteObject[] = [
             path: "creations",
             element: <CreationsPage />,
             handle: { title: "Creations" },
+          },
+          {
+            path: "block",
+            element: <BlockPage />,
+            handle: { title: "Brick Box" },
           },
           {
             path: "creations/:id",

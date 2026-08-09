@@ -3,6 +3,7 @@ import { api } from "../api";
 import { useWorkspaceId } from "../hooks";
 import { buildKeys } from "./queries";
 import { generateUUID } from "../utils";
+import type { BrickInventoryItem } from "./types";
 
 export function useCreateBuildSession() {
   const workspaceId = useWorkspaceId();
@@ -21,5 +22,26 @@ export function useSubmitBuildAnswers() {
     mutationFn: ({ sessionId, answers }: { sessionId: string; answers: Record<string, string> }) =>
       api.submitBuildAnswers(sessionId, answers),
     onSuccess: (session) => queryClient.setQueryData(buildKeys.session(workspaceId, session.id), session),
+  });
+}
+
+export function useSaveBrickInventory() {
+  const workspaceId = useWorkspaceId();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ expectedRevision, items }: { expectedRevision: number; items: BrickInventoryItem[] }) =>
+      api.saveBrickInventory(expectedRevision, items),
+    onSuccess: (inventory) => queryClient.setQueryData(buildKeys.inventory(workspaceId), inventory),
+    onError: () => queryClient.invalidateQueries({ queryKey: buildKeys.inventory(workspaceId) }),
+  });
+}
+
+export function useResetBrickInventory() {
+  const workspaceId = useWorkspaceId();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (expectedRevision: number) => api.resetBrickInventory(expectedRevision),
+    onSuccess: (inventory) => queryClient.setQueryData(buildKeys.inventory(workspaceId), inventory),
+    onError: () => queryClient.invalidateQueries({ queryKey: buildKeys.inventory(workspaceId) }),
   });
 }

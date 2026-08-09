@@ -2,6 +2,7 @@
   "nav": {
     "build": "创作",
     "creations": "我的作品",
+    "block": "积木块",
     "inbox": "收件箱",
     "chat": "聊天",
     "my_issues": "我的 issue",

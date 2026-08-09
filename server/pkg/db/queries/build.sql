@@ -6,10 +6,11 @@ SELECT pg_advisory_xact_lock(hashtextextended(@actor_key::text, 0));
 
 -- name: CreateBuildSession :one
 INSERT INTO build_session (
-    workspace_id, creator_user_id, child_profile_id, client_request_id, prompt, status, question, answers
+    workspace_id, creator_user_id, child_profile_id, client_request_id, prompt, status, question, answers,
+    inventory_snapshot
 ) VALUES (
     @workspace_id, @creator_user_id, sqlc.narg(child_profile_id), @client_request_id, @prompt, @status,
-    sqlc.narg(question), COALESCE(sqlc.narg(answers), '{}'::jsonb)
+    sqlc.narg(question), COALESCE(sqlc.narg(answers), '{}'::jsonb), @inventory_snapshot
 )
 ON CONFLICT (
     workspace_id,
@@ -130,10 +131,10 @@ RETURNING *;
 -- name: CreateBuildCreation :one
 INSERT INTO build_creation (
     workspace_id, creator_user_id, child_profile_id, session_id, title, prompt, archetype,
-    recipe, build_plan, validation, ldraw_mpd
+    recipe, build_plan, validation, ldraw_mpd, inventory_snapshot
 ) VALUES (
     @workspace_id, @creator_user_id, sqlc.narg(child_profile_id), @session_id, @title, @prompt, @archetype,
-    @recipe, @build_plan, @validation, @ldraw_mpd
+    @recipe, @build_plan, @validation, @ldraw_mpd, @inventory_snapshot
 )
 RETURNING *;
 

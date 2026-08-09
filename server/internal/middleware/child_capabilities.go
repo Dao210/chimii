@@ -39,6 +39,10 @@ func childBuildCapabilityAllowed(method, path string) bool {
 		return false
 	}
 	switch segments[0] {
+	case "catalog":
+		return len(segments) == 1 && method == http.MethodGet
+	case "inventory":
+		return len(segments) == 1 && (method == http.MethodGet || method == http.MethodPut || method == http.MethodDelete)
 	case "sessions":
 		return (len(segments) == 1 && method == http.MethodPost) ||
 			(len(segments) == 2 && segments[1] != "" && method == http.MethodGet) ||

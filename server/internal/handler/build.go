@@ -136,11 +136,25 @@ func (h *Handler) CreateBuildSession(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
+	if err := qtx.LockBrickInventoryForWorkspace(r.Context(), uuidToString(workspaceID)); err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to snapshot brick inventory")
+		return
+	}
+	inventory, err := loadBrickInventorySnapshot(r.Context(), qtx, workspaceID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to snapshot brick inventory")
+		return
+	}
+	inventoryJSON, err := json.Marshal(inventory)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to snapshot brick inventory")
+		return
+	}
 
 	session, err := qtx.CreateBuildSession(r.Context(), db.CreateBuildSessionParams{
 		WorkspaceID: workspaceID, CreatorUserID: userID, ChildProfileID: childProfileID,
 		ClientRequestID: clientRequestID, Prompt: req.Prompt,
-		Status: status, Question: questionJSON, Answers: []byte(`{}`),
+		Status: status, Question: questionJSON, Answers: []byte(`{}`), InventorySnapshot: inventoryJSON,
 	})
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to start build")

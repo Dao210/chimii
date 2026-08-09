@@ -1,16 +1,53 @@
 import { z } from "zod";
-import type { BuildCreation, BuildCreationList, BuildSession } from "./types";
+import type {
+  BrickInventory,
+  BuildCatalog,
+  BuildCreation,
+  BuildCreationList,
+  BuildSession,
+} from "./types";
 
 const PartSpecSchema = z.looseObject({
   id: z.string(),
   name: z.string(),
+  category: z.string().catch("brick"),
   ldraw_id: z.string(),
+  ldraw_status: z.string().optional(),
+  license: z.string().optional(),
   studs_x: z.number().int().positive(),
   studs_z: z.number().int().positive(),
   plates_y: z.number().int().positive(),
   quantity: z.number().int().nonnegative(),
   origin_y_offset_ldu: z.number().int().optional(),
   origin_center_z_offset_ldu: z.number().int().optional(),
+});
+
+const InventoryItemSchema = z.looseObject({
+  part_id: z.string(),
+  color: z.number().int(),
+  quantity: z.number().int().positive(),
+});
+
+export const BrickInventorySchema = z.looseObject({
+  configured: z.boolean(),
+  catalog_version: z.string(),
+  revision: z.number().int().nonnegative(),
+  items: z.array(InventoryItemSchema),
+  updated_at: z.string().optional(),
+});
+
+const BrickInventorySnapshotSchema = BrickInventorySchema.extend({
+  content_hash: z.string(),
+});
+
+export const BuildCatalogSchema = z.looseObject({
+  catalog_version: z.string(),
+  parts: z.array(PartSpecSchema),
+  colors: z.array(z.looseObject({
+    code: z.number().int(),
+    name: z.string(),
+    hex: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+  })),
 });
 
 const PlacementSchema = z.looseObject({
@@ -62,6 +99,7 @@ const BuildPlanSchema = z.looseObject({
   })),
   parts: z.record(z.string(), PartSpecSchema),
   validation: BuildValidationSchema,
+  inventory: BrickInventorySnapshotSchema.optional(),
   content_hash: z.string(),
   generated_at: z.string(),
 });
@@ -131,3 +169,12 @@ export const EMPTY_BUILD_CREATION: BuildCreation = {
 };
 
 export const EMPTY_BUILD_CREATIONS: BuildCreationList = { creations: [] };
+
+export const EMPTY_BUILD_CATALOG: BuildCatalog = { catalog_version: "", parts: [], colors: [] };
+
+export const EMPTY_BRICK_INVENTORY: BrickInventory = {
+  configured: false,
+  catalog_version: "",
+  revision: 0,
+  items: [],
+};

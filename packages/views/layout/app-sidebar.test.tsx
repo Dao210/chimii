@@ -117,9 +117,17 @@ vi.mock("@chimii/core/paths", async (importOriginal) => ({
   // nav to derive each item's icon from its href) stay intact; only the
   // workspace/context hooks below are stubbed to control routes in tests.
   ...(await importOriginal<typeof import("@chimii/core/paths")>()),
-  paths: { workspace: (slug: string) => ({ issues: () => `/${slug}/issues` }) },
+  paths: { workspace: (slug: string) => ({
+    build: () => `/${slug}/build`,
+    creations: () => `/${slug}/creations`,
+    block: () => `/${slug}/block`,
+    issues: () => `/${slug}/issues`,
+  }) },
   useCurrentWorkspace: () => ({ id: "ws-1", name: "Acme", slug: "acme" }),
   useWorkspacePaths: () => ({
+    build: () => "/acme/build",
+    creations: () => "/acme/creations",
+    block: () => "/acme/block",
     inbox: () => "/acme/inbox",
     chat: () => "/acme/chat",
     myIssues: () => "/acme/my-issues",
@@ -231,6 +239,17 @@ describe("PinRow", () => {
       "true",
     );
     expect(container.querySelector('button[data-href="/acme/issues"]')).not.toHaveAttribute("data-active");
+  });
+});
+
+describe("brick inventory navigation", () => {
+  it("places Brick Box immediately after My Creations", () => {
+    const { container } = render(<AppSidebar />);
+    const hrefs = Array.from(container.querySelectorAll("button[data-href]"))
+      .map((element) => element.getAttribute("data-href"));
+    const creationsIndex = hrefs.indexOf("/acme/creations");
+    expect(creationsIndex).toBeGreaterThanOrEqual(0);
+    expect(hrefs[creationsIndex + 1]).toBe("/acme/block");
   });
 });
 

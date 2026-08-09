@@ -61,22 +61,37 @@ func containsAny(value string, words ...string) bool {
 	return false
 }
 
-func Compile(recipe AssemblyRecipe, now time.Time) (CompileResult, error) {
-	placements := placementsFor(recipe)
-	report := Validate(placements)
+func Compile(recipe AssemblyRecipe, inventory InventorySnapshot, now time.Time) (CompileResult, error) {
+	placements := resolveInventoryColors(placementsFor(recipe), inventory)
+	report := Validate(placements, inventory)
 	plan := BuildPlan{
 		Version: 1, KitID: StarterKitID, CatalogVersion: CatalogVersion,
 		ModuleLibraryVersion: ModuleLibraryVersion, CompilerVersion: CompilerVersion,
 		ValidatorVersion: ValidatorVersion, Title: recipe.Title, Prompt: recipe.Prompt,
 		Archetype: recipe.Archetype, Placements: placements, Connections: deriveConnections(placements),
 		Steps: deriveSteps(placements, report.StepCount), Parts: StarterCatalog,
-		Validation: report, GeneratedAt: now.UTC(),
+		Validation: report, Inventory: inventory, GeneratedAt: now.UTC(),
 	}
 	plan.ContentHash = physicalContentHash(plan)
 	if !report.Buildable {
 		return CompileResult{Recipe: recipe, Plan: plan}, fmt.Errorf("compiled plan is not buildable: %v", report.Issues)
 	}
 	return CompileResult{Recipe: recipe, Plan: plan, MPD: ExportMPD(plan)}, nil
+}
+
+// AvailableArchetypes reports which deterministic construction grammars can
+// be completed with a frozen inventory. Unlimited mode enables every grammar;
+// configured mode accounts for both part shape and per-color quantities.
+func AvailableArchetypes(inventory InventorySnapshot) []string {
+	archetypes := []string{"racer", "flyer", "robot", "creature"}
+	available := make([]string, 0, len(archetypes))
+	for _, archetype := range archetypes {
+		placements := resolveInventoryColors(placementsFor(AssemblyRecipe{Archetype: archetype}), inventory)
+		if Validate(placements, inventory).Buildable {
+			available = append(available, archetype)
+		}
+	}
+	return available
 }
 
 func deriveConnections(placements []Placement) []Connection {
@@ -177,10 +192,12 @@ func placementsFor(recipe AssemblyRecipe) []Placement {
 	return p
 }
 
-func Validate(placements []Placement) ValidationReport {
+func Validate(placements []Placement, inventory InventorySnapshot) ValidationReport {
 	report := ValidationReport{Buildable: true, UsedParts: map[string]int{}, PartCount: len(placements)}
 	maxStep := 0
 	occupied := map[[3]int]string{}
+	usedInventory := map[inventoryKey]int{}
+	availableInventory := inventory.quantities()
 	for _, p := range placements {
 		spec, ok := StarterCatalog[p.PartID]
 		if !ok {
@@ -191,8 +208,10 @@ func Validate(placements []Placement) ValidationReport {
 			report.Issues = append(report.Issues, ValidationIssue{Code: "unknown_color", Message: "颜色不在套装目录中", PlacementID: p.ID})
 		}
 		report.UsedParts[p.PartID]++
-		if report.UsedParts[p.PartID] > spec.Quantity {
-			report.Issues = append(report.Issues, ValidationIssue{Code: "inventory_exceeded", Message: "使用数量超过套装库存", PlacementID: p.ID})
+		key := inventoryKey{partID: p.PartID, color: p.Color}
+		usedInventory[key]++
+		if inventory.Configured && usedInventory[key] > availableInventory[key] {
+			report.Issues = append(report.Issues, ValidationIssue{Code: "inventory_exceeded", Message: "使用数量超过我的积木块库存", PlacementID: p.ID})
 		}
 		if p.Y < 0 || p.X < -16 || p.X > 16 || p.Z < -16 || p.Z > 16 {
 			report.Issues = append(report.Issues, ValidationIssue{Code: "out_of_bounds", Message: "零件超出安全搭建范围", PlacementID: p.ID})

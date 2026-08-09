@@ -1,5 +1,6 @@
 import {
   Blocks,
+  Boxes,
   Images,
   Inbox,
   MessageSquare,
@@ -35,6 +36,7 @@ import { resolveRouteIconName, type RouteIconName } from "@chimii/core/paths";
  */
 export const ROUTE_ICON_COMPONENTS: Record<RouteIconName, LucideIcon> = {
   Blocks,
+  Boxes,
   Images,
   Inbox,
   MessageSquare,

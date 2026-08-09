@@ -15,6 +15,10 @@ func TestChildCapabilitiesAllowsOnlyChildProductSurface(t *testing.T) {
 		want   int
 	}{
 		{http.MethodPost, "/api/build/sessions", http.StatusNoContent},
+		{http.MethodGet, "/api/build/catalog", http.StatusNoContent},
+		{http.MethodGet, "/api/build/inventory", http.StatusNoContent},
+		{http.MethodPut, "/api/build/inventory", http.StatusNoContent},
+		{http.MethodDelete, "/api/build/inventory", http.StatusNoContent},
 		{http.MethodGet, "/api/build/creations/one", http.StatusNoContent},
 		{http.MethodGet, "/api/build/creations/one/export.mpd", http.StatusNoContent},
 		{http.MethodPost, "/api/build/sessions/one/answers", http.StatusNoContent},

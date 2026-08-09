@@ -213,6 +213,15 @@ cleared_build_creations AS (
 cleared_build_sessions AS (
     DELETE FROM build_session WHERE workspace_id = $1
 ),
+cleared_brick_inventory_items AS (
+    DELETE FROM brick_inventory_item
+    WHERE inventory_id IN (
+        SELECT id FROM brick_inventory WHERE workspace_id = $1
+    )
+),
+cleared_brick_inventories AS (
+    DELETE FROM brick_inventory WHERE workspace_id = $1
+),
 cleared_child_sessions AS (
     DELETE FROM child_session WHERE workspace_id = $1
 ),

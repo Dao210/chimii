@@ -8,6 +8,7 @@ describe("paths.workspace(slug)", () => {
     expect(ws.root()).toBe("/acme/build");
     expect(ws.build()).toBe("/acme/build");
     expect(ws.creations()).toBe("/acme/creations");
+    expect(ws.block()).toBe("/acme/block");
     expect(ws.creationDetail("creation 1")).toBe(
       "/acme/creations/creation%201",
     );

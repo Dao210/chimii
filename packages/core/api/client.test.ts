@@ -70,6 +70,40 @@ describe("ApiClient pull-request response schema", () => {
 });
 
 describe("ApiClient Build Studio response schema", () => {
+  it("saves a versioned brick inventory", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({
+        configured: true,
+        catalog_version: "catalog-v1",
+        revision: 4,
+        items: [{ part_id: "brick-2x4", color: 4, quantity: 6 }],
+      }), { status: 200, headers: { "Content-Type": "application/json" } }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(new ApiClient("https://api.example.test").saveBrickInventory(3, [
+      { part_id: "brick-2x4", color: 4, quantity: 6 },
+    ])).resolves.toMatchObject({ configured: true, revision: 4 });
+    expect(JSON.parse(fetchMock.mock.calls[0]![1]?.body as string)).toEqual({
+      expected_revision: 3,
+      items: [{ part_id: "brick-2x4", color: 4, quantity: 6 }],
+    });
+  });
+
+  it("resets only the inventory revision the user saw", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({
+        configured: false, catalog_version: "catalog-v1", revision: 8, items: [],
+      }), { status: 200, headers: { "Content-Type": "application/json" } }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await new ApiClient("https://api.example.test").resetBrickInventory(7);
+
+    expect(fetchMock.mock.calls[0]![0].toString()).toContain("/api/build/inventory?expected_revision=7");
+    expect(fetchMock.mock.calls[0]![1]?.method).toBe("DELETE");
+  });
+
   it("sends a stable client request id for idempotent session creation", async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(JSON.stringify({}), {

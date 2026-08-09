@@ -10,11 +10,11 @@ func TestCompileStarterArchetypesAreBuildableAndDeterministic(t *testing.T) {
 	now := time.Date(2026, 8, 3, 8, 0, 0, 0, time.UTC)
 	for _, prompt := range []string{"会跑的红色小车", "有翅膀的蓝色小龙", "勇敢的机器人", "会摇尾巴的小狗"} {
 		recipe := PlanRecipe(prompt, nil)
-		first, err := Compile(recipe, now)
+		first, err := Compile(recipe, UnlimitedInventory(), now)
 		if err != nil {
 			t.Fatalf("Compile(%q): %v", prompt, err)
 		}
-		second, err := Compile(recipe, now)
+		second, err := Compile(recipe, UnlimitedInventory(), now)
 		if err != nil {
 			t.Fatalf("second Compile(%q): %v", prompt, err)
 		}
@@ -35,7 +35,7 @@ func TestValidateRejectsCollisionAndUnknownPart(t *testing.T) {
 		{ID: "one", PartID: "brick-2x2", Color: 4},
 		{ID: "two", PartID: "brick-2x2", Color: 4},
 		{ID: "three", PartID: "imaginary", Color: 4},
-	})
+	}, UnlimitedInventory())
 	if report.Buildable {
 		t.Fatal("expected invalid plan")
 	}
@@ -58,7 +58,7 @@ func TestQuestionForSkipsAlreadySpecificPrompt(t *testing.T) {
 }
 
 func TestRacerUsesOfficialCompatibleWheelHolderAndCenteredLDrawCoordinates(t *testing.T) {
-	result, err := Compile(PlanRecipe("一辆会跑的红色小车", nil), time.Unix(0, 0))
+	result, err := Compile(PlanRecipe("一辆会跑的红色小车", nil), UnlimitedInventory(), time.Unix(0, 0))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -77,11 +77,11 @@ func TestPhysicalContentHashIgnoresPresentationAndGenerationTime(t *testing.T) {
 	secondRecipe := firstRecipe
 	secondRecipe.Title = "另一个名字"
 	secondRecipe.Prompt = "同一结构的另一个说法"
-	first, err := Compile(firstRecipe, time.Unix(0, 0))
+	first, err := Compile(firstRecipe, UnlimitedInventory(), time.Unix(0, 0))
 	if err != nil {
 		t.Fatal(err)
 	}
-	second, err := Compile(secondRecipe, time.Unix(999, 0))
+	second, err := Compile(secondRecipe, UnlimitedInventory(), time.Unix(999, 0))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -90,5 +90,56 @@ func TestPhysicalContentHashIgnoresPresentationAndGenerationTime(t *testing.T) {
 	}
 	if len(first.Plan.Connections) == 0 || len(first.Plan.Steps) != first.Plan.Validation.StepCount {
 		t.Fatalf("plan graph incomplete: %#v", first.Plan)
+	}
+}
+
+func TestConfiguredInventoryRestrictsArchetypesAndReassignsColors(t *testing.T) {
+	unlimited, err := Compile(PlanRecipe("会摇尾巴的小狗", nil), UnlimitedInventory(), time.Unix(0, 0))
+	if err != nil {
+		t.Fatal(err)
+	}
+	counts := map[string]int{}
+	for _, placement := range unlimited.Plan.Placements {
+		counts[placement.PartID]++
+	}
+	items := make([]InventoryItem, 0, len(counts))
+	for partID, quantity := range counts {
+		items = append(items, InventoryItem{PartID: partID, Color: 1, Quantity: quantity})
+	}
+	inventory := NewInventorySnapshot(true, 1, items)
+	available := AvailableArchetypes(inventory)
+	if len(available) != 1 || available[0] != "creature" {
+		t.Fatalf("available archetypes = %#v, want creature", available)
+	}
+	result, err := Compile(PlanRecipe("会摇尾巴的小狗", nil), inventory, time.Unix(0, 0))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, placement := range result.Plan.Placements {
+		if placement.Color != 1 {
+			t.Fatalf("placement %s color = %d, want owned blue", placement.ID, placement.Color)
+		}
+	}
+	nextRevision, err := Compile(PlanRecipe("会摇尾巴的小狗", nil), NewInventorySnapshot(true, 2, items), time.Unix(0, 0))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Plan.ContentHash != nextRevision.Plan.ContentHash {
+		t.Fatal("inventory audit revision changed the physical content hash")
+	}
+}
+
+func TestEmptyConfiguredInventoryCannotBuildButUnlimitedCan(t *testing.T) {
+	recipe := PlanRecipe("勇敢的机器人", nil)
+	if _, err := Compile(recipe, UnlimitedInventory(), time.Unix(0, 0)); err != nil {
+		t.Fatalf("unlimited inventory should compile: %v", err)
+	}
+	configured := NewInventorySnapshot(true, 1, nil)
+	result, err := Compile(recipe, configured, time.Unix(0, 0))
+	if err == nil || result.Plan.Validation.Buildable {
+		t.Fatal("empty configured inventory should reject the plan")
+	}
+	if available := AvailableArchetypes(configured); len(available) != 0 {
+		t.Fatalf("empty inventory unexpectedly supports %#v", available)
 	}
 }

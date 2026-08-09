@@ -123,11 +123,21 @@ func (w *BuildWorker) ProcessNext(ctx context.Context) (bool, error) {
 	if len(session.Answers) > 0 {
 		_ = json.Unmarshal(session.Answers, &answers)
 	}
-	recipe, err := w.h.planBuildRecipe(ctx, session.Prompt, answers)
+	inventory := buildstudio.UnlimitedInventory()
+	if len(session.InventorySnapshot) > 0 {
+		var stored buildstudio.InventorySnapshot
+		if json.Unmarshal(session.InventorySnapshot, &stored) == nil {
+			if stored.CatalogVersion == "" && !stored.Configured {
+				stored = buildstudio.UnlimitedInventory()
+			}
+			inventory = stored
+		}
+	}
+	recipe, err := w.h.planBuildRecipe(ctx, session.Prompt, answers, inventory)
 	if err != nil {
 		return true, w.retry(ctx, job, fmt.Errorf("plan build intent: %w", err))
 	}
-	result, err := buildstudio.Compile(recipe, time.Now())
+	result, err := buildstudio.Compile(recipe, inventory, time.Now())
 	if err != nil {
 		return true, w.retry(ctx, job, err)
 	}
@@ -161,7 +171,7 @@ func (w *BuildWorker) ProcessNext(ctx context.Context) (bool, error) {
 	creation, err := qtx.CreateBuildCreation(ctx, db.CreateBuildCreationParams{
 		WorkspaceID: session.WorkspaceID, CreatorUserID: session.CreatorUserID, ChildProfileID: session.ChildProfileID, SessionID: session.ID,
 		Title: recipe.Title, Prompt: session.Prompt, Archetype: recipe.Archetype,
-		Recipe: recipeJSON, BuildPlan: planJSON, Validation: validationJSON, LdrawMpd: result.MPD,
+		Recipe: recipeJSON, BuildPlan: planJSON, Validation: validationJSON, LdrawMpd: result.MPD, InventorySnapshot: session.InventorySnapshot,
 	})
 	if err != nil {
 		_ = tx.Rollback(ctx)

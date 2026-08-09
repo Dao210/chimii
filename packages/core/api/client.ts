@@ -166,7 +166,14 @@ import type {
   CreateBillingPortalSessionResponse,
 } from "../types";
 import type { OnboardingCompletionPath } from "../onboarding/types";
-import type { BuildCreation, BuildCreationList, BuildSession } from "../build/types";
+import type {
+  BrickInventory,
+  BrickInventoryItem,
+  BuildCatalog,
+  BuildCreation,
+  BuildCreationList,
+  BuildSession,
+} from "../build/types";
 import type { ChildMode, ChildProfile, ChildProfileList, EnterChildModeResponse, ExitChildModeResponse } from "../child-mode/types";
 import {
   ChildModeSchema,
@@ -183,7 +190,11 @@ import {
 import {
   BuildCreationListSchema,
   BuildCreationSchema,
+  BuildCatalogSchema,
   BuildSessionSchema,
+  BrickInventorySchema,
+  EMPTY_BRICK_INVENTORY,
+  EMPTY_BUILD_CATALOG,
   EMPTY_BUILD_CREATION,
   EMPTY_BUILD_CREATIONS,
   EMPTY_BUILD_SESSION,
@@ -3088,6 +3099,37 @@ export class ApiClient {
   }
 
   // Build Studio
+  async getBuildCatalog(): Promise<BuildCatalog> {
+    const raw = await this.fetch<unknown>("/api/build/catalog");
+    return parseWithFallback(raw, BuildCatalogSchema, EMPTY_BUILD_CATALOG, {
+      endpoint: "GET /api/build/catalog",
+    });
+  }
+
+  async getBrickInventory(): Promise<BrickInventory> {
+    const raw = await this.fetch<unknown>("/api/build/inventory");
+    return parseWithFallback(raw, BrickInventorySchema, EMPTY_BRICK_INVENTORY, {
+      endpoint: "GET /api/build/inventory",
+    });
+  }
+
+  async saveBrickInventory(expectedRevision: number, items: BrickInventoryItem[]): Promise<BrickInventory> {
+    const raw = await this.fetch<unknown>("/api/build/inventory", {
+      method: "PUT",
+      body: JSON.stringify({ expected_revision: expectedRevision, items }),
+    });
+    return parseWithFallback(raw, BrickInventorySchema, EMPTY_BRICK_INVENTORY, {
+      endpoint: "PUT /api/build/inventory",
+    });
+  }
+
+  async resetBrickInventory(expectedRevision: number): Promise<BrickInventory> {
+    const raw = await this.fetch<unknown>(`/api/build/inventory?expected_revision=${encodeURIComponent(expectedRevision)}`, { method: "DELETE" });
+    return parseWithFallback(raw, BrickInventorySchema, EMPTY_BRICK_INVENTORY, {
+      endpoint: "DELETE /api/build/inventory",
+    });
+  }
+
   async createBuildSession(prompt: string, clientRequestId: string): Promise<BuildSession> {
     const raw = await this.fetch<unknown>("/api/build/sessions", {
       method: "POST",

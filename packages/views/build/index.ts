@@ -1,5 +1,6 @@
 export { BuildPage } from "./components/build-page";
 export { CreationsPage } from "./components/creations-page";
+export { BlockPage } from "./components/block-page";
 export { CreationDetailPage } from "./components/creation-detail-page";
 export { BuildModelViewer } from "./components/build-model-viewer";
 export { BuildResult } from "./components/build-result";

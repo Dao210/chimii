@@ -20,6 +20,7 @@ Return exactly one JSON object, with no markdown and no explanation:
 
 Rules:
 - Choose only one of the four archetypes.
+- The user message contains the inventory-compatible archetypes. Choose only from that list.
 - Acknowledge the child's idea in a joyful title written in the same language as the idea, at most 24 Unicode characters.
 - Features may only be selected from: rolling-base, driver-cabin, wide-wings, balanced-tail, friendly-face, strong-arms, stable-feet.
 - Never output part ids, coordinates, transformations, code, or free-form geometry.
@@ -31,20 +32,34 @@ type buildIntent struct {
 	Features  []string `json:"features"`
 }
 
-func (h *Handler) planBuildRecipe(ctx context.Context, prompt string, answers map[string]string) (buildstudio.AssemblyRecipe, error) {
+func (h *Handler) planBuildRecipe(ctx context.Context, prompt string, answers map[string]string, inventory buildstudio.InventorySnapshot) (buildstudio.AssemblyRecipe, error) {
 	if h.LLM == nil || !h.LLM.Enabled() {
 		return buildstudio.AssemblyRecipe{}, errors.New("build planner is not configured")
 	}
 	answerJSON, _ := json.Marshal(answers)
+	availableArchetypes := buildstudio.AvailableArchetypes(inventory)
+	if len(availableArchetypes) == 0 {
+		return buildstudio.AssemblyRecipe{}, errors.New("brick inventory cannot complete a supported construction")
+	}
 	requestCtx, cancel := context.WithTimeout(ctx, buildIntentTimeout)
 	defer cancel()
-	raw, err := h.LLM.GenerateText(requestCtx, "", buildIntentSystemPrompt, "Child idea: "+prompt+"\nClarifying answers: "+string(answerJSON))
+	raw, err := h.LLM.GenerateText(requestCtx, "", buildIntentSystemPrompt, "Inventory-compatible archetypes: "+strings.Join(availableArchetypes, ",")+"\nChild idea: "+prompt+"\nClarifying answers: "+string(answerJSON))
 	if err != nil {
 		return buildstudio.AssemblyRecipe{}, err
 	}
 	intent, err := parseBuildIntent(raw)
 	if err != nil {
 		return buildstudio.AssemblyRecipe{}, err
+	}
+	allowedByInventory := false
+	for _, archetype := range availableArchetypes {
+		if intent.Archetype == archetype {
+			allowedByInventory = true
+			break
+		}
+	}
+	if !allowedByInventory {
+		return buildstudio.AssemblyRecipe{}, errors.New("build intent does not fit the brick inventory")
 	}
 	recipe := buildstudio.PlanRecipe(prompt, answers)
 	recipe.Archetype = intent.Archetype

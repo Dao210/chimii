@@ -1093,6 +1093,10 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 			// validated construction plan. The worker persists progress in
 			// Postgres; clients poll the session while it is queued/generating.
 			r.Route("/api/build", func(r chi.Router) {
+				r.Get("/catalog", h.GetBuildCatalog)
+				r.Get("/inventory", h.GetBrickInventory)
+				r.Put("/inventory", h.PutBrickInventory)
+				r.Delete("/inventory", h.DeleteBrickInventory)
 				r.Post("/sessions", h.CreateBuildSession)
 				r.Get("/sessions/{id}", h.GetBuildSession)
 				r.Post("/sessions/{id}/answers", h.SubmitBuildAnswers)

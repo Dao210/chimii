@@ -2,6 +2,7 @@
   "nav": {
     "build": "Build",
     "creations": "Creations",
+    "block": "Brick Box",
     "inbox": "Inbox",
     "chat": "Chat",
     "my_issues": "My Issues",

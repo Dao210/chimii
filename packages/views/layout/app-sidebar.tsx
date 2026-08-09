@@ -98,6 +98,7 @@ const EMPTY_INBOX_SUMMARY: Awaited<ReturnType<typeof api.getInboxUnreadSummary>>
 type NavKey =
   | "build"
   | "creations"
+  | "block"
   | "inbox"
   | "chat"
   | "myIssues"
@@ -116,6 +117,7 @@ type NavKey =
 type NavLabelKey =
   | "build"
   | "creations"
+  | "block"
   | "inbox"
   | "chat"
   | "my_issues"
@@ -139,6 +141,7 @@ const personalNav: { key: NavKey; labelKey: NavLabelKey }[] = [
 const workspaceNav: { key: NavKey; labelKey: NavLabelKey }[] = [
   { key: "build", labelKey: "build" },
   { key: "creations", labelKey: "creations" },
+  { key: "block", labelKey: "block" },
   { key: "agents", labelKey: "agents" },
   { key: "squads", labelKey: "squads" },
 ];
@@ -611,7 +614,7 @@ export function AppSidebar({ topSlot, searchSlot, headerClassName, headerStyle }
             <SidebarGroupLabel>{t(($) => $.sidebar.workspace_group)}</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu className="gap-0.5">
-                {workspaceNav.filter((item) => parentModeReady || item.key === "build" || item.key === "creations").map((item) => {
+                {workspaceNav.filter((item) => parentModeReady || item.key === "build" || item.key === "creations" || item.key === "block").map((item) => {
                   const href = p[item.key]();
                   const Icon = routeIconForPath(href);
                   const isActive = !isActivePinnedRoute && isNavActive(pathname, href);

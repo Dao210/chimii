@@ -21,6 +21,7 @@
 /** Every icon name a nav page or a tab type-icon can resolve to. */
 export type RouteIconName =
   | "Blocks"
+  | "Boxes"
   | "Images"
   | "Inbox"
   | "MessageSquare"
@@ -48,6 +49,7 @@ export type RouteIconName =
 export type NavLabelKey =
   | "build"
   | "creations"
+  | "block"
   | "inbox"
   | "chat"
   | "my_issues"
@@ -65,6 +67,7 @@ export type NavLabelKey =
 export type WorkspacePageKey =
   | "build"
   | "creations"
+  | "block"
   | "inbox"
   | "chat"
   | "myIssues"
@@ -94,6 +97,7 @@ export interface WorkspacePage {
 export const WORKSPACE_PAGES: Record<WorkspacePageKey, WorkspacePage> = {
   build: { segment: "build", icon: "Blocks", navKey: "build" },
   creations: { segment: "creations", icon: "Images", navKey: "creations" },
+  block: { segment: "block", icon: "Boxes", navKey: "block" },
   inbox: { segment: "inbox", icon: "Inbox", navKey: "inbox" },
   chat: { segment: "chat", icon: "MessageSquare", navKey: "chat" },
   myIssues: { segment: "my-issues", icon: "CircleUser", navKey: "my_issues" },

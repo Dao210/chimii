@@ -2,6 +2,7 @@
   "nav": {
     "build": "만들기",
     "creations": "내 작품",
+    "block": "블록",
     "inbox": "인박스",
     "chat": "채팅",
     "my_issues": "내 이슈",
