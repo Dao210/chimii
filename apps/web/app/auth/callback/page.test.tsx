@@ -155,7 +155,7 @@ describe("CallbackPage", () => {
     ]);
     render(<CallbackPage />);
     await waitFor(() => {
-      expect(mockPush).toHaveBeenCalledWith(paths.workspace("acme").build());
+      expect(mockPush).toHaveBeenCalledWith(paths.workspace("acme").creations());
     });
     // Already-onboarded users skip the listMyInvitations check; new invites
     // surface in the sidebar instead of the wall.
@@ -321,7 +321,7 @@ describe("CallbackPage", () => {
     ]);
     render(<CallbackPage />);
     await waitFor(() => {
-      expect(mockPush).toHaveBeenCalledWith(paths.workspace("acme").build());
+      expect(mockPush).toHaveBeenCalledWith(paths.workspace("acme").creations());
     });
   });
 });

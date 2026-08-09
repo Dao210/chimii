@@ -7,5 +7,5 @@ export default async function WorkspaceIndexPage({
   params: Promise<{ workspaceSlug: string }>;
 }) {
   const { workspaceSlug } = await params;
-  redirect(paths.workspace(workspaceSlug).build());
+  redirect(paths.workspace(workspaceSlug).creations());
 }

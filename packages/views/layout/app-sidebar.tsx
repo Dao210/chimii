@@ -22,7 +22,6 @@ import {
   LogOut,
   Plus,
   Check,
-  SquarePen,
   X,
 } from "lucide-react";
 import { WorkspaceAvatar } from "../workspace/workspace-avatar";
@@ -31,8 +30,6 @@ import { Tooltip, TooltipTrigger, TooltipContent } from "@chimii/ui/components/u
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@chimii/ui/components/ui/collapsible";
 import { CappedNumberFlow } from "@chimii/ui/components/ui/number-flow";
 import { StatusIcon } from "../issues/components/status-icon";
-import { useIssueDraftStore } from "@chimii/core/issues/stores/draft-store";
-import { openCreateIssueWithPreference } from "@chimii/core/issues/stores/create-mode-store";
 import {
   Sidebar,
   SidebarContent,
@@ -61,9 +58,6 @@ import { workspaceListOptions, myInvitationListOptions, workspaceKeys } from "@c
 import { resolvePublicFileUrl } from "@chimii/core/workspace/avatar-url";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { inboxKeys, deduplicateInboxItems, inboxUnreadSummaryOptions, hasOtherWorkspaceUnread, unreadWorkspaceIds } from "@chimii/core/inbox/queries";
-import { chatSessionsOptions } from "@chimii/core/chat/queries";
-import { countUnreadChatMessages } from "@chimii/core/chat/unread";
-import { useChatStore } from "@chimii/core/chat";
 import { api, ApiError } from "@chimii/core/api";
 import { useModalStore } from "@chimii/core/modals";
 import { useConfigStore } from "@chimii/core/config";
@@ -76,11 +70,6 @@ import { useLogout } from "../auth";
 import { ProjectIcon } from "../projects/components/project-icon";
 import { routeIconForPath } from "./route-icon-components";
 import { useT } from "../i18n";
-import {
-  useShortcut,
-} from "@chimii/core/shortcuts";
-import { ShortcutKeycaps } from "../common/shortcut-keycaps";
-import { useAppForeground } from "../common/use-app-foreground";
 import { childModeOptions } from "@chimii/core/child-mode";
 import { ParentUnlockButton } from "../build";
 
@@ -145,32 +134,21 @@ type NavLabelKey =
 // always agree. See route-icon-components.tsx.
 const personalNav: { key: NavKey; labelKey: NavLabelKey }[] = [
   { key: "inbox", labelKey: "inbox" },
-  { key: "chat", labelKey: "chat" },
-  { key: "myIssues", labelKey: "my_issues" },
 ];
 
 const workspaceNav: { key: NavKey; labelKey: NavLabelKey }[] = [
   { key: "build", labelKey: "build" },
   { key: "creations", labelKey: "creations" },
-  { key: "issues", labelKey: "issues" },
-  { key: "projects", labelKey: "projects" },
-  { key: "autopilots", labelKey: "autopilots" },
   { key: "agents", labelKey: "agents" },
   { key: "squads", labelKey: "squads" },
-  { key: "usage", labelKey: "usage" },
 ];
 
 const configureNav: { key: NavKey; labelKey: NavLabelKey }[] = [
   { key: "runtimes", labelKey: "runtimes" },
   { key: "skills", labelKey: "skills" },
+  { key: "usage", labelKey: "usage" },
   { key: "settings", labelKey: "settings" },
 ];
-
-function DraftDot() {
-  const hasDraft = useIssueDraftStore((s) => s.hasDraft());
-  if (!hasDraft) return null;
-  return <span className="absolute top-0 right-0 size-1.5 rounded-full bg-brand" />;
-}
 
 /**
  * Presentational pin row. The `label` and `iconNode` are computed by the
@@ -381,35 +359,6 @@ export function AppSidebar({ topSlot, searchSlot, headerClassName, headerStyle }
     () => deduplicateInboxItems(inboxItems).filter((i) => !i.read).length,
     [inboxItems],
   );
-  // Chat tab unread badge: IM-style total of unread *messages* across chat
-  // threads (countUnreadChatMessages is the shared definition — mobile's tab
-  // badge derives from the same function, keeping the platforms in agreement).
-  const { data: chatSessions = [] } = useQuery({
-    ...chatSessionsOptions(wsId ?? ""),
-    enabled: !!wsId && parentModeReady,
-  });
-  // The session the user is reading right now must not count: the thread list
-  // renders its row badge as 0 (auto mark-read is about to clear it), and a
-  // reply landing in the open conversation would otherwise flash a sidebar
-  // count with no matching row. "Reading right now" = a session is active, a
-  // chat surface is actually showing it (chat page route or the floating
-  // window), AND the app is in the foreground. When the app is backgrounded,
-  // auto mark-read is suppressed (MUL-4485) so the reply stays unread — the
-  // badge must count it, or the notification is silently eaten while the user
-  // is away. A remembered selection while both surfaces are closed also still
-  // counts, for the same reason.
-  const activeChatSessionId = useChatStore((s) => s.activeSessionId);
-  const floatingChatOpen = useChatStore((s) => s.isOpen);
-  const appForeground = useAppForeground();
-  const chatHref = p.chat();
-  const viewedChatSessionId =
-    appForeground && (floatingChatOpen || isNavActive(pathname, chatHref))
-      ? activeChatSessionId
-      : null;
-  const chatUnreadCount = React.useMemo(
-    () => countUnreadChatMessages(chatSessions, viewedChatSessionId),
-    [chatSessions, viewedChatSessionId],
-  );
   // Cross-workspace unread summary backs the workspace-switcher dot. One
   // shared cache entry across workspaces; gated on an active workspace since
   // the endpoint resolves through the workspace-member middleware.
@@ -493,7 +442,7 @@ export function AppSidebar({ topSlot, searchSlot, headerClassName, headerStyle }
         ? list.find((w) => w.id === invitation.workspace_id)
         : null;
       if (joined) {
-        push(paths.workspace(joined.slug).build());
+        push(paths.workspace(joined.slug).creations());
       }
     },
   });
@@ -503,8 +452,6 @@ export function AppSidebar({ topSlot, searchSlot, headerClassName, headerStyle }
       queryClient.invalidateQueries({ queryKey: workspaceKeys.myInvitations() });
     },
   });
-
-  const createIssueShortcut = useShortcut("createIssue");
 
   return (
       <Sidebar variant="inset">
@@ -578,7 +525,7 @@ export function AppSidebar({ topSlot, searchSlot, headerClassName, headerStyle }
                       <DropdownMenuItem
                         key={ws.id}
                         render={
-                          <AppLink href={paths.workspace(ws.slug).build()} />
+                          <AppLink href={paths.workspace(ws.slug).creations()} />
                         }
                       >
                         <WorkspaceAvatar name={ws.name} avatarUrl={ws.avatar_url} size="sm" />
@@ -656,32 +603,35 @@ export function AppSidebar({ topSlot, searchSlot, headerClassName, headerStyle }
               </DropdownMenu>
             </SidebarMenuItem>
           </SidebarMenu>
-          <SidebarMenu>
-            {searchSlot && (
-              <SidebarMenuItem>
-                {searchSlot}
-              </SidebarMenuItem>
-            )}
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                className="text-muted-foreground"
-                onClick={() => openCreateIssueWithPreference()}
-              >
-                <span className="relative">
-                  <SquarePen />
-                  <DraftDot />
-                </span>
-                <span>{t(($) => $.sidebar.new_issue)}</span>
-                {createIssueShortcut ? (
-                  <ShortcutKeycaps shortcut={createIssueShortcut} decorative className="pointer-events-none ml-auto" />
-                ) : null}
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          </SidebarMenu>
         </SidebarHeader>
 
         {/* Navigation */}
         <SidebarContent ref={sidebarScrollRef} style={sidebarFadeStyle}>
+          <SidebarGroup>
+            <SidebarGroupLabel>{t(($) => $.sidebar.workspace_group)}</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu className="gap-0.5">
+                {workspaceNav.filter((item) => parentModeReady || item.key === "build" || item.key === "creations").map((item) => {
+                  const href = p[item.key]();
+                  const Icon = routeIconForPath(href);
+                  const isActive = !isActivePinnedRoute && isNavActive(pathname, href);
+                  return (
+                    <SidebarMenuItem key={item.key}>
+                      <SidebarMenuButton
+                        isActive={isActive}
+                        render={<AppLink href={href} />}
+                        className="text-muted-foreground hover:not-data-active:bg-sidebar-accent/70 data-active:bg-sidebar-accent data-active:text-sidebar-accent-foreground"
+                      >
+                        <Icon />
+                        <span>{t(($) => $.nav[item.labelKey])}</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  );
+                })}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+
           <SidebarGroup className={cn(!parentModeReady && "hidden")}>
             <SidebarGroupContent>
               <SidebarMenu className="gap-0.5">
@@ -705,17 +655,15 @@ export function AppSidebar({ topSlot, searchSlot, headerClassName, headerStyle }
                             className="ml-auto text-xs"
                           />
                         )}
-                        {item.key === "chat" && chatUnreadCount > 0 && (
-                          <CappedNumberFlow
-                            value={chatUnreadCount}
-                            animated={false}
-                            className="ml-auto text-xs"
-                          />
-                        )}
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                   );
                 })}
+                {searchSlot && (
+                  <SidebarMenuItem>
+                    {searchSlot}
+                  </SidebarMenuItem>
+                )}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
@@ -754,31 +702,6 @@ export function AppSidebar({ topSlot, searchSlot, headerClassName, headerStyle }
               </SidebarGroup>
             </Collapsible>
           )}
-
-          <SidebarGroup>
-            <SidebarGroupLabel>{t(($) => $.sidebar.workspace_group)}</SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu className="gap-0.5">
-                {workspaceNav.filter((item) => parentModeReady || item.key === "build" || item.key === "creations").map((item) => {
-                  const href = p[item.key]();
-                  const Icon = routeIconForPath(href);
-                  const isActive = !isActivePinnedRoute && isNavActive(pathname, href);
-                  return (
-                    <SidebarMenuItem key={item.key}>
-                      <SidebarMenuButton
-                        isActive={isActive}
-                        render={<AppLink href={href} />}
-                        className="text-muted-foreground hover:not-data-active:bg-sidebar-accent/70 data-active:bg-sidebar-accent data-active:text-sidebar-accent-foreground"
-                      >
-                        <Icon />
-                        <span>{t(($) => $.nav[item.labelKey])}</span>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  );
-                })}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
 
           <SidebarGroup className={cn(!parentModeReady && "hidden")}>
             <SidebarGroupLabel>{t(($) => $.sidebar.configure_group)}</SidebarGroupLabel>

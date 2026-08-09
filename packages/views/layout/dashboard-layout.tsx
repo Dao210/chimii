@@ -38,7 +38,7 @@ export function DashboardLayout({
   useEffect(() => {
     if (!isChildMode) return;
     const allowed = pathname === workspacePaths.build() || pathname.startsWith(`${workspacePaths.creations()}/`) || pathname === workspacePaths.creations();
-    if (!allowed) replace(workspacePaths.build());
+    if (!allowed) replace(workspacePaths.creations());
   }, [isChildMode, pathname, replace, workspacePaths]);
   return (
     <DashboardGuard

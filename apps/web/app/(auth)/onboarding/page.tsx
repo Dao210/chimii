@@ -79,7 +79,7 @@ export default function OnboardingPage() {
           if (ws && issueId) {
             router.push(paths.workspace(ws.slug).issueDetail(issueId));
           } else if (ws) {
-            router.push(paths.workspace(ws.slug).build());
+            router.push(paths.workspace(ws.slug).creations());
           } else {
             router.push(paths.root());
           }

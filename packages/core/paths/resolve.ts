@@ -5,7 +5,7 @@ import { paths } from "./paths";
 /**
  * Priority (onboarded-first):
  *   !hasOnboarded               → /onboarding
- *   hasOnboarded + workspace[0] → /<first.slug>/build
+ *   hasOnboarded + workspace[0] → /<first.slug>/creations
  *   hasOnboarded + no workspace → /workspaces/new
  *
  * V3 invariant: `onboarded_at != null` is the single source of truth for
@@ -36,7 +36,7 @@ export function resolvePostAuthDestination(
   }
   const first = workspaces[0];
   if (first) {
-    return paths.workspace(first.slug).build();
+    return paths.workspace(first.slug).creations();
   }
   return paths.newWorkspace();
 }
