@@ -25,47 +25,13 @@ import {
   useResetBrickInventory,
   useSaveBrickInventory,
   type BrickInventoryItem,
-  type BuildPartSpec,
 } from "@chimii/core/build";
 import { AppLink } from "../../navigation";
 import { useT } from "../../i18n";
+import { BrickThumbnail } from "./brick-thumbnail";
 import { BuildModelViewer } from "./build-model-viewer";
 
 const quantityKey = (partId: string, color: number) => `${partId}:${color}`;
-
-function BrickSilhouette({ part, color }: { part: BuildPartSpec; color: string }) {
-  if (part.category === "wheel") {
-    return (
-      <svg viewBox="0 0 180 110" className="h-28 w-full" aria-hidden="true">
-        <ellipse cx="90" cy="91" rx="62" ry="8" fill="#1d241f" opacity=".14" />
-        <circle cx="90" cy="54" r="42" fill="#222925" stroke="#1d241f" strokeWidth="4" />
-        <circle cx="90" cy="54" r="25" fill={color} stroke="#1d241f" strokeWidth="4" />
-        <circle cx="90" cy="54" r="8" fill="#f4ead5" stroke="#1d241f" strokeWidth="4" />
-        {part.id.includes("holder") && <rect x="52" y="20" width="76" height="24" rx="5" fill={color} stroke="#1d241f" strokeWidth="4" />}
-      </svg>
-    );
-  }
-  const height = part.category === "plate" ? 18 : 38;
-  const topY = part.category === "slope" ? 36 : 24;
-  const studs = Math.min(4, Math.max(1, part.studs_x));
-  return (
-    <svg viewBox="0 0 180 110" className="h-28 w-full" aria-hidden="true">
-      <ellipse cx="90" cy="91" rx="62" ry="8" fill="#1d241f" opacity=".14" />
-      {part.category === "slope" ? (
-        <path d="M34 70 L70 30 L145 48 L145 78 L70 94 L34 78 Z" fill={color} stroke="#1d241f" strokeWidth="4" strokeLinejoin="round" />
-      ) : (
-        <>
-          <path d={`M34 ${topY + 20} L76 ${topY} L146 ${topY + 18} L104 ${topY + 38} Z`} fill={color} stroke="#1d241f" strokeWidth="4" strokeLinejoin="round" />
-          <path d={`M34 ${topY + 20} L104 ${topY + 38} L104 ${topY + 38 + height} L34 ${topY + 20 + height} Z`} fill={color} opacity=".82" stroke="#1d241f" strokeWidth="4" strokeLinejoin="round" />
-          <path d={`M104 ${topY + 38} L146 ${topY + 18} L146 ${topY + 18 + height} L104 ${topY + 38 + height} Z`} fill={color} opacity=".68" stroke="#1d241f" strokeWidth="4" strokeLinejoin="round" />
-        </>
-      )}
-      {Array.from({ length: studs }).map((_, index) => (
-        <ellipse key={index} cx={63 + index * (60 / Math.max(1, studs - 1))} cy={topY + 12 + index * 3} rx="9" ry="5" fill={color} stroke="#1d241f" strokeWidth="3" />
-      ))}
-    </svg>
-  );
-}
 
 export function BlockPage() {
   const { t } = useT("build");
@@ -224,13 +190,21 @@ export function BlockPage() {
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {catalog.parts.map((part, index) => {
                 const activeItems = catalog.colors.filter((color) => (draft[quantityKey(part.id, color.code)] ?? 0) > 0);
-                const cardColor = activeItems[0] ?? catalog.colors[index % catalog.colors.length]!;
+                const fallbackCardColor = activeItems[0] ?? catalog.colors[index % catalog.colors.length]!;
+                const cardColor = selectedPart?.id === part.id
+                  ? catalog.colors.find((color) => color.code === previewColor) ?? fallbackCardColor
+                  : fallbackCardColor;
                 const total = activeItems.reduce((sum, color) => sum + (draft[quantityKey(part.id, color.code)] ?? 0), 0);
                 return (
                   <article key={part.id} className={cn("rounded-[1.5rem] border-2 p-3 transition", selectedPart?.id === part.id ? "border-[#1d241f] bg-[#eef5ff] shadow-[3px_4px_0_#1d241f]" : "border-[#cfc5b5] bg-white hover:border-[#1d241f]")}>
                     <button type="button" className="w-full rounded-xl text-left focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#3c6fc6]/30" onClick={() => { setSelectedPartId(part.id); setPreviewColor(cardColor.code); }}>
-                      <BrickSilhouette part={part} color={cardColor.hex} />
-                      <div className="flex items-start justify-between gap-2"><div><p className="text-[10px] font-black uppercase tracking-[.14em] text-[#39715a]">{categoryNames[part.category] ?? part.category}</p><h3 className="font-black leading-tight">{partNames[part.id] ?? part.name}</h3></div><span className="rounded-full border border-[#1d241f] bg-[#ffd85a] px-2 py-1 text-xs font-black">{inventory.configured || editing ? total : "∞"}</span></div>
+                      <BrickThumbnail
+                        ldrawID={part.ldraw_id}
+                        colorCode={cardColor.code}
+                        alt={`${colorNames[cardColor.code] ?? cardColor.name} ${partNames[part.id] ?? part.name}`}
+                        eager={index < 3}
+                      />
+                      <div className="mt-3 flex items-start justify-between gap-2"><div><p className="text-[10px] font-black uppercase tracking-[.14em] text-[#39715a]">{categoryNames[part.category] ?? part.category}</p><h3 className="font-black leading-tight">{partNames[part.id] ?? part.name}</h3></div><span className="rounded-full border border-[#1d241f] bg-[#ffd85a] px-2 py-1 text-xs font-black">{inventory.configured || editing ? total : "∞"}</span></div>
                     </button>
                     <div className="mt-3 flex flex-wrap gap-1.5" aria-label={t($ => $.block_colors)}>
                       {catalog.colors.map((color) => {

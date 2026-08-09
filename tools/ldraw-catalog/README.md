@@ -26,3 +26,14 @@ integer/decimal transforms. GLB meshes use the surface records; line records
 are parsed for format compatibility, while runtime outlines are generated from
 mesh edges. BFC winding is not trusted as a visibility rule; generated
 materials are double-sided and carry deterministic flat normals.
+
+After regenerating the GLB catalog, regenerate the card thumbnails from the
+same Three.js render preset:
+
+```bash
+pnpm generate:ldraw-thumbnails
+```
+
+The thumbnail generator renders every catalog part in every supported colour
+inside an isolated Playwright page. It writes content-addressed WebP assets and
+a TypeScript manifest for the shared web/desktop build page.
