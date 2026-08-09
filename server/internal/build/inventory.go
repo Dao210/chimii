@@ -20,7 +20,10 @@ func UnlimitedInventory() InventorySnapshot {
 
 // NewInventorySnapshot normalizes order and computes a stable audit hash.
 func NewInventorySnapshot(configured bool, revision int32, items []InventoryItem) InventorySnapshot {
-	normalized := append([]InventoryItem(nil), items...)
+	// Keep the JSON contract stable: an empty inventory is [] rather than null.
+	// Build plans are persisted as JSON and consumed by older installed clients,
+	// so the wire shape must not depend on whether the caller passed a nil slice.
+	normalized := append([]InventoryItem{}, items...)
 	sort.Slice(normalized, func(i, j int) bool {
 		if normalized[i].PartID != normalized[j].PartID {
 			return normalized[i].PartID < normalized[j].PartID

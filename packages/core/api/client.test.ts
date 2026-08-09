@@ -70,6 +70,62 @@ describe("ApiClient pull-request response schema", () => {
 });
 
 describe("ApiClient Build Studio response schema", () => {
+  const historicalCreation = {
+    id: "creation-1",
+    session_id: "session-1",
+    title: "月球车",
+    prompt: "会跑的月球车",
+    archetype: "racer",
+    recipe: {
+      version: 1,
+      archetype: "racer",
+      title: "月球车",
+      prompt: "会跑的月球车",
+      palette: [4],
+      features: ["rolling-base"],
+      metadata: {},
+    },
+    build_plan: {
+      version: 1,
+      kit_id: "starter",
+      catalog_version: "catalog-v1",
+      module_library_version: "modules-v1",
+      compiler_version: "compiler-v1",
+      validator_version: "validator-v1",
+      title: "月球车",
+      prompt: "会跑的月球车",
+      archetype: "racer",
+      placements: [],
+      connections: [],
+      steps: [],
+      parts: {},
+      validation: {
+        buildable: true,
+        issues: null,
+        part_count: 0,
+        step_count: 0,
+        used_parts: {},
+      },
+      inventory: {
+        configured: false,
+        catalog_version: "catalog-v1",
+        revision: 0,
+        items: null,
+        content_hash: "inventory-hash",
+      },
+      content_hash: "plan-hash",
+      generated_at: "2026-08-09T00:00:00Z",
+    },
+    validation: {
+      buildable: true,
+      issues: null,
+      part_count: 0,
+      step_count: 0,
+      used_parts: {},
+    },
+    created_at: "2026-08-09T00:00:00Z",
+  };
+
   it("saves a versioned brick inventory", async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(JSON.stringify({
@@ -138,6 +194,59 @@ describe("ApiClient Build Studio response schema", () => {
     await expect(
       new ApiClient("https://api.example.test").getBuildSession("session-1"),
     ).resolves.toMatchObject({ id: "", status: "failed" });
+  });
+
+  it("normalizes historical null collections in a creation detail", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify(historicalCreation), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      ),
+    );
+
+    const creation = await new ApiClient("https://api.example.test").getBuildCreation("creation-1");
+
+    expect(creation.id).toBe("creation-1");
+    expect(creation.validation.issues).toEqual([]);
+    expect(creation.build_plan.validation.issues).toEqual([]);
+    expect(creation.build_plan.inventory?.items).toEqual([]);
+  });
+
+  it("rejects a malformed creation detail instead of caching an empty success", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ id: "creation-1", build_plan: "invalid" }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      ),
+    );
+
+    await expect(
+      new ApiClient("https://api.example.test").getBuildCreation("creation-1"),
+    ).rejects.toThrow("Invalid build creation response");
+  });
+
+  it("keeps historical creations with null collections in the creation list", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ creations: [historicalCreation] }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      ),
+    );
+
+    const result = await new ApiClient("https://api.example.test").listBuildCreations();
+
+    expect(result.creations).toHaveLength(1);
+    expect(result.creations[0]?.id).toBe("creation-1");
+    expect(result.creations[0]?.validation.issues).toEqual([]);
   });
 
   it("falls back to an empty creation list for malformed geometry", async () => {

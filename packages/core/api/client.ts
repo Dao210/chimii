@@ -195,7 +195,6 @@ import {
   BrickInventorySchema,
   EMPTY_BRICK_INVENTORY,
   EMPTY_BUILD_CATALOG,
-  EMPTY_BUILD_CREATION,
   EMPTY_BUILD_CREATIONS,
   EMPTY_BUILD_SESSION,
 } from "../build/schemas";
@@ -3166,9 +3165,16 @@ export class ApiClient {
 
   async getBuildCreation(id: string): Promise<BuildCreation> {
     const raw = await this.fetch<unknown>(`/api/build/creations/${encodeURIComponent(id)}`);
-    return parseWithFallback(raw, BuildCreationSchema, EMPTY_BUILD_CREATION, {
+    // Unlike a list, a detail response with no usable id cannot render a safe
+    // degraded state. Reject after schema logging so React Query exposes its
+    // retry/error UI instead of caching an empty creation as a success.
+    const creation = parseWithFallback<BuildCreation | null>(raw, BuildCreationSchema, null, {
       endpoint: "GET /api/build/creations/{id}",
     });
+    if (!creation?.id) {
+      throw new Error("Invalid build creation response");
+    }
+    return creation;
   }
 
   async downloadBuildMPD(id: string): Promise<Blob> {

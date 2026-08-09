@@ -45,6 +45,8 @@ export function BuildPage() {
   }, [sessionQuery.data]);
 
   const isWorking = session?.status === "queued" || session?.status === "generating";
+  const creationIsPending = creationQuery.isPending || creationQuery.isFetching;
+  const creationIsUnavailable = creationQuery.isError || (!creationIsPending && !creationQuery.data?.id);
   const ideaStarters = [t($ => $.starter_car), t($ => $.starter_dragon), t($ => $.starter_robot)];
   const statusCopy = session?.status === "generating" ? t($ => $.generating) : t($ => $.queued);
 
@@ -104,7 +106,7 @@ export function BuildPage() {
           <BuildResult creation={creationQuery.data} onAgain={reset} />
         ) : session?.status === "completed" && creationId ? (
           <section className="mx-auto flex min-h-[560px] max-w-2xl flex-col items-center justify-center text-center" aria-live="polite">
-            {creationQuery.isError ? (
+            {creationIsUnavailable ? (
               <>
                 <div className="flex size-20 items-center justify-center rounded-[1.8rem] border-2 border-[#1d241f] bg-[#ffd85a] shadow-[6px_7px_0_#1d241f]"><Wrench className="size-9" /></div>
                 <h2 className="mt-7 text-3xl font-black">{t($ => $.creation_fetch_title)}</h2>

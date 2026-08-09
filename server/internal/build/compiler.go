@@ -193,7 +193,12 @@ func placementsFor(recipe AssemblyRecipe) []Placement {
 }
 
 func Validate(placements []Placement, inventory InventorySnapshot) ValidationReport {
-	report := ValidationReport{Buildable: true, UsedParts: map[string]int{}, PartCount: len(placements)}
+	report := ValidationReport{
+		Buildable: true,
+		Issues:    make([]ValidationIssue, 0),
+		UsedParts: map[string]int{},
+		PartCount: len(placements),
+	}
 	maxStep := 0
 	occupied := map[[3]int]string{}
 	usedInventory := map[inventoryKey]int{}

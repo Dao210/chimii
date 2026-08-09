@@ -1,6 +1,7 @@
 package build
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 	"time"
@@ -20,6 +21,15 @@ func TestCompileStarterArchetypesAreBuildableAndDeterministic(t *testing.T) {
 		}
 		if !first.Plan.Validation.Buildable {
 			t.Fatalf("%q plan not buildable: %#v", prompt, first.Plan.Validation.Issues)
+		}
+		wire, err := json.Marshal(first.Plan)
+		if err != nil {
+			t.Fatalf("marshal %q plan: %v", prompt, err)
+		}
+		for _, required := range []string{`"issues":[]`, `"items":[]`} {
+			if !strings.Contains(string(wire), required) {
+				t.Fatalf("%q plan JSON lacks stable empty array %s: %s", prompt, required, wire)
+			}
 		}
 		if first.MPD != second.MPD {
 			t.Fatalf("%q export is not deterministic", prompt)

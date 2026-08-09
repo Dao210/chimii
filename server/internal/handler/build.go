@@ -420,5 +420,24 @@ func toBuildCreationResponse(row db.BuildCreation) (buildCreationResponse, error
 	if err := json.Unmarshal(row.Validation, &response.Validation); err != nil {
 		return response, err
 	}
+	// Creations written before the response contract was normalized contain
+	// JSON null for successful validation issues and unlimited inventory items.
+	// Canonicalize them at the API boundary so historical rows are immediately
+	// readable without a destructive data migration.
+	if response.Validation.Issues == nil {
+		response.Validation.Issues = []buildstudio.ValidationIssue{}
+	}
+	if response.Validation.UsedParts == nil {
+		response.Validation.UsedParts = map[string]int{}
+	}
+	if response.BuildPlan.Validation.Issues == nil {
+		response.BuildPlan.Validation.Issues = []buildstudio.ValidationIssue{}
+	}
+	if response.BuildPlan.Validation.UsedParts == nil {
+		response.BuildPlan.Validation.UsedParts = map[string]int{}
+	}
+	if response.BuildPlan.Inventory.Items == nil {
+		response.BuildPlan.Inventory.Items = []buildstudio.InventoryItem{}
+	}
 	return response, nil
 }

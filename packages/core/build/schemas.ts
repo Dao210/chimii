@@ -28,11 +28,18 @@ const InventoryItemSchema = z.looseObject({
   quantity: z.number().int().positive(),
 });
 
+const InventoryItemsSchema = z
+  .array(InventoryItemSchema)
+  .nullish()
+  .transform((items) => items ?? []);
+
 export const BrickInventorySchema = z.looseObject({
   configured: z.boolean(),
   catalog_version: z.string(),
   revision: z.number().int().nonnegative(),
-  items: z.array(InventoryItemSchema),
+  // Older servers encoded an empty Go slice as JSON null. Normalize that
+  // wire-compatible shape so existing creations remain readable.
+  items: InventoryItemsSchema,
   updated_at: z.string().optional(),
 });
 
@@ -64,11 +71,16 @@ const PlacementSchema = z.looseObject({
 
 export const BuildValidationSchema = z.looseObject({
   buildable: z.boolean(),
-  issues: z.array(z.looseObject({
-    code: z.string(),
-    message: z.string(),
-    placement_id: z.string().optional(),
-  })),
+  // A successful historical validation has no issues and was encoded as
+  // null by Go. Consumers always receive an array after this boundary.
+  issues: z
+    .array(z.looseObject({
+      code: z.string(),
+      message: z.string(),
+      placement_id: z.string().optional(),
+    }))
+    .nullish()
+    .transform((issues) => issues ?? []),
   part_count: z.number().int().nonnegative(),
   step_count: z.number().int().nonnegative(),
   used_parts: z.record(z.string(), z.number().int().nonnegative()),
