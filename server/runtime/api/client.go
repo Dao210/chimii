@@ -13,8 +13,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/codeany-ai/open-agent-sdk-go/types"
+	"github.com/google/uuid"
 )
 
 const (
@@ -33,10 +33,10 @@ type ModelConfig struct {
 
 // Known model configurations.
 var modelConfigs = map[string]ModelConfig{
-	"opus-4-6":    {MaxOutputTokens: 32768, ContextWindow: 1048576},
-	"sonnet-4-6":  {MaxOutputTokens: 16384, ContextWindow: 200000},
-	"haiku-4-5":   {MaxOutputTokens: 8192, ContextWindow: 200000},
-	"sonnet-4-5":  {MaxOutputTokens: 16384, ContextWindow: 200000},
+	"opus-4-6":   {MaxOutputTokens: 32768, ContextWindow: 1048576},
+	"sonnet-4-6": {MaxOutputTokens: 16384, ContextWindow: 200000},
+	"haiku-4-5":  {MaxOutputTokens: 8192, ContextWindow: 200000},
+	"sonnet-4-5": {MaxOutputTokens: 16384, ContextWindow: 200000},
 }
 
 // GetModelConfig returns configuration for a model.
@@ -57,15 +57,16 @@ const (
 
 // ClientConfig configures the API client.
 type ClientConfig struct {
-	APIKey        string
-	BaseURL       string
-	Model         string
-	MaxTokens     int
-	Provider      Provider // "anthropic" or "openai" (auto-detected if empty)
-	HTTPClient    *http.Client
-	CustomHeaders map[string]string
-	ProxyURL      string
-	TimeoutMs     int
+	APIKey             string
+	BaseURL            string
+	Model              string
+	MaxTokens          int
+	Provider           Provider // "anthropic" or "openai" (auto-detected if empty)
+	HTTPClient         *http.Client
+	CustomHeaders      map[string]string
+	ProxyURL           string
+	TimeoutMs          int
+	DisableEnvFallback bool
 }
 
 // Client communicates with the Messages API.
@@ -86,17 +87,21 @@ func envOr(keys ...string) string {
 
 // NewClient creates an API client.
 func NewClient(config ClientConfig) *Client {
-	if config.APIKey == "" {
+	if config.APIKey == "" && !config.DisableEnvFallback {
 		config.APIKey = envOr("CODEANY_API_KEY", "ANTHROPIC_API_KEY")
 	}
 	if config.BaseURL == "" {
-		config.BaseURL = envOr("CODEANY_BASE_URL", "ANTHROPIC_BASE_URL")
+		if !config.DisableEnvFallback {
+			config.BaseURL = envOr("CODEANY_BASE_URL", "ANTHROPIC_BASE_URL")
+		}
 		if config.BaseURL == "" {
 			config.BaseURL = defaultBaseURL
 		}
 	}
 	if config.Model == "" {
-		config.Model = envOr("CODEANY_MODEL", "ANTHROPIC_MODEL")
+		if !config.DisableEnvFallback {
+			config.Model = envOr("CODEANY_MODEL", "ANTHROPIC_MODEL")
+		}
 		if config.Model == "" {
 			config.Model = defaultModel
 		}
@@ -176,7 +181,7 @@ func (c *Client) SetModel(model string) {
 
 // APIMessage is a message sent to the API.
 type APIMessage struct {
-	Role    string              `json:"role"`
+	Role    string               `json:"role"`
 	Content []types.ContentBlock `json:"content"`
 }
 
@@ -247,7 +252,7 @@ type StreamMessage struct {
 	ID         string               `json:"id"`
 	Type       string               `json:"type"`
 	Role       string               `json:"role"`
-	Content    []types.ContentBlock  `json:"content"`
+	Content    []types.ContentBlock `json:"content"`
 	Model      string               `json:"model"`
 	StopReason string               `json:"stop_reason"`
 	Usage      *types.Usage         `json:"usage"`

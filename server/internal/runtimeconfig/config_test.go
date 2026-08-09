@@ -75,6 +75,58 @@ func TestLoadCloudProviders(t *testing.T) {
 	}
 }
 
+func TestLoadAnthropicReusesGenericLLMConnection(t *testing.T) {
+	t.Parallel()
+	cfg, err := load(fromMap(map[string]string{
+		"CHIMII_CLOUD_RUNTIME_ENABLED":                 "true",
+		"CHIMII_CLOUD_RUNTIME_PROVIDERS":               "anthropic",
+		"CHIMII_CLOUD_RUNTIME_ANTHROPIC_DEFAULT_MODEL": "claude-approved",
+		"CHIMII_LLM_API_KEY":                           " shared-secret ",
+		"CHIMII_LLM_BASE_URL":                          " https://gateway.example ",
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := cfg.CloudProviders[ProviderAnthropic]
+	if got.APIKey != "shared-secret" || got.BaseURL != "https://gateway.example" {
+		t.Fatalf("anthropic provider config = %+v", got)
+	}
+}
+
+func TestLoadAnthropicSpecificConnectionOverridesGenericLLMConnection(t *testing.T) {
+	t.Parallel()
+	cfg, err := load(fromMap(map[string]string{
+		"CHIMII_CLOUD_RUNTIME_ENABLED":                 "true",
+		"CHIMII_CLOUD_RUNTIME_PROVIDERS":               "anthropic",
+		"CHIMII_CLOUD_RUNTIME_ANTHROPIC_API_KEY":       "cloud-secret",
+		"CHIMII_CLOUD_RUNTIME_ANTHROPIC_BASE_URL":      "https://cloud.example",
+		"CHIMII_CLOUD_RUNTIME_ANTHROPIC_DEFAULT_MODEL": "claude-approved",
+		"CHIMII_LLM_API_KEY":                           "shared-secret",
+		"CHIMII_LLM_BASE_URL":                          "https://gateway.example",
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := cfg.CloudProviders[ProviderAnthropic]
+	if got.APIKey != "cloud-secret" || got.BaseURL != "https://cloud.example" {
+		t.Fatalf("anthropic provider config = %+v", got)
+	}
+}
+
+func TestLoadOpenAIDoesNotReuseGenericLLMConnection(t *testing.T) {
+	t.Parallel()
+	_, err := load(fromMap(map[string]string{
+		"CHIMII_CLOUD_RUNTIME_ENABLED":              "true",
+		"CHIMII_CLOUD_RUNTIME_PROVIDERS":            "openai",
+		"CHIMII_CLOUD_RUNTIME_OPENAI_DEFAULT_MODEL": "gpt-approved",
+		"CHIMII_LLM_API_KEY":                        "anthropic-secret",
+		"CHIMII_LLM_BASE_URL":                       "https://gateway.example",
+	}))
+	if err == nil || !strings.Contains(err.Error(), "OPENAI_API_KEY") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
 func TestLoadRejectsUnconfiguredProvider(t *testing.T) {
 	t.Parallel()
 	_, err := load(fromMap(map[string]string{

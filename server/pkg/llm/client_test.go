@@ -5,29 +5,53 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
-	"net/http/httptest"
 	"strings"
 	"testing"
 
-	openai "github.com/openai/openai-go/v3"
-	"github.com/openai/openai-go/v3/shared"
+	"github.com/codeany-ai/open-agent-sdk-go/api"
+	"github.com/codeany-ai/open-agent-sdk-go/types"
 )
 
-// stubUpstream returns an httptest server that mimics the OpenAI
-// chat-completions endpoint. handler receives the decoded request body.
-func stubUpstream(t *testing.T, handler func(w http.ResponseWriter, body map[string]any)) *httptest.Server {
+type capturedRequest struct {
+	Path             string
+	APIKey           string
+	Authorization    string
+	AnthropicVersion string
+	Body             map[string]any
+}
+
+type roundTripFunc func(*http.Request) (*http.Response, error)
+
+func (f roundTripFunc) RoundTrip(r *http.Request) (*http.Response, error) { return f(r) }
+
+func stubHTTPClient(t *testing.T, handler func(got capturedRequest) string) *http.Client {
 	t.Helper()
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	return &http.Client{Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
 		raw, _ := io.ReadAll(r.Body)
 		var body map[string]any
 		_ = json.Unmarshal(raw, &body)
-		handler(w, body)
-	}))
-	t.Cleanup(srv.Close)
-	return srv
+		responseBody := handler(capturedRequest{
+			Path:             r.URL.Path,
+			APIKey:           r.Header.Get("X-API-Key"),
+			Authorization:    r.Header.Get("Authorization"),
+			AnthropicVersion: r.Header.Get("Anthropic-Version"),
+			Body:             body,
+		})
+		return &http.Response{
+			StatusCode: http.StatusOK,
+			Header:     http.Header{"Content-Type": []string{"application/json"}},
+			Body:       io.NopCloser(strings.NewReader(responseBody)),
+			Request:    r,
+		}, nil
+	})}
+}
+
+func anthropicMessage(model, text string) string {
+	return `{"id":"msg_1","type":"message","role":"assistant","content":[{"type":"text","text":"` + text + `"}],"model":"` + model + `","stop_reason":"end_turn","usage":{"input_tokens":1,"output_tokens":1}}`
 }
 
 func TestNewDisabledClient(t *testing.T) {
+	t.Setenv("ANTHROPIC_API_KEY", "ambient-secret-must-not-enable-client")
 	c := New(Config{})
 	if c.Enabled() {
 		t.Fatal("expected disabled client with empty config")
@@ -35,7 +59,7 @@ func TestNewDisabledClient(t *testing.T) {
 	if c.DefaultModel() != FallbackModel {
 		t.Fatalf("expected fallback model %q, got %q", FallbackModel, c.DefaultModel())
 	}
-	if _, err := c.Chat(context.Background(), openai.ChatCompletionNewParams{}); err != ErrNotConfigured {
+	if _, err := c.Message(context.Background(), api.MessagesRequest{}); err != ErrNotConfigured {
 		t.Fatalf("expected ErrNotConfigured, got %v", err)
 	}
 	if _, err := c.GenerateText(context.Background(), "", "", "hi"); err != ErrNotConfigured {
@@ -46,80 +70,102 @@ func TestNewDisabledClient(t *testing.T) {
 func TestEnabledWithBaseURLOnly(t *testing.T) {
 	c := New(Config{BaseURL: "http://localhost:1234"})
 	if !c.Enabled() {
-		t.Fatal("expected enabled client when only base URL is set (keyless gateway)")
+		t.Fatal("expected enabled client for a keyless Anthropic-compatible gateway")
+	}
+}
+
+func TestBaseURLOnlyDoesNotUseAmbientAnthropicKey(t *testing.T) {
+	t.Setenv("ANTHROPIC_API_KEY", "ambient-secret")
+	var gotAPIKey string
+	httpClient := stubHTTPClient(t, func(got capturedRequest) string {
+		gotAPIKey = got.APIKey
+		return anthropicMessage("claude-default", "hello")
+	})
+	c := New(Config{
+		BaseURL:      "https://anthropic.example",
+		DefaultModel: "claude-default",
+		HTTPClient:   httpClient,
+	})
+	if _, err := c.GenerateText(context.Background(), "", "", "hi"); err != nil {
+		t.Fatalf("GenerateText failed: %v", err)
+	}
+	if gotAPIKey != "" {
+		t.Fatalf("request used ambient Anthropic API key %q", gotAPIKey)
 	}
 }
 
 func TestConfiguredDefaultModel(t *testing.T) {
-	c := New(Config{APIKey: "k", DefaultModel: "my-model"})
-	if c.DefaultModel() != "my-model" {
+	c := New(Config{APIKey: "k", DefaultModel: "claude-configured"})
+	if c.DefaultModel() != "claude-configured" {
 		t.Fatalf("expected configured default model, got %q", c.DefaultModel())
 	}
 }
 
-func TestChatAppliesDefaultModel(t *testing.T) {
-	var gotModel string
-	srv := stubUpstream(t, func(w http.ResponseWriter, body map[string]any) {
-		gotModel, _ = body["model"].(string)
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = io.WriteString(w, `{"id":"cmpl-1","object":"chat.completion","choices":[{"index":0,"message":{"role":"assistant","content":"hello"},"finish_reason":"stop"}]}`)
+func TestMessageUsesAnthropicProtocolAndDefaultModel(t *testing.T) {
+	var captured capturedRequest
+	httpClient := stubHTTPClient(t, func(got capturedRequest) string {
+		captured = got
+		return anthropicMessage("claude-default", "hello")
 	})
 
-	c := New(Config{APIKey: "test-key", BaseURL: srv.URL, DefaultModel: "default-x"})
-	// Request omits the model -> the configured default must be applied.
-	completion, err := c.Chat(context.Background(), openai.ChatCompletionNewParams{
-		Messages: []openai.ChatCompletionMessageParamUnion{openai.UserMessage("hi")},
+	c := New(Config{APIKey: "test-key", BaseURL: "https://anthropic.example", DefaultModel: "claude-default", HTTPClient: httpClient})
+	message, err := c.Message(context.Background(), api.MessagesRequest{
+		Messages: []api.APIMessage{{
+			Role:    "user",
+			Content: []types.ContentBlock{{Type: types.ContentBlockText, Text: "hi"}},
+		}},
 	})
 	if err != nil {
-		t.Fatalf("Chat failed: %v", err)
+		t.Fatalf("Message failed: %v", err)
 	}
-	if gotModel != "default-x" {
-		t.Fatalf("expected default model forwarded upstream, got %q", gotModel)
+	if captured.Path != "/v1/messages" {
+		t.Fatalf("request path = %q", captured.Path)
 	}
-	if len(completion.Choices) != 1 || completion.Choices[0].Message.Content != "hello" {
-		t.Fatalf("unexpected completion: %+v", completion.Choices)
+	if captured.APIKey != "test-key" || captured.AnthropicVersion == "" {
+		t.Fatalf("missing Anthropic headers: %+v", captured)
 	}
-	if completion.RawJSON() == "" {
-		t.Fatal("expected non-empty RawJSON for passthrough")
+	if captured.Authorization != "" {
+		t.Fatalf("request unexpectedly used an OpenAI Authorization header: %q", captured.Authorization)
+	}
+	if captured.Body["model"] != "claude-default" {
+		t.Fatalf("request model = %v", captured.Body["model"])
+	}
+	if len(message.Content) != 1 || message.Content[0].Text != "hello" {
+		t.Fatalf("unexpected message: %+v", message)
 	}
 }
 
-func TestChatRespectsRequestModel(t *testing.T) {
+func TestMessageRespectsRequestModel(t *testing.T) {
 	var gotModel string
-	srv := stubUpstream(t, func(w http.ResponseWriter, body map[string]any) {
-		gotModel, _ = body["model"].(string)
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = io.WriteString(w, `{"id":"cmpl-1","object":"chat.completion","choices":[]}`)
+	httpClient := stubHTTPClient(t, func(got capturedRequest) string {
+		gotModel, _ = got.Body["model"].(string)
+		return anthropicMessage(gotModel, "hello")
 	})
 
-	c := New(Config{APIKey: "test-key", BaseURL: srv.URL, DefaultModel: "default-x"})
-	_, err := c.Chat(context.Background(), openai.ChatCompletionNewParams{
-		Model:    shared.ChatModel("caller-model"),
-		Messages: []openai.ChatCompletionMessageParamUnion{openai.UserMessage("hi")},
+	c := New(Config{APIKey: "test-key", BaseURL: "https://anthropic.example", DefaultModel: "claude-default", HTTPClient: httpClient})
+	_, err := c.Message(context.Background(), api.MessagesRequest{
+		Model: "claude-caller",
+		Messages: []api.APIMessage{{
+			Role:    "user",
+			Content: []types.ContentBlock{{Type: types.ContentBlockText, Text: "hi"}},
+		}},
 	})
 	if err != nil {
-		t.Fatalf("Chat failed: %v", err)
+		t.Fatalf("Message failed: %v", err)
 	}
-	if gotModel != "caller-model" {
+	if gotModel != "claude-caller" {
 		t.Fatalf("expected caller model preserved, got %q", gotModel)
 	}
 }
 
 func TestGenerateText(t *testing.T) {
-	var sawSystem bool
-	srv := stubUpstream(t, func(w http.ResponseWriter, body map[string]any) {
-		if msgs, ok := body["messages"].([]any); ok {
-			for _, m := range msgs {
-				if mm, ok := m.(map[string]any); ok && mm["role"] == "system" {
-					sawSystem = true
-				}
-			}
-		}
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = io.WriteString(w, `{"id":"cmpl-1","object":"chat.completion","choices":[{"index":0,"message":{"role":"assistant","content":"a title"},"finish_reason":"stop"}]}`)
+	var captured capturedRequest
+	httpClient := stubHTTPClient(t, func(got capturedRequest) string {
+		captured = got
+		return anthropicMessage("claude-default", "a title")
 	})
 
-	c := New(Config{APIKey: "k", BaseURL: srv.URL})
+	c := New(Config{APIKey: "k", BaseURL: "https://anthropic.example", DefaultModel: "claude-default", HTTPClient: httpClient})
 	out, err := c.GenerateText(context.Background(), "", "you are helpful", "make a title")
 	if err != nil {
 		t.Fatalf("GenerateText failed: %v", err)
@@ -127,48 +173,12 @@ func TestGenerateText(t *testing.T) {
 	if out != "a title" {
 		t.Fatalf("expected %q, got %q", "a title", out)
 	}
-	if !sawSystem {
-		t.Fatal("expected system message to be sent")
+	system, ok := captured.Body["system"].([]any)
+	if !ok || len(system) != 1 || system[0].(map[string]any)["text"] != "you are helpful" {
+		t.Fatalf("unexpected system prompt: %#v", captured.Body["system"])
 	}
-}
-
-func TestChatStream(t *testing.T) {
-	srv := stubUpstream(t, func(w http.ResponseWriter, _ map[string]any) {
-		w.Header().Set("Content-Type", "text/event-stream")
-		flusher, _ := w.(http.Flusher)
-		chunks := []string{
-			`{"id":"c1","object":"chat.completion.chunk","choices":[{"index":0,"delta":{"content":"Hel"}}]}`,
-			`{"id":"c1","object":"chat.completion.chunk","choices":[{"index":0,"delta":{"content":"lo"}}]}`,
-		}
-		for _, ch := range chunks {
-			_, _ = io.WriteString(w, "data: "+ch+"\n\n")
-			if flusher != nil {
-				flusher.Flush()
-			}
-		}
-		_, _ = io.WriteString(w, "data: [DONE]\n\n")
-	})
-
-	c := New(Config{APIKey: "k", BaseURL: srv.URL})
-	stream, err := c.ChatStream(context.Background(), openai.ChatCompletionNewParams{
-		Messages: []openai.ChatCompletionMessageParamUnion{openai.UserMessage("hi")},
-	})
-	if err != nil {
-		t.Fatalf("ChatStream failed: %v", err)
-	}
-	defer stream.Close()
-
-	var content strings.Builder
-	for stream.Next() {
-		chunk := stream.Current()
-		if len(chunk.Choices) > 0 {
-			content.WriteString(chunk.Choices[0].Delta.Content)
-		}
-	}
-	if err := stream.Err(); err != nil {
-		t.Fatalf("stream error: %v", err)
-	}
-	if content.String() != "Hello" {
-		t.Fatalf("expected assembled content %q, got %q", "Hello", content.String())
+	messages, ok := captured.Body["messages"].([]any)
+	if !ok || len(messages) != 1 || messages[0].(map[string]any)["role"] != "user" {
+		t.Fatalf("unexpected messages: %#v", captured.Body["messages"])
 	}
 }

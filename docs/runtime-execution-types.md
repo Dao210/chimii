@@ -27,6 +27,18 @@ CHIMII_CLOUD_RUNTIME_OPENAI_API_KEY=...
 CHIMII_CLOUD_RUNTIME_OPENAI_DEFAULT_MODEL=...
 ```
 
+The server's generic `CHIMII_LLM_*` client uses the Anthropic Messages API.
+When `CHIMII_CLOUD_RUNTIME_ANTHROPIC_API_KEY` or
+`CHIMII_CLOUD_RUNTIME_ANTHROPIC_BASE_URL` is empty, that field falls back to
+`CHIMII_LLM_API_KEY` or `CHIMII_LLM_BASE_URL`, respectively. An explicit
+provider-specific value always wins.
+`CHIMII_CLOUD_RUNTIME_ANTHROPIC_DEFAULT_MODEL` remains required so Cloud
+execution has an explicit model allowlist.
+
+OpenAI does not reuse `CHIMII_LLM_*`, because it uses a different wire
+protocol. Configure the dedicated `CHIMII_CLOUD_RUNTIME_OPENAI_*` settings when
+the OpenAI Cloud provider is enabled.
+
 Keep `CHIMII_RUNTIME_DEFAULT=cli` unless new onboarding flows should prefer
 Cloud runtime. Changing the default does not move existing agents or queued
 tasks. Users must explicitly rebind an agent, and the first task on the new

@@ -131,7 +131,8 @@ CHIMII_CLOUD_RUNTIME_OPENAI_DEFAULT_MODEL=
 - Cloud 开关关闭时，server 不启动 Cloud worker，API 不允许新建/绑定 Cloud runtime，但保留已有数据供管理员处理。
 - Cloud 开关不作为运行中 kill switch；优雅关机先取消/结束本进程的正在执行任务，不将它们转给 CLI。
 - 密钥只来自 server secret/environment，不进入 `agent_runtime.metadata`、`agent.runtime_config`、API 响应或日志。
-- 不复用 `CHIMII_LLM_*`。该配置属于 server 内部轻量 LLM helper；Cloud runtime 需独立的费用、并发、模型和安全边界。
+- Anthropic provider 的 API key/base URL 允许逐字段回退到 `CHIMII_LLM_API_KEY` / `CHIMII_LLM_BASE_URL`，provider 专属值优先；通用 LLM client 与 Cloud Anthropic 均使用 Anthropic Messages API。default model 仍必须单独配置，以保留 Cloud 模型白名单边界。
+- OpenAI 不复用 `CHIMII_LLM_*`，因为协议不同；OpenAI 继续要求专属配置。
 - 现有 `CHIMII_CLOUD_FLEET_URL` 保持不变，它管理的是 Cloud-hosted CLI 节点，不是 SDK runtime。
 
 切换到 Cloud 作为新建默认值：

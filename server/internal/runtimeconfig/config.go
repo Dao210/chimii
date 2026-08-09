@@ -130,6 +130,18 @@ func load(getenv func(string) string) (Config, error) {
 			BaseURL:      strings.TrimSpace(getenv(prefix + "_BASE_URL")),
 			DefaultModel: strings.TrimSpace(getenv(prefix + "_DEFAULT_MODEL")),
 		}
+		// The existing CHIMII_LLM_* client speaks the Anthropic Messages API,
+		// so its connection settings are safe defaults for the Anthropic Cloud
+		// provider. Provider-specific values always win. OpenAI uses a different
+		// wire protocol and must remain explicitly configured.
+		if provider == ProviderAnthropic {
+			if providerCfg.APIKey == "" {
+				providerCfg.APIKey = strings.TrimSpace(getenv("CHIMII_LLM_API_KEY"))
+			}
+			if providerCfg.BaseURL == "" {
+				providerCfg.BaseURL = strings.TrimSpace(getenv("CHIMII_LLM_BASE_URL"))
+			}
+		}
 		if providerCfg.APIKey == "" {
 			return Config{}, fmt.Errorf("%s_API_KEY is required for enabled provider %q", prefix, provider)
 		}

@@ -110,12 +110,12 @@ type Config struct {
 	AttachmentFrameAncestors []string
 	// LLM* configure the basic LLM API layer (MUL-4238). They back the
 	// server-internal LLM helpers in pkg/llm (e.g. chat title generation).
-	// The generic OpenAI-compatible passthrough endpoints were removed in
+	// The generic LLM passthrough endpoints were removed in
 	// MUL-4309; LLM access is internal-only now. When both LLMAPIKey and
 	// LLMBaseURL are empty the layer is disabled and callers fall back
 	// silently (see maybeGenerateChatTitleAsync).
 	//   - LLMAPIKey       -> CHIMII_LLM_API_KEY
-	//   - LLMBaseURL       -> CHIMII_LLM_BASE_URL (OpenAI or any compatible gateway)
+	//   - LLMBaseURL       -> CHIMII_LLM_BASE_URL (Anthropic API origin or compatible gateway)
 	//   - LLMDefaultModel  -> CHIMII_LLM_DEFAULT_MODEL (used when a request omits `model`)
 	LLMAPIKey       string
 	LLMBaseURL      string
@@ -244,8 +244,8 @@ type Handler struct {
 	// unless Slack is configured; GetChatChannelHistory then reports "no channel
 	// integration". A future platform satisfies the same reader interface.
 	SlackHistory ChatChannelHistoryReader
-	// LLM is the basic LLM API layer (MUL-4238): a thin wrapper over the
-	// OpenAI Go SDK backing server-internal one-shot LLM helpers such as chat
+	// LLM is the basic LLM API layer (MUL-4238): a thin Anthropic Messages API
+	// client backing server-internal one-shot LLM helpers such as chat
 	// title generation. The generic passthrough endpoints were removed in
 	// MUL-4309, so it is internal-only now. Always non-nil (New builds it from
 	// Config); when unconfigured its Enabled() reports false and callers fall

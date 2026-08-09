@@ -529,7 +529,7 @@ flowchart TD
 
 ### 9.1 模型职责拆分
 
-使用现有 `server/pkg/llm` OpenAI-compatible 内部客户端，新增 Build 专用的严格结构化调用
+使用现有 `server/pkg/llm` Anthropic Messages API 内部客户端，新增 Build 专用的严格结构化调用
 封装，而不是让 handler 拼提示词。
 
 | 调用 | 输入 | 输出 | 目标时限 |
@@ -1188,7 +1188,7 @@ planner → domain + llm interface
 export → domain
 ```
 
-`domain`、`compiler` 和 `validator` 不依赖 HTTP、数据库、Three.js 或 OpenAI SDK。
+`domain`、`compiler` 和 `validator` 不依赖 HTTP、数据库、Three.js 或 Anthropic API client。
 
 ## 22. 实施顺序
 
