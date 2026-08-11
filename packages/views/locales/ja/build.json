@@ -37,6 +37,8 @@
   "viewer_aria": "回転できるブロックの組み立てプレビュー。左右の矢印キーでも回転できます",
   "viewer_catalog": "LDraw 公式パーツ形状",
   "result_step": "組み立て {{step}} / {{total}}",
+  "result_prev_step": "前の手順",
+  "result_next_step": "次の手順",
   "result_placed": "{{count}} 個を置きました",
   "result_add": "この手順で追加：{{parts}}",
   "result_check_existing": "置いたブロックを確認",

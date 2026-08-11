@@ -37,6 +37,8 @@
   "viewer_aria": "회전 가능한 블록 조립 미리보기. 좌우 화살표 키로도 회전할 수 있습니다",
   "viewer_catalog": "LDraw 공식 부품 형상",
   "result_step": "조립 단계 {{step}} / {{total}}",
+  "result_prev_step": "이전 단계",
+  "result_next_step": "다음 단계",
   "result_placed": "{{count}}개 놓았어요",
   "result_add": "이번 단계에서 추가: {{parts}}",
   "result_check_existing": "놓은 블록 확인",

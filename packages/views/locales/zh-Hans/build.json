@@ -37,6 +37,8 @@
   "viewer_aria": "可旋转的积木搭建预览；使用左右方向键也可以旋转",
   "viewer_catalog": "LDraw 官方零件几何",
   "result_step": "搭建步骤 {{step}} / {{total}}",
+  "result_prev_step": "上一步",
+  "result_next_step": "下一步",
   "result_placed": "{{count}} 块已放好",
   "result_add": "这一步加入：{{parts}}",
   "result_check_existing": "检查已经放好的积木",

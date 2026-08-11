@@ -37,6 +37,8 @@
   "viewer_aria": "Rotatable brick model preview; use the left and right arrow keys to rotate too",
   "viewer_catalog": "Official LDraw geometry",
   "result_step": "Build step {{step}} / {{total}}",
+  "result_prev_step": "Go to previous step",
+  "result_next_step": "Go to next step",
   "result_placed": "{{count}} bricks placed",
   "result_add": "Add this step: {{parts}}",
   "result_check_existing": "check the bricks already placed",

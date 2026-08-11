@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { CheckCircle2, Download, PackageCheck, RotateCcw } from "lucide-react";
+import { CheckCircle2, ChevronLeft, ChevronRight, Download, PackageCheck, RotateCcw } from "lucide-react";
 import { Button } from "@chimii/ui/components/ui/button";
 import { Slider } from "@chimii/ui/components/ui/slider";
 import { toast } from "sonner";
@@ -13,6 +13,7 @@ import { useT } from "../../i18n";
 export function BuildResult({ creation, onAgain }: { creation: BuildCreation; onAgain?: () => void }) {
   const { t } = useT("build");
   const [step, setStep] = useState(creation.validation.step_count);
+  const lastStep = Math.max(1, creation.validation.step_count);
   const currentStep = useMemo(
     () => creation.build_plan.steps.find((item) => item.number === step),
     [creation.build_plan.steps, step],
@@ -38,6 +39,14 @@ export function BuildResult({ creation, onAgain }: { creation: BuildCreation; on
     }
   };
 
+  const goToPrevStep = () => {
+    setStep((current) => Math.max(1, current - 1));
+  };
+
+  const goToNextStep = () => {
+    setStep((current) => Math.min(lastStep, current + 1));
+  };
+
   return (
     <div className="grid gap-5 xl:grid-cols-[minmax(0,1.25fr)_minmax(320px,.75fr)]">
       <div className="space-y-4">
@@ -54,14 +63,36 @@ export function BuildResult({ creation, onAgain }: { creation: BuildCreation; on
             <span>{t($ => $.result_step, { step, total: creation.validation.step_count })}</span>
             <span className="text-[#39715a]">{t($ => $.result_placed, { count: creation.build_plan.placements.filter((part) => part.step <= step).length })}</span>
           </div>
-          <Slider
-            min={1}
-            max={Math.max(1, creation.validation.step_count)}
-            step={1}
-            value={[step]}
-            onValueChange={(value) => setStep((Array.isArray(value) ? value[0] : value) ?? 1)}
-            aria-label={t($ => $.result_step, { step, total: creation.validation.step_count })}
-          />
+          <div className="mt-3 flex items-center gap-3">
+            <button
+              type="button"
+              onClick={goToPrevStep}
+              disabled={step <= 1}
+              aria-label={t($ => $.result_prev_step)}
+              className="inline-flex h-10 min-w-10 items-center justify-center rounded-xl border-2 border-[#1d241f] bg-white px-2 text-sm font-black text-[#1d241f] transition hover:bg-[#1d241f] hover:text-white disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:bg-white disabled:hover:text-[#1d241f]"
+            >
+              <ChevronLeft className="size-4" />
+            </button>
+            <div className="flex-1">
+              <Slider
+                min={1}
+                max={lastStep}
+                step={1}
+                value={[step]}
+                onValueChange={(value) => setStep((Array.isArray(value) ? value[0] : value) ?? 1)}
+                aria-label={t($ => $.result_step, { step, total: creation.validation.step_count })}
+              />
+            </div>
+            <button
+              type="button"
+              onClick={goToNextStep}
+              disabled={step >= lastStep}
+              aria-label={t($ => $.result_next_step)}
+              className="inline-flex h-10 min-w-10 items-center justify-center rounded-xl border-2 border-[#1d241f] bg-white px-2 text-sm font-black text-[#1d241f] transition hover:bg-[#1d241f] hover:text-white disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:bg-white disabled:hover:text-[#1d241f]"
+            >
+              <ChevronRight className="size-4" />
+            </button>
+          </div>
           <div className="mt-4 rounded-xl bg-[#edf3ff] px-4 py-3 text-sm font-bold text-[#294d8c]">
             {t($ => $.result_add, { parts: currentParts.length > 0 ? currentParts.join(t($ => $.result_separator)) : t($ => $.result_check_existing) })}
           </div>
