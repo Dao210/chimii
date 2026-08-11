@@ -174,13 +174,7 @@ func placementsFor(recipe AssemblyRecipe) []Placement {
 		add("plate-1x2", 14, 1, 6, 1, 0, 4, "tail")
 		add("slope-2x2", 15, 1, 7, 1, 0, 5, "tail")
 	case "robot":
-		add("brick-2x2", 1, 0, 0, 0, 0, 1, "left-foot")
-		add("brick-2x2", 1, 3, 0, 0, 0, 1, "right-foot")
-		add("brick-2x4", 4, 0, 3, 0, 0, 2, "torso")
-		add("brick-2x2", 14, 1, 6, 0, 0, 3, "head")
-		add("brick-1x2", 15, 0, 6, 0, 90, 4, "left-arm")
-		add("brick-1x2", 15, 3, 6, 0, 90, 4, "right-arm")
-		add("brick-1x1", 1, 1, 9, 0, 0, 5, "antenna")
+		p = append(p, robotPlacements(recipe)...)
 	default:
 		add("brick-2x4", 2, 0, 0, 0, 0, 1, "body")
 		add("brick-2x2", 14, 0, 3, 0, 0, 2, "head")
@@ -190,6 +184,50 @@ func placementsFor(recipe AssemblyRecipe) []Placement {
 		add("slope-2x2", 4, 4, 4, 0, 0, 5, "tail-tip")
 	}
 	return p
+}
+
+func robotPlacements(recipe AssemblyRecipe) []Placement {
+	paletteColor := func(index int, fallback int) int {
+		if index < len(recipe.Palette) && IsAllowedColor(recipe.Palette[index]) {
+			return recipe.Palette[index]
+		}
+		return fallback
+	}
+	primaryColor := paletteColor(0, 4)
+	coreColor := paletteColor(1, 14)
+	accentColor := paletteColor(2, 15)
+	headColor := paletteColor(3, 1)
+
+	const robotCoreSegments = 100
+
+	parts := make([]Placement, 0, robotCoreSegments+8)
+	add := func(part string, color, x, y, z, rotation, step int, module string) {
+		parts = append(parts, Placement{ID: fmt.Sprintf("r%02d", len(parts)+1), PartID: part, Color: color, X: x, Y: y, Z: z, Rotation: rotation, Step: step, Module: module})
+	}
+
+	add("brick-2x2", primaryColor, 0, 0, 0, 0, 1, "left-foot")
+	add("brick-2x2", primaryColor, 2, 0, 0, 0, 1, "right-foot")
+
+	for i := 0; i < robotCoreSegments; i++ {
+		y := 3 + i*3
+		step := 3 + i
+		rotation := 0
+		if i%3 == 1 {
+			rotation = 90
+		}
+		add("brick-1x2", coreColor, 1, y, 0, rotation, step, "core")
+	}
+
+	lastCoreY := 3 + (robotCoreSegments-1)*3
+	headY := lastCoreY + 3
+	headStep := 3 + robotCoreSegments
+	add("brick-2x2", headColor, 1, headY, 0, 0, headStep, "head")
+	add("plate-1x2", accentColor, 1, headY+3, 1, 0, headStep+1, "visor")
+	add("brick-1x1", accentColor, 1, headY+4, 1, 0, headStep+2, "left-eye")
+	add("brick-1x1", accentColor, 2, headY+4, 1, 0, headStep+2, "right-eye")
+	add("brick-1x1", coreColor, 1, headY+7, 1, 0, headStep+3, "antenna")
+
+	return parts
 }
 
 func Validate(placements []Placement, inventory InventorySnapshot) ValidationReport {
