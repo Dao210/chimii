@@ -1,12 +1,32 @@
 package build
 
+import "fmt"
+
 const (
 	StarterKitID         = "chimii-starter-v1"
-	CatalogVersion       = "ldraw-official-2026-05-29-6009f2e94204"
+	CatalogRelease       = "2026-05-29"
+	CatalogArchiveSHA256 = "6009f2e94204c4d3a63a4c812010b5c90bad8c5acb19b882c859fdac63734eae"
+	CatalogSourceURL     = "https://library.ldraw.org/library/updates/complete.zip"
 	ModuleLibraryVersion = "chimii-construction-modules-v1"
 	CompilerVersion      = "build-compiler-v1"
 	ValidatorVersion     = "build-validator-v1"
 )
+
+var CatalogVersion = ComposeLDrawCatalogVersion(CatalogRelease, CatalogArchiveSHA256)
+
+func ComposeLDrawCatalogVersion(release, archiveSHA256 string) string {
+	if archiveSHA256 == "" {
+		return "ldraw-official-" + release + "-unknown"
+	}
+	return fmt.Sprintf("ldraw-official-%s-%s", release, archiveSHA256[:min(12, len(archiveSHA256))])
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
 
 // StarterCatalog is deliberately small and versioned. The application never
 // asks a model to invent a part number: every placement must resolve here.

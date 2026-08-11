@@ -1,0 +1,1 @@
+DROP INDEX CONCURRENTLY IF EXISTS ldraw_catalog_release_version_idx;

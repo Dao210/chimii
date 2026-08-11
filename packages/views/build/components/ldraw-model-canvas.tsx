@@ -40,6 +40,11 @@ interface RuntimeState {
 }
 
 const templateCache = new Map<string, Promise<Group>>();
+const catalogPartPayloadCache = new Map<string, Promise<ArrayBuffer>>();
+
+function partPayloadCacheKey(catalogVersion: string, ldrawID: string) {
+  return `${catalogVersion}:${ldrawID}`;
+}
 
 function decodeBase64(value: string): ArrayBuffer {
   const binary = window.atob(value);
@@ -50,14 +55,39 @@ function decodeBase64(value: string): ArrayBuffer {
   return bytes.buffer;
 }
 
-function loadTemplate(runtime: RuntimeState, ldrawID: string): Promise<Group> {
-  const normalizedID = ldrawID.toLowerCase();
-  const cached = templateCache.get(normalizedID);
+function fetchCatalogPartBinary(catalogVersion: string, ldrawID: string): Promise<ArrayBuffer> {
+  const key = partPayloadCacheKey(catalogVersion, ldrawID);
+  const cached = catalogPartPayloadCache.get(key);
   if (cached) return cached;
+
+  const promise = fetch(`/api/build/catalog/${encodeURIComponent(catalogVersion)}/parts/${encodeURIComponent(ldrawID)}`)
+    .then((response) => {
+      if (!response.ok) {
+        throw new Error(`failed to load catalog part ${ldrawID}: HTTP ${response.status}`);
+      }
+      return response.arrayBuffer();
+    });
+  catalogPartPayloadCache.set(key, promise);
+  return promise;
+}
+
+function loadTemplate(runtime: RuntimeState, catalogVersion: string | undefined, ldrawID: string): Promise<Group> {
+  const normalizedID = ldrawID.toLowerCase();
   const asset = runtime.catalog.LDRAW_CATALOG[normalizedID];
-  if (!asset) return Promise.reject(new Error(`LDraw catalog does not contain ${normalizedID}`));
-  const pending = runtime.loader.parseAsync(decodeBase64(asset.glbBase64), "").then((model) => model.scene);
-  templateCache.set(normalizedID, pending);
+  const effectiveVersion = catalogVersion || runtime.catalog.LDRAW_CATALOG_VERSION;
+  const cacheKey = asset == null
+    ? `${effectiveVersion}:remote:${normalizedID}`
+    : `${effectiveVersion}:${asset.hash}:${normalizedID}`;
+  const cached = templateCache.get(cacheKey);
+  if (cached) return cached;
+
+  const source = asset == null
+    ? fetchCatalogPartBinary(effectiveVersion, normalizedID)
+    : Promise.resolve(decodeBase64(asset.glbBase64));
+  const pending = source
+    .then((data) => runtime.loader.parseAsync(data, ""))
+    .then((model) => model.scene);
+  templateCache.set(cacheKey, pending);
   return pending;
 }
 
@@ -152,17 +182,13 @@ export function LDrawModelCanvas({
   useEffect(() => {
     const runtime = runtimeRef.current;
     if (!runtime || runtimeVersion === 0) return;
-    if (catalogVersion && catalogVersion !== runtime.catalog.LDRAW_CATALOG_VERSION) {
-      onStatus("failed");
-      return;
-    }
     let cancelled = false;
     onStatus("loading");
 
     void Promise.all(placements.map(async (placement) => {
       const spec = parts[placement.part_id];
       if (!spec) throw new Error(`BuildPlan part ${placement.part_id} is missing`);
-      const template = await loadTemplate(runtime, spec.ldraw_id);
+      const template = await loadTemplate(runtime, catalogVersion, spec.ldraw_id);
       return { placement, spec, template };
     })).then((loadedParts) => {
       if (cancelled) return;

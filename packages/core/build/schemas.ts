@@ -33,6 +33,15 @@ const InventoryItemsSchema = z
   .nullish()
   .transform((items) => items ?? []);
 
+const CatalogSourceSchema = z
+  .looseObject({
+    release: z.string(),
+    archive_sha256: z.string(),
+    source_url: z.string(),
+  })
+  .nullish()
+  .transform((source) => source ?? undefined);
+
 export const BrickInventorySchema = z.looseObject({
   configured: z.boolean(),
   catalog_version: z.string(),
@@ -49,6 +58,7 @@ const BrickInventorySnapshotSchema = BrickInventorySchema.extend({
 
 export const BuildCatalogSchema = z.looseObject({
   catalog_version: z.string(),
+  catalog_source: CatalogSourceSchema,
   parts: z.array(PartSpecSchema),
   colors: z.array(z.looseObject({
     code: z.number().int(),

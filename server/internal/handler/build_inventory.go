@@ -5,11 +5,14 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"net/url"
 	"sort"
 	"strconv"
+	"strings"
 
 	buildstudio "github.com/chimii-ai/chimii/server/internal/build"
 	db "github.com/chimii-ai/chimii/server/pkg/db/generated"
+	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -25,8 +28,15 @@ type buildCatalogColorResponse struct {
 	Hex  string `json:"hex"`
 }
 
+type buildCatalogSourceResponse struct {
+	Release       string `json:"release"`
+	ArchiveSHA256 string `json:"archive_sha256"`
+	SourceURL     string `json:"source_url"`
+}
+
 type buildCatalogResponse struct {
 	CatalogVersion string                      `json:"catalog_version"`
+	CatalogSource  buildCatalogSourceResponse  `json:"catalog_source"`
 	Parts          []buildstudio.PartSpec      `json:"parts"`
 	Colors         []buildCatalogColorResponse `json:"colors"`
 }
@@ -50,7 +60,7 @@ type brickInventoryResponse struct {
 	UpdatedAt      string                      `json:"updated_at,omitempty"`
 }
 
-func (h *Handler) GetBuildCatalog(w http.ResponseWriter, _ *http.Request) {
+func (h *Handler) GetBuildCatalog(w http.ResponseWriter, r *http.Request) {
 	parts := make([]buildstudio.PartSpec, 0, len(buildstudio.StarterCatalog))
 	for _, part := range buildstudio.StarterCatalog {
 		parts = append(parts, part)
@@ -61,8 +71,27 @@ func (h *Handler) GetBuildCatalog(w http.ResponseWriter, _ *http.Request) {
 		}
 		return parts[i].ID < parts[j].ID
 	})
+
+	catalogVersion := buildstudio.CatalogVersion
+	catalogSource := buildCatalogSourceResponse{
+		Release:       buildstudio.CatalogRelease,
+		ArchiveSHA256: buildstudio.CatalogArchiveSHA256,
+		SourceURL:     buildstudio.CatalogSourceURL,
+	}
+	if h != nil && h.Queries != nil {
+		release, err := h.Queries.GetLatestActiveLDrawCatalogRelease(r.Context())
+		if err == nil {
+			catalogVersion = release.CatalogVersion
+			catalogSource = buildCatalogSourceResponse{
+				Release:       release.Release,
+				ArchiveSHA256: release.ArchiveSha256,
+				SourceURL:     release.SourceUrl,
+			}
+		}
+	}
 	writeJSON(w, http.StatusOK, buildCatalogResponse{
-		CatalogVersion: buildstudio.CatalogVersion,
+		CatalogVersion: catalogVersion,
+		CatalogSource:  catalogSource,
 		Parts:          parts,
 		Colors: []buildCatalogColorResponse{
 			{Code: 1, Name: "Blue", Hex: "#1e5aa8"},
@@ -73,6 +102,59 @@ func (h *Handler) GetBuildCatalog(w http.ResponseWriter, _ *http.Request) {
 			{Code: 71, Name: "Light gray", Hex: "#969696"},
 		},
 	})
+}
+
+func (h *Handler) GetBuildCatalogPart(w http.ResponseWriter, r *http.Request) {
+	catalogVersion := strings.TrimSpace(chi.URLParam(r, "catalogVersion"))
+	partID := strings.TrimSpace(chi.URLParam(r, "partID"))
+	if catalogVersion == "" || partID == "" {
+		writeError(w, http.StatusBadRequest, "catalog version and part id are required")
+		return
+	}
+	if decoded, err := url.PathUnescape(catalogVersion); err == nil {
+		catalogVersion = decoded
+	}
+	if decoded, err := url.PathUnescape(partID); err == nil {
+		partID = decoded
+	}
+	if h == nil || h.Queries == nil {
+		writeError(w, http.StatusNotFound, "part not found")
+		return
+	}
+	partID = strings.ToLower(partID)
+	part, err := h.Queries.GetLDrawPartRevisionByVersionAndPartID(r.Context(), db.GetLDrawPartRevisionByVersionAndPartIDParams{
+		CatalogVersion: catalogVersion,
+		PartID:         partID,
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		writeError(w, http.StatusNotFound, "part not found")
+		return
+	}
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to load part")
+		return
+	}
+	if part.ContentType == "" {
+		part.ContentType = "model/gltf-binary"
+	}
+	w.Header().Set("Content-Type", part.ContentType)
+	w.Header().Set("Content-Length", strconv.FormatInt(part.PayloadSizeBytes, 10))
+	w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+	if part.ContentSha256.Valid {
+		etag := part.ContentSha256.String
+		w.Header().Set("ETag", `"`+etag+`"`)
+		if match := r.Header.Get("If-None-Match"); match != "" {
+			if strings.EqualFold(strings.TrimSpace(match), `"`+etag+`"`) {
+				w.WriteHeader(http.StatusNotModified)
+				return
+			}
+		}
+	}
+	w.WriteHeader(http.StatusOK)
+	if len(part.Payload) == 0 {
+		return
+	}
+	_, _ = w.Write(part.Payload)
 }
 
 func (h *Handler) GetBrickInventory(w http.ResponseWriter, r *http.Request) {

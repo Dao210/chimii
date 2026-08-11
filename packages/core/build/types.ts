@@ -19,8 +19,15 @@ export interface BuildCatalogColor {
   hex: string;
 }
 
+export interface BuildCatalogSource {
+  release: string;
+  archive_sha256: string;
+  source_url: string;
+}
+
 export interface BuildCatalog {
   catalog_version: string;
+  catalog_source?: BuildCatalogSource;
   parts: BuildPartSpec[];
   colors: BuildCatalogColor[];
 }

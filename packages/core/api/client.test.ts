@@ -126,6 +126,46 @@ describe("ApiClient Build Studio response schema", () => {
     created_at: "2026-08-09T00:00:00Z",
   };
 
+  it("parses catalog source metadata when provided", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({
+        catalog_version: "catalog-v1",
+        catalog_source: {
+          release: "2026-05-29",
+          archive_sha256: "6009f2e94204c4d3a63a4c812010b5c90bad8c5acb19b882c859fdac63734eae",
+          source_url: "https://library.ldraw.org/library/updates/complete.zip",
+        },
+        parts: [],
+        colors: [{ code: 4, name: "Red", hex: "#b40000" }],
+      }),
+      { status: 200, headers: { "Content-Type": "application/json" } }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const catalog = await new ApiClient("https://api.example.test").getBuildCatalog();
+
+    expect(catalog.catalog_source).toEqual({
+      release: "2026-05-29",
+      archive_sha256: "6009f2e94204c4d3a63a4c812010b5c90bad8c5acb19b882c859fdac63734eae",
+      source_url: "https://library.ldraw.org/library/updates/complete.zip",
+    });
+  });
+
+  it("keeps compatibility with legacy catalogs without catalog source", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({
+        catalog_version: "catalog-v1",
+        parts: [],
+        colors: [{ code: 4, name: "Red", hex: "#b40000" }],
+      }), { status: 200, headers: { "Content-Type": "application/json" } }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(new ApiClient("https://api.example.test").getBuildCatalog()).resolves.toMatchObject({
+      catalog_version: "catalog-v1",
+    });
+  });
+
   it("saves a versioned brick inventory", async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(JSON.stringify({

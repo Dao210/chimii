@@ -14,7 +14,10 @@ func ChildCapabilities(next http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 			return
 		}
-		path := r.URL.Path
+		path := r.URL.EscapedPath()
+		if path == "" {
+			path = r.URL.Path
+		}
 		allowed := (path == "/api/me" && r.Method == http.MethodGet) ||
 			((path == "/api/workspaces" || path == "/api/workspaces/") && r.Method == http.MethodGet) ||
 			(path == "/api/child-mode" && r.Method == http.MethodGet) ||
@@ -40,7 +43,10 @@ func childBuildCapabilityAllowed(method, path string) bool {
 	}
 	switch segments[0] {
 	case "catalog":
-		return len(segments) == 1 && method == http.MethodGet
+		if len(segments) == 1 && method == http.MethodGet {
+			return true
+		}
+		return len(segments) == 4 && segments[1] != "" && segments[2] == "parts" && method == http.MethodGet
 	case "inventory":
 		return len(segments) == 1 && (method == http.MethodGet || method == http.MethodPut || method == http.MethodDelete)
 	case "sessions":

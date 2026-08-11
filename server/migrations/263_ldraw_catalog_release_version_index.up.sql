@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX CONCURRENTLY ldraw_catalog_release_version_idx ON ldraw_catalog_release (catalog_version);

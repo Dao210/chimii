@@ -1,6 +1,15 @@
 package handler
 
-import "testing"
+import (
+	"encoding/json"
+	"io"
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"testing"
+
+	buildstudio "github.com/chimii-ai/chimii/server/internal/build"
+)
 
 func TestNormalizeBrickInventoryItems(t *testing.T) {
 	items, err := normalizeBrickInventoryItems([]brickInventoryItemRequest{
@@ -35,4 +44,43 @@ func TestNormalizeBrickInventoryItemsRejectsInvalidEntries(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestGetBuildCatalogReturnsSourceMetadata(t *testing.T) {
+	h := &Handler{}
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest(http.MethodGet, "/api/build/catalog", nil)
+	h.GetBuildCatalog(w, r)
+
+	resp := w.Result()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d, expected %d", resp.StatusCode, http.StatusOK)
+	}
+	body := strings.TrimSpace(string(mustReadAll(t, resp.Body)))
+	var payload map[string]any
+	if err := json.Unmarshal([]byte(body), &payload); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	source, ok := payload["catalog_source"].(map[string]any)
+	if !ok {
+		t.Fatalf("missing catalog_source: %#v", payload["catalog_source"])
+	}
+	if source["release"] != buildstudio.CatalogRelease {
+		t.Fatalf("release = %v, want %q", source["release"], buildstudio.CatalogRelease)
+	}
+	if source["archive_sha256"] != buildstudio.CatalogArchiveSHA256 {
+		t.Fatalf("archive sha mismatch: %v", source["archive_sha256"])
+	}
+	if source["source_url"] != buildstudio.CatalogSourceURL {
+		t.Fatalf("source url mismatch: %v", source["source_url"])
+	}
+}
+
+func mustReadAll(t *testing.T, body interface{ Read(p []byte) (int, error) }) []byte {
+	t.Helper()
+	data, err := io.ReadAll(body)
+	if err != nil {
+		t.Fatalf("read body: %v", err)
+	}
+	return data
 }

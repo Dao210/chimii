@@ -1094,6 +1094,7 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 			// Postgres; clients poll the session while it is queued/generating.
 			r.Route("/api/build", func(r chi.Router) {
 				r.Get("/catalog", h.GetBuildCatalog)
+				r.Get("/catalog/{catalogVersion}/parts/{partID}", h.GetBuildCatalogPart)
 				r.Get("/inventory", h.GetBrickInventory)
 				r.Put("/inventory", h.PutBrickInventory)
 				r.Delete("/inventory", h.DeleteBrickInventory)

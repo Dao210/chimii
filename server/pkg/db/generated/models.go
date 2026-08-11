@@ -913,6 +913,38 @@ type LarkUserBinding struct {
 	BoundAt        pgtype.Timestamptz `json:"bound_at"`
 }
 
+type LdrawCatalogRelease struct {
+	ID             pgtype.UUID        `json:"id"`
+	CatalogVersion string             `json:"catalog_version"`
+	Release        string             `json:"release"`
+	SourceUrl      string             `json:"source_url"`
+	ArchiveSha256  string             `json:"archive_sha256"`
+	Status         string             `json:"status"`
+	ReleaseJson    pgtype.Text        `json:"release_json"`
+	PartCount      int32              `json:"part_count"`
+	DownloadedAt   pgtype.Timestamptz `json:"downloaded_at"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
+}
+
+type LdrawPartRevision struct {
+	ID               pgtype.UUID        `json:"id"`
+	CatalogVersion   string             `json:"catalog_version"`
+	PartID           string             `json:"part_id"`
+	Revision         int32              `json:"revision"`
+	Kind             string             `json:"kind"`
+	LdrawSha256      string             `json:"ldraw_sha256"`
+	StorageBackend   string             `json:"storage_backend"`
+	ContentSha256    pgtype.Text        `json:"content_sha256"`
+	ContentType      string             `json:"content_type"`
+	StorageKey       string             `json:"storage_key"`
+	Payload          []byte             `json:"payload"`
+	PayloadSizeBytes int64              `json:"payload_size_bytes"`
+	PayloadFormat    int32              `json:"payload_format"`
+	CreatedAt        pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt        pgtype.Timestamptz `json:"updated_at"`
+}
+
 type Member struct {
 	ID          pgtype.UUID        `json:"id"`
 	WorkspaceID pgtype.UUID        `json:"workspace_id"`
