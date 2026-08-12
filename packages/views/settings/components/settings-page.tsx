@@ -51,9 +51,6 @@ const ACCOUNT_TAB_ICONS = {
 
 const WORKSPACE_TAB_KEYS = [
   "general",
-  "repositories",
-  "github",
-  "integrations",
   "labs",
   "members",
   "labels",
