@@ -129,6 +129,9 @@ backend:
     # CHIMII_VCS_SECRET_KEY through existingSecret before connections work.
     # Set false to hide and reject the integration for this deployment.
     vcsIntegrationEnabled: true
+    # Global catalog mutation is owner/admin-triggered because Chimii has no
+    # platform-admin role yet. Enable only for a trusted self-host deployment.
+    ldrawCatalogSyncEnabled: false
     googleClientId: ""
     googleRedirectUri: http://chimii.dev.lan/auth/callback
     s3Bucket: ""

@@ -22,6 +22,7 @@ import (
 	"github.com/chimii-ai/chimii/server/internal/integrations/ghsnapshot"
 	"github.com/chimii-ai/chimii/server/internal/integrations/lark"
 	"github.com/chimii-ai/chimii/server/internal/integrations/slack"
+	"github.com/chimii-ai/chimii/server/internal/ldrawsync"
 	obsmetrics "github.com/chimii-ai/chimii/server/internal/metrics"
 	"github.com/chimii-ai/chimii/server/internal/middleware"
 	"github.com/chimii-ai/chimii/server/internal/realtime"
@@ -78,6 +79,11 @@ type Config struct {
 	// "missing key" message a cloud user cannot act on. Populated from
 	// CHIMII_VCS_INTEGRATION_ENABLED; the self-host compose defaults it on.
 	VCSIntegrationEnabled bool
+	// LDrawCatalogSyncEnabled exposes the deployment-wide catalog sync control
+	// to workspace owners/admins. Keep it false on multi-tenant deployments:
+	// the repository has no platform-admin role, and a sync mutates one global
+	// asset catalog shared by every workspace.
+	LDrawCatalogSyncEnabled bool
 	// PublicURL is the absolute base URL the API is reachable at from the
 	// public internet, with no trailing slash (e.g. "https://chimii.ai").
 	// Used only to build webhook_url responses for autopilot webhook triggers
@@ -180,6 +186,7 @@ type Handler struct {
 	WebhookAbsoluteIPRateLimiter WebhookRateLimiter
 	WebhookDeliveryWorker        *WebhookDeliveryWorker
 	BuildWorker                  *BuildWorker
+	LDrawCatalogWorker           *ldrawsync.CatalogWorker
 	CloudRuntime                 cloudRuntimeProxy
 	// Lark integration. All three are nil when the Lark master key
 	// (CHIMII_LARK_SECRET_KEY) is unset; the corresponding HTTP

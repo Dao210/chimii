@@ -18,6 +18,11 @@ SELECT *
 FROM ldraw_catalog_release
 WHERE catalog_version = @catalog_version;
 
+-- name: CountLDrawPartRevisionsByVersion :one
+SELECT COUNT(*)
+FROM ldraw_part_revision
+WHERE catalog_version = @catalog_version;
+
 -- name: DeprecateLDrawCatalogReleasesExcept :exec
 UPDATE ldraw_catalog_release
 SET status = 'deprecated', updated_at = now()

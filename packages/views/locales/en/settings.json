@@ -400,9 +400,29 @@
     "deleting": "Deleting..."
   },
   "labs": {
-    "section_placeholder_title": "No experiments yet",
-    "section_placeholder_description": "Experimental settings will land here as they ship. Today this tab is intentionally empty.",
-    "toast_failed": "Failed to update setting"
+    "page_description": "Deployment-level tools that are explicitly enabled by the operator.",
+    "ldraw_title": "LDraw catalog",
+    "ldraw_description": "Synchronize the pinned 1,000-part Starter Kit into the shared production catalog.",
+    "ldraw_kit": "Starter Kit 1000",
+    "ldraw_loading": "Loading catalog status…",
+    "ldraw_progress": "Sync progress",
+    "ldraw_progress_description": "{{completed}} of {{total}} parts processed.",
+    "ldraw_action": "Catalog synchronization",
+    "ldraw_action_description": "Runs as a durable background job. Existing active assets remain available until completion.",
+    "ldraw_admin_only": "Only workspace owners and admins can start this deployment-wide operation.",
+    "ldraw_operator_disabled": "The operator has not enabled catalog synchronization on this deployment.",
+    "ldraw_sync": "Sync catalog",
+    "ldraw_syncing": "Syncing…",
+    "ldraw_sync_started": "LDraw catalog sync started",
+    "ldraw_sync_failed": "Failed to start LDraw catalog sync",
+    "ldraw_status": {
+      "loading": "Loading",
+      "idle": "Not synced",
+      "queued": "Queued",
+      "running": "Running",
+      "completed": "Synced",
+      "failed": "Failed"
+    }
   },
   "github": {
     "page_description": "Connect a GitHub App, control how Pull Requests show up inside Chimii, and decide what your agents leave behind in commit history.",

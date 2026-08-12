@@ -927,6 +927,26 @@ type LdrawCatalogRelease struct {
 	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
 }
 
+type LdrawCatalogSyncJob struct {
+	ID                pgtype.UUID        `json:"id"`
+	WorkspaceID       pgtype.UUID        `json:"workspace_id"`
+	RequestedBy       pgtype.UUID        `json:"requested_by"`
+	CatalogVersion    string             `json:"catalog_version"`
+	KitID             string             `json:"kit_id"`
+	TargetPartCount   int32              `json:"target_part_count"`
+	ProgressPartCount int32              `json:"progress_part_count"`
+	Status            string             `json:"status"`
+	Attempts          int32              `json:"attempts"`
+	AvailableAt       pgtype.Timestamptz `json:"available_at"`
+	LeaseToken        pgtype.UUID        `json:"lease_token"`
+	LeasedUntil       pgtype.Timestamptz `json:"leased_until"`
+	Error             pgtype.Text        `json:"error"`
+	StartedAt         pgtype.Timestamptz `json:"started_at"`
+	CompletedAt       pgtype.Timestamptz `json:"completed_at"`
+	CreatedAt         pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt         pgtype.Timestamptz `json:"updated_at"`
+}
+
 type LdrawPartRevision struct {
 	ID               pgtype.UUID        `json:"id"`
 	CatalogVersion   string             `json:"catalog_version"`

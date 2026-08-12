@@ -45,3 +45,13 @@ export function useResetBrickInventory() {
     onError: () => queryClient.invalidateQueries({ queryKey: buildKeys.inventory(workspaceId) }),
   });
 }
+
+export function useStartLDrawCatalogSync() {
+  const workspaceId = useWorkspaceId();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.startLDrawCatalogSync(),
+    onSuccess: (status) => queryClient.setQueryData(buildKeys.catalogSync(workspaceId), status),
+    onError: () => queryClient.invalidateQueries({ queryKey: buildKeys.catalogSync(workspaceId) }),
+  });
+}

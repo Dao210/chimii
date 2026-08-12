@@ -82,7 +82,7 @@ type materialContext struct {
 
 func main() {
 	archivePath := flag.String("archive", "", "path to the pinned complete.zip")
-	lockPath := flag.String("lock", "catalog.lock.json", "catalog lock file")
+	lockPath := flag.String("lock", "../../server/internal/ldrawsync/catalog.lock.json", "catalog lock file")
 	outPath := flag.String("out", "../../packages/views/build/catalog/catalog.generated.ts", "generated TypeScript output")
 	check := flag.Bool("check", false, "verify that the output is already current")
 	flag.Parse()

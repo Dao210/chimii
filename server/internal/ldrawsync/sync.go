@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"crypto/sha256"
+	_ "embed"
 	"encoding/base64"
 	"encoding/binary"
 	"encoding/hex"
@@ -26,6 +27,33 @@ type LockFile struct {
 	ArchiveSHA256 string   `json:"archive_sha256"`
 	RootParts     []string `json:"root_parts"`
 }
+
+type StarterKitPart struct {
+	Rank          int    `json:"rank"`
+	LDrawID       string `json:"ldraw_id"`
+	Name          string `json:"name"`
+	Category      string `json:"category"`
+	SetCount      int    `json:"set_count"`
+	TotalQuantity int64  `json:"total_quantity"`
+}
+
+type StarterKitManifest struct {
+	SchemaVersion int              `json:"schema_version"`
+	KitID         string           `json:"kit_id"`
+	PartCount     int              `json:"part_count"`
+	Selection     json.RawMessage  `json:"selection"`
+	Parts         []StarterKitPart `json:"parts"`
+}
+
+// The production server embeds the pinned source lock and ranked Starter Kit
+// manifest so a release never depends on repository files being present on the
+// host. Operators may still pass explicit files to the CLI for review/dry-run.
+//
+//go:embed catalog.lock.json
+var embeddedCatalogLock []byte
+
+//go:embed starter-kit-1000.json
+var embeddedStarterKit []byte
 
 type vec3 struct{ X, Y, Z float64 }
 
@@ -115,6 +143,10 @@ func ReadLock(path string) (LockFile, error) {
 	if err != nil {
 		return LockFile{}, err
 	}
+	return ParseLock(raw)
+}
+
+func ParseLock(raw []byte) (LockFile, error) {
 	var lock LockFile
 	decoder := json.NewDecoder(bytes.NewReader(raw))
 	decoder.DisallowUnknownFields()
@@ -136,6 +168,59 @@ func ReadLock(path string) (LockFile, error) {
 		seen[id] = true
 	}
 	return lock, nil
+}
+
+func ReadStarterKit(path string) (StarterKitManifest, error) {
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return StarterKitManifest{}, err
+	}
+	return ParseStarterKit(raw)
+}
+
+func ParseStarterKit(raw []byte) (StarterKitManifest, error) {
+	var manifest StarterKitManifest
+	decoder := json.NewDecoder(bytes.NewReader(raw))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&manifest); err != nil {
+		return StarterKitManifest{}, err
+	}
+	if manifest.SchemaVersion != 1 || strings.TrimSpace(manifest.KitID) == "" || manifest.PartCount <= 0 {
+		return StarterKitManifest{}, errors.New("invalid Starter Kit manifest")
+	}
+	if len(manifest.Parts) != manifest.PartCount {
+		return StarterKitManifest{}, fmt.Errorf("Starter Kit part count mismatch: got %d, want %d", len(manifest.Parts), manifest.PartCount)
+	}
+	seen := make(map[string]bool, len(manifest.Parts))
+	for index, part := range manifest.Parts {
+		id := normalizeName(part.LDrawID)
+		if part.Rank != index+1 || id == "" || !strings.HasSuffix(id, ".dat") || seen[id] || strings.TrimSpace(part.Name) == "" {
+			return StarterKitManifest{}, fmt.Errorf("invalid Starter Kit part at rank %d", index+1)
+		}
+		manifest.Parts[index].LDrawID = id
+		seen[id] = true
+	}
+	return manifest, nil
+}
+
+func EmbeddedCatalog() (LockFile, StarterKitManifest, error) {
+	lock, err := ParseLock(embeddedCatalogLock)
+	if err != nil {
+		return LockFile{}, StarterKitManifest{}, fmt.Errorf("parse embedded LDraw lock: %w", err)
+	}
+	manifest, err := ParseStarterKit(embeddedStarterKit)
+	if err != nil {
+		return LockFile{}, StarterKitManifest{}, fmt.Errorf("parse embedded Starter Kit: %w", err)
+	}
+	return lock, manifest, nil
+}
+
+func (m StarterKitManifest) PartIDs() []string {
+	ids := make([]string, len(m.Parts))
+	for index, part := range m.Parts {
+		ids[index] = part.LDrawID
+	}
+	return ids
 }
 
 func VerifyArchive(path, expected string) error {
@@ -465,44 +550,54 @@ func (l *ArchiveLibrary) colors() (map[int]colorValue, error) {
 }
 
 func (l *ArchiveLibrary) CompileParts(parts []string, maxParts int) ([]CompiledPart, error) {
+	results := make([]CompiledPart, 0, len(parts))
+	err := l.CompilePartsStream(parts, maxParts, func(_ int, _ int, part CompiledPart) error {
+		results = append(results, part)
+		return nil
+	})
+	return results, err
+}
+
+// CompilePartsStream compiles a deterministic ordered part list without
+// retaining every GLB in memory. This is the production path for the 1000-part
+// Starter Kit; callers persist bounded batches from visit.
+func (l *ArchiveLibrary) CompilePartsStream(parts []string, maxParts int, visit func(index, total int, part CompiledPart) error) error {
 	if maxParts > 0 && len(parts) > maxParts {
 		parts = parts[:maxParts]
 	}
 	if len(parts) == 0 {
-		return nil, errors.New("no parts requested for compilation")
+		return errors.New("no parts requested for compilation")
+	}
+	if visit == nil {
+		return errors.New("compiled part visitor is required")
 	}
 	colors, err := l.colors()
 	if err != nil {
-		return nil, err
+		return err
 	}
-	assets := make([]catalogAsset, 0, len(parts))
-	for _, partID := range parts {
+	for index, partID := range parts {
 		asset, err := l.compilePart(partID, colors)
 		if err != nil {
-			return nil, fmt.Errorf("compile %s: %w", partID, err)
+			return fmt.Errorf("compile %s: %w", partID, err)
 		}
-		assets = append(assets, asset)
-	}
-	results := make([]CompiledPart, 0, len(assets))
-	for _, asset := range assets {
 		raw, err := base64.StdEncoding.DecodeString(asset.Data)
 		if err != nil {
-			return nil, fmt.Errorf("decode compiled %s GLB: %w", asset.ID, err)
+			return fmt.Errorf("decode compiled %s GLB: %w", asset.ID, err)
 		}
 		contentHash := sha256.Sum256(raw)
 		// Re-load the original source file once to make the LDraw sha independent
 		// from flattening/normalization changes.
 		sourcePath, err := resolveReference(asset.ID, l.files)
 		if err != nil {
-			return nil, fmt.Errorf("locate source for %s: %w", asset.ID, err)
+			return fmt.Errorf("locate source for %s: %w", asset.ID, err)
 		}
 		src, err := l.source(sourcePath)
 		if err != nil {
-			return nil, fmt.Errorf("load source for %s: %w", asset.ID, err)
+			return fmt.Errorf("load source for %s: %w", asset.ID, err)
 		}
 		sourceHash := sha256.Sum256(src.Content)
 
-		results = append(results, CompiledPart{
+		compiled := CompiledPart{
 			PartID:        asset.ID,
 			LDrawSHA256:   hex.EncodeToString(sourceHash[:]),
 			ContentSHA256: hex.EncodeToString(contentHash[:]),
@@ -514,9 +609,12 @@ func (l *ArchiveLibrary) CompileParts(parts []string, maxParts int) ([]CompiledP
 			TriangleCount: asset.TriangleCount,
 			Dependencies:  asset.Dependencies,
 			PayloadSize:   int64(len(raw)),
-		})
+		}
+		if err := visit(index+1, len(parts), compiled); err != nil {
+			return fmt.Errorf("visit compiled %s: %w", asset.ID, err)
+		}
 	}
-	return results, nil
+	return nil
 }
 
 type materialContext struct {

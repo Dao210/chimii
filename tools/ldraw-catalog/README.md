@@ -1,11 +1,16 @@
 # CHIMII LDraw catalog compiler
 
-This build-time tool converts only the Starter Kit dependency closure from a
-pinned **official** LDraw Parts Library archive into content-addressed GLB
-meshes embedded in a lazy-loaded TypeScript catalog. The complete archive and
-`.dat` source files are never shipped with CHIMII.
+CHIMII maintains two catalog layers from one pinned **official** LDraw Parts
+Library archive:
 
-The input is fixed by `catalog.lock.json`. To regenerate:
+- a ranked 1,000-part Starter Kit synchronized into PostgreSQL by the server;
+- ten core fallback parts embedded in the Web/Desktop bundle.
+
+The complete archive and `.dat` source files are never shipped with CHIMII.
+
+The official source is fixed by
+`server/internal/ldrawsync/catalog.lock.json`. To regenerate the small embedded
+fallback catalog:
 
 ```bash
 curl -fL -o /tmp/ldraw-complete.zip \
@@ -19,6 +24,12 @@ go run . \
 The command fails before parsing if the archive SHA-256 differs from the lock.
 Update the release and hash only after reviewing the official release and the
 `!LICENSE` header of every Starter Kit root part.
+
+The production Starter Kit is fixed by
+`server/internal/ldrawsync/starter-kit-1000.json`. Regenerate it from pinned
+Rebrickable CSV snapshots with `go run ./rank`; the manifest records every
+input URL and SHA-256 plus the ranking/filter rules. The server embeds both
+JSON files, so a deployed binary does not depend on repository files.
 
 The parser accepts the geometry records required by official rigid parts:
 subfile references, lines, triangles, quads, inherited colours, and nested

@@ -399,9 +399,29 @@
     "deleting": "删除中..."
   },
   "labs": {
-    "section_placeholder_title": "暂无实验",
-    "section_placeholder_description": "实验性功能上线后会出现在这里。当前实验室页面是空的。",
-    "toast_failed": "更新设置失败"
+    "page_description": "由部署运维人员显式开启的实例级工具。",
+    "ldraw_title": "LDraw 目录",
+    "ldraw_description": "将版本锁定的 1000 个常用零件 Starter Kit 同步到生产共享目录。",
+    "ldraw_kit": "Starter Kit 1000",
+    "ldraw_loading": "正在读取目录状态…",
+    "ldraw_progress": "同步进度",
+    "ldraw_progress_description": "已处理 {{completed}} / {{total}} 个零件。",
+    "ldraw_action": "目录同步",
+    "ldraw_action_description": "任务在后台可靠执行；完成前不会替换当前可用目录。",
+    "ldraw_admin_only": "只有工作区所有者和管理员可以启动这项实例级操作。",
+    "ldraw_operator_disabled": "部署运维人员尚未开启目录同步功能。",
+    "ldraw_sync": "同步目录",
+    "ldraw_syncing": "同步中…",
+    "ldraw_sync_started": "LDraw 目录同步已启动",
+    "ldraw_sync_failed": "无法启动 LDraw 目录同步",
+    "ldraw_status": {
+      "loading": "读取中",
+      "idle": "未同步",
+      "queued": "等待中",
+      "running": "同步中",
+      "completed": "已同步",
+      "failed": "失败"
+    }
   },
   "github": {
     "page_description": "连接 GitHub App、控制 Pull Request 如何出现在 Chimii 中，并决定智能体在 commit 记录里留下哪些痕迹。",

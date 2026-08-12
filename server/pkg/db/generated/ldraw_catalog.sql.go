@@ -11,6 +11,19 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const countLDrawPartRevisionsByVersion = `-- name: CountLDrawPartRevisionsByVersion :one
+SELECT COUNT(*)
+FROM ldraw_part_revision
+WHERE catalog_version = $1
+`
+
+func (q *Queries) CountLDrawPartRevisionsByVersion(ctx context.Context, catalogVersion string) (int64, error) {
+	row := q.db.QueryRow(ctx, countLDrawPartRevisionsByVersion, catalogVersion)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const deprecateLDrawCatalogReleasesExcept = `-- name: DeprecateLDrawCatalogReleasesExcept :exec
 UPDATE ldraw_catalog_release
 SET status = 'deprecated', updated_at = now()

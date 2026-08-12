@@ -272,6 +272,7 @@ func normalizePlacementSteps(placements []Placement) []Placement {
 			seen[placement.Step] = true
 			steps = append(steps, placement.Step)
 		}
+	}
 	sort.Ints(steps)
 	normalized := make(map[int]int, len(steps))
 	for index, step := range steps {

@@ -2,6 +2,7 @@ import { z } from "zod";
 import type {
   BrickInventory,
   BuildCatalog,
+  LDrawCatalogSyncStatus,
   BuildCreation,
   BuildCreationList,
   BuildSession,
@@ -65,6 +66,22 @@ export const BuildCatalogSchema = z.looseObject({
     name: z.string(),
     hex: z.string().regex(/^#[0-9a-fA-F]{6}$/),
   })),
+});
+
+export const LDrawCatalogSyncStatusSchema = z.looseObject({
+  enabled: z.boolean(),
+  can_manage: z.boolean(),
+  kit_id: z.string(),
+  catalog_version: z.string(),
+  target_part_count: z.number().int().positive(),
+  stored_part_count: z.number().int().nonnegative(),
+  progress_part_count: z.number().int().nonnegative(),
+  status: z.enum(["idle", "queued", "running", "completed", "failed"]),
+  error: z.string().optional(),
+  created_at: z.string().optional(),
+  started_at: z.string().optional(),
+  completed_at: z.string().optional(),
+  updated_at: z.string().optional(),
 });
 
 const PlacementSchema = z.looseObject({
@@ -193,6 +210,17 @@ export const EMPTY_BUILD_CREATION: BuildCreation = {
 export const EMPTY_BUILD_CREATIONS: BuildCreationList = { creations: [] };
 
 export const EMPTY_BUILD_CATALOG: BuildCatalog = { catalog_version: "", parts: [], colors: [] };
+
+export const EMPTY_LDRAW_CATALOG_SYNC_STATUS: LDrawCatalogSyncStatus = {
+  enabled: false,
+  can_manage: false,
+  kit_id: "",
+  catalog_version: "",
+  target_part_count: 0,
+  stored_part_count: 0,
+  progress_part_count: 0,
+  status: "idle",
+};
 
 export const EMPTY_BRICK_INVENTORY: BrickInventory = {
   configured: false,

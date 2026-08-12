@@ -516,11 +516,14 @@ build_backend_local() {
     p3=$!
     CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags '-s -w' -o "$BUILD_TMP/backend/backfill_codex_usage_cache" ./cmd/backfill_codex_usage_cache &
     p4=$!
+    CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags '-s -w' -o "$BUILD_TMP/backend/ldraw_catalog_sync" ./cmd/ldraw_catalog_sync &
+    p5=$!
     status=0
     wait "$p1" || status=$?
     wait "$p2" || status=$?
     wait "$p3" || status=$?
     wait "$p4" || status=$?
+    wait "$p5" || status=$?
     (( status == 0 ))
   )
   cp "$ROOT_DIR"/server/migrations/*.sql "$BUILD_TMP/backend/migrations/"
@@ -804,6 +807,7 @@ set_env LOCAL_UPLOAD_DIR /var/lib/chimii/uploads /etc/chimii/backend.env
 set_env LOCAL_UPLOAD_BASE_URL "https://$DOMAIN" /etc/chimii/backend.env
 set_env GOOGLE_REDIRECT_URI "https://$DOMAIN/auth/callback" /etc/chimii/backend.env
 set_env CHIMII_VCS_INTEGRATION_ENABLED true /etc/chimii/backend.env
+set_env CHIMII_LDRAW_CATALOG_SYNC_ENABLED true /etc/chimii/backend.env
 set_env CHIMII_VCS_SECRET_KEY "$vcs_secret" /etc/chimii/backend.env
 chmod 600 /etc/chimii/backend.env /etc/chimii/jwt-secret /etc/chimii/vcs-secret /etc/chimii/postgres-password
 ln -sfn /etc/chimii/backend.env "$REMOTE_ROOT/.env"
@@ -1018,7 +1022,7 @@ if [[ "$DEPLOY_BACKEND" == true ]]; then
   [[ ! -e "$backend_release" ]] || { echo "backend release already exists: $backend_release" >&2; exit 1; }
   install -d -m 0755 "$backend_release"
   tar -xzf "$incoming/backend.tar.gz" -C "$backend_release" --strip-components=1
-  chmod 0755 "$backend_release/server" "$backend_release/migrate" "$backend_release/backfill_task_usage_hourly" "$backend_release/backfill_codex_usage_cache"
+  chmod 0755 "$backend_release/server" "$backend_release/migrate" "$backend_release/backfill_task_usage_hourly" "$backend_release/backfill_codex_usage_cache" "$backend_release/ldraw_catalog_sync"
   chown -R chimii:chimii "$backend_release"
   test -x "$backend_release/server"
   db_url="$(sed -n 's/^DATABASE_URL=//p' /etc/chimii/backend.env)"

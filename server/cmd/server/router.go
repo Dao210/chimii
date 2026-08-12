@@ -29,6 +29,7 @@ import (
 	composiointeg "github.com/chimii-ai/chimii/server/internal/integrations/composio"
 	"github.com/chimii-ai/chimii/server/internal/integrations/lark"
 	"github.com/chimii-ai/chimii/server/internal/integrations/slack"
+	"github.com/chimii-ai/chimii/server/internal/ldrawsync"
 	obsmetrics "github.com/chimii-ai/chimii/server/internal/metrics"
 	"github.com/chimii-ai/chimii/server/internal/middleware"
 	"github.com/chimii-ai/chimii/server/internal/realtime"
@@ -207,6 +208,7 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 		AllowedEmailDomains:      splitAndTrim(os.Getenv("ALLOWED_EMAIL_DOMAINS")),
 		DisableWorkspaceCreation: os.Getenv("DISABLE_WORKSPACE_CREATION") == "true",
 		VCSIntegrationEnabled:    os.Getenv("CHIMII_VCS_INTEGRATION_ENABLED") == "true",
+		LDrawCatalogSyncEnabled:  os.Getenv("CHIMII_LDRAW_CATALOG_SYNC_ENABLED") == "true",
 		PublicURL:                strings.TrimRight(strings.TrimSpace(os.Getenv("CHIMII_PUBLIC_URL")), "/"),
 		TrustedProxies:           parseTrustedProxies(os.Getenv("CHIMII_TRUSTED_PROXIES")),
 		CloudRuntimeFleetURL:     cloudRuntimeFleetURLFromEnv(),
@@ -221,6 +223,14 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 		ServerVersion:            normalizeServerVersion(version),
 	}
 	h := handler.New(queries, pool, hub, bus, emailSvc, store, cfSigner, analyticsClient, signupConfig, daemonHub)
+	if signupConfig.LDrawCatalogSyncEnabled {
+		lock, manifest, err := ldrawsync.EmbeddedCatalog()
+		if err != nil {
+			slog.Error("ldraw catalog sync disabled: embedded catalog is invalid", "error", err)
+		} else {
+			h.LDrawCatalogWorker = ldrawsync.NewCatalogWorker(pool, lock, manifest)
+		}
+	}
 	h.Metrics = opts.BusinessMetrics
 	h.FeatureFlags = opts.FeatureFlags
 	h.TaskService.FeatureFlags = opts.FeatureFlags
@@ -1094,6 +1104,8 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 			// Postgres; clients poll the session while it is queued/generating.
 			r.Route("/api/build", func(r chi.Router) {
 				r.Get("/catalog", h.GetBuildCatalog)
+				r.Get("/catalog/sync", h.GetLDrawCatalogSyncStatus)
+				r.With(handler.RequireHumanActor).Post("/catalog/sync", h.CreateLDrawCatalogSync)
 				r.Get("/catalog/{catalogVersion}/parts/{partID}", h.GetBuildCatalogPart)
 				r.Get("/inventory", h.GetBrickInventory)
 				r.Put("/inventory", h.PutBrickInventory)

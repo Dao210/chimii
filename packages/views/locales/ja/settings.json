@@ -392,9 +392,29 @@
     "deleting": "削除中..."
   },
   "labs": {
-    "section_placeholder_title": "まだ実験機能はありません",
-    "section_placeholder_description": "実験的な設定はリリースされ次第ここに表示されます。現在このタブは意図的に空にしてあります。",
-    "toast_failed": "設定を更新できませんでした"
+    "page_description": "運用者が明示的に有効化したデプロイ単位のツールです。",
+    "ldraw_title": "LDraw カタログ",
+    "ldraw_description": "固定バージョンの 1,000 パーツ Starter Kit を本番共有カタログに同期します。",
+    "ldraw_kit": "Starter Kit 1000",
+    "ldraw_loading": "カタログ状態を読み込み中…",
+    "ldraw_progress": "同期の進捗",
+    "ldraw_progress_description": "{{total}} 個中 {{completed}} 個を処理しました。",
+    "ldraw_action": "カタログ同期",
+    "ldraw_action_description": "耐久性のあるバックグラウンドジョブとして実行され、完了まで現在のカタログを維持します。",
+    "ldraw_admin_only": "このデプロイ全体の操作を開始できるのはオーナーと管理者だけです。",
+    "ldraw_operator_disabled": "運用者がこのデプロイでカタログ同期を有効にしていません。",
+    "ldraw_sync": "カタログを同期",
+    "ldraw_syncing": "同期中…",
+    "ldraw_sync_started": "LDraw カタログ同期を開始しました",
+    "ldraw_sync_failed": "LDraw カタログ同期を開始できませんでした",
+    "ldraw_status": {
+      "loading": "読み込み中",
+      "idle": "未同期",
+      "queued": "待機中",
+      "running": "実行中",
+      "completed": "同期済み",
+      "failed": "失敗"
+    }
   },
   "github": {
     "page_description": "GitHub App を接続し、Pull request が Chimii 内でどう表示されるかを制御し、エージェントがコミット履歴に残す情報を設定します。",

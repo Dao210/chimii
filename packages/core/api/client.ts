@@ -170,6 +170,7 @@ import type {
   BrickInventory,
   BrickInventoryItem,
   BuildCatalog,
+  LDrawCatalogSyncStatus,
   BuildCreation,
   BuildCreationList,
   BuildSession,
@@ -191,10 +192,12 @@ import {
   BuildCreationListSchema,
   BuildCreationSchema,
   BuildCatalogSchema,
+  LDrawCatalogSyncStatusSchema,
   BuildSessionSchema,
   BrickInventorySchema,
   EMPTY_BRICK_INVENTORY,
   EMPTY_BUILD_CATALOG,
+  EMPTY_LDRAW_CATALOG_SYNC_STATUS,
   EMPTY_BUILD_CREATIONS,
   EMPTY_BUILD_SESSION,
 } from "../build/schemas";
@@ -3102,6 +3105,20 @@ export class ApiClient {
     const raw = await this.fetch<unknown>("/api/build/catalog");
     return parseWithFallback(raw, BuildCatalogSchema, EMPTY_BUILD_CATALOG, {
       endpoint: "GET /api/build/catalog",
+    });
+  }
+
+  async getLDrawCatalogSyncStatus(): Promise<LDrawCatalogSyncStatus> {
+    const raw = await this.fetch<unknown>("/api/build/catalog/sync");
+    return parseWithFallback(raw, LDrawCatalogSyncStatusSchema, EMPTY_LDRAW_CATALOG_SYNC_STATUS, {
+      endpoint: "GET /api/build/catalog/sync",
+    });
+  }
+
+  async startLDrawCatalogSync(): Promise<LDrawCatalogSyncStatus> {
+    const raw = await this.fetch<unknown>("/api/build/catalog/sync", { method: "POST" });
+    return parseWithFallback(raw, LDrawCatalogSyncStatusSchema, EMPTY_LDRAW_CATALOG_SYNC_STATUS, {
+      endpoint: "POST /api/build/catalog/sync",
     });
   }
 

@@ -4,6 +4,7 @@ import { api } from "../api";
 export const buildKeys = {
   all: (workspaceId: string) => ["build", workspaceId] as const,
   catalog: (workspaceId: string) => [...buildKeys.all(workspaceId), "catalog"] as const,
+  catalogSync: (workspaceId: string) => [...buildKeys.catalog(workspaceId), "sync"] as const,
   inventory: (workspaceId: string) => [...buildKeys.all(workspaceId), "inventory"] as const,
   session: (workspaceId: string, id: string) => [...buildKeys.all(workspaceId), "session", id] as const,
   creations: (workspaceId: string) => [...buildKeys.all(workspaceId), "creations"] as const,
@@ -15,6 +16,18 @@ export function buildCatalogOptions(workspaceId: string) {
     queryKey: buildKeys.catalog(workspaceId),
     queryFn: () => api.getBuildCatalog(),
     staleTime: 60 * 60 * 1000,
+  });
+}
+
+export function ldrawCatalogSyncOptions(workspaceId: string) {
+  return queryOptions({
+    queryKey: buildKeys.catalogSync(workspaceId),
+    queryFn: () => api.getLDrawCatalogSyncStatus(),
+    enabled: workspaceId.length > 0,
+    refetchInterval: (query) => {
+      const status = query.state.data?.status;
+      return status === "queued" || status === "running" ? 2_000 : false;
+    },
   });
 }
 

@@ -465,6 +465,9 @@ func main() {
 	if h.BuildWorker != nil {
 		go h.BuildWorker.Run(sweepCtx)
 	}
+	if h.LDrawCatalogWorker != nil {
+		go h.LDrawCatalogWorker.Run(sweepCtx)
+	}
 	// GitHub PR-card API snapshot pipeline (MUL-5265): worker pool + TTL sweeper.
 	// No-op when unconfigured (no App private key).
 	h.PRRefresh.Start(sweepCtx)
@@ -575,6 +578,9 @@ func main() {
 	}
 	if h.BuildWorker != nil && !h.BuildWorker.WaitWithTimeout(5*time.Second) {
 		slog.Warn("build worker did not exit within shutdown timeout")
+	}
+	if h.LDrawCatalogWorker != nil && !h.LDrawCatalogWorker.WaitWithTimeout(5*time.Second) {
+		slog.Warn("LDraw catalog worker did not exit within shutdown timeout")
 	}
 
 	// Join the channel supervisor's per-installation goroutines so the

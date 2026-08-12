@@ -32,6 +32,29 @@ export interface BuildCatalog {
   colors: BuildCatalogColor[];
 }
 
+export type LDrawCatalogSyncState =
+  | "idle"
+  | "queued"
+  | "running"
+  | "completed"
+  | "failed";
+
+export interface LDrawCatalogSyncStatus {
+  enabled: boolean;
+  can_manage: boolean;
+  kit_id: string;
+  catalog_version: string;
+  target_part_count: number;
+  stored_part_count: number;
+  progress_part_count: number;
+  status: LDrawCatalogSyncState;
+  error?: string;
+  created_at?: string;
+  started_at?: string;
+  completed_at?: string;
+  updated_at?: string;
+}
+
 export interface BrickInventoryItem {
   part_id: string;
   color: number;
