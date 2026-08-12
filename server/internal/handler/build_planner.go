@@ -66,6 +66,7 @@ func (h *Handler) planBuildRecipe(ctx context.Context, prompt string, answers ma
 	recipe.Title = intent.Title
 	recipe.Features = intent.Features
 	recipe.Metadata["planner"] = "llm-intent+chimii-construction-grammar-v1"
+	recipe = buildstudio.ApplyDifficultyPolicy(recipe, prompt, answers)
 	return recipe, nil
 }
 

@@ -62,7 +62,7 @@ func containsAny(value string, words ...string) bool {
 }
 
 func Compile(recipe AssemblyRecipe, inventory InventorySnapshot, now time.Time) (CompileResult, error) {
-	placements := resolveInventoryColors(placementsFor(recipe), inventory)
+	placements := resolveInventoryColors(scalePlacementsToTarget(placementsFor(recipe), recipe), inventory)
 	report := Validate(placements, inventory)
 	plan := BuildPlan{
 		Version: 1, KitID: StarterKitID, CatalogVersion: CatalogVersion,
