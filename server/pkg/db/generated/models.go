@@ -981,6 +981,40 @@ type NotificationPreference struct {
 	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
 }
 
+type PartCatalogRevision struct {
+	CatalogVersion         string             `json:"catalog_version"`
+	PartKey                string             `json:"part_key"`
+	LdrawPartID            string             `json:"ldraw_part_id"`
+	LdrawSha256            string             `json:"ldraw_sha256"`
+	ContentSha256          pgtype.Text        `json:"content_sha256"`
+	SemanticVersion        int32              `json:"semantic_version"`
+	OriginYOffsetLdu       int32              `json:"origin_y_offset_ldu"`
+	OriginCenterZOffsetLdu int32              `json:"origin_center_z_offset_ldu"`
+	BoundsJson             []byte             `json:"bounds_json"`
+	ConnectionsJson        []byte             `json:"connections_json"`
+	OccupancyJson          []byte             `json:"occupancy_json"`
+	CreatedAt              pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt              pgtype.Timestamptz `json:"updated_at"`
+}
+
+type PartDefinition struct {
+	PartKey            string             `json:"part_key"`
+	Name               string             `json:"name"`
+	Category           string             `json:"category"`
+	PopularityRank     int32              `json:"popularity_rank"`
+	CertificationLevel string             `json:"certification_level"`
+	AutoBuildEligible  bool               `json:"auto_build_eligible"`
+	GeometryProfile    string             `json:"geometry_profile"`
+	StudsX             int32              `json:"studs_x"`
+	StudsZ             int32              `json:"studs_z"`
+	PlatesY            int32              `json:"plates_y"`
+	DefaultQuantity    int32              `json:"default_quantity"`
+	HasTopStuds        bool               `json:"has_top_studs"`
+	HasBottomReceptors bool               `json:"has_bottom_receptors"`
+	CreatedAt          pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt          pgtype.Timestamptz `json:"updated_at"`
+}
+
 type PersonalAccessToken struct {
 	ID          pgtype.UUID        `json:"id"`
 	UserID      pgtype.UUID        `json:"user_id"`

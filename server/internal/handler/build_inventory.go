@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	maxBrickInventoryItems    = 60
+	maxBrickInventoryItems    = 500
 	maxBrickInventoryQuantity = 999
 )
 
@@ -61,38 +61,19 @@ type brickInventoryResponse struct {
 }
 
 func (h *Handler) GetBuildCatalog(w http.ResponseWriter, r *http.Request) {
-	parts := make([]buildstudio.PartSpec, 0, len(buildstudio.StarterCatalog))
-	for _, part := range buildstudio.StarterCatalog {
-		parts = append(parts, part)
+	var queries *db.Queries
+	if h != nil {
+		queries = h.Queries
 	}
-	sort.Slice(parts, func(i, j int) bool {
-		if parts[i].Category != parts[j].Category {
-			return parts[i].Category < parts[j].Category
-		}
-		return parts[i].ID < parts[j].ID
-	})
-
-	catalogVersion := buildstudio.CatalogVersion
-	catalogSource := buildCatalogSourceResponse{
-		Release:       buildstudio.CatalogRelease,
-		ArchiveSHA256: buildstudio.CatalogArchiveSHA256,
-		SourceURL:     buildstudio.CatalogSourceURL,
-	}
-	if h != nil && h.Queries != nil {
-		release, err := h.Queries.GetLatestActiveLDrawCatalogRelease(r.Context())
-		if err == nil {
-			catalogVersion = release.CatalogVersion
-			catalogSource = buildCatalogSourceResponse{
-				Release:       release.Release,
-				ArchiveSHA256: release.ArchiveSha256,
-				SourceURL:     release.SourceUrl,
-			}
-		}
+	catalog, err := loadActiveBuildCatalog(r.Context(), queries)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to load build catalog")
+		return
 	}
 	writeJSON(w, http.StatusOK, buildCatalogResponse{
-		CatalogVersion: catalogVersion,
-		CatalogSource:  catalogSource,
-		Parts:          parts,
+		CatalogVersion: catalog.Version,
+		CatalogSource:  catalog.Source,
+		Parts:          sortedBuildCatalogParts(catalog.Parts),
 		Colors: []buildCatalogColorResponse{
 			{Code: 1, Name: "Blue", Hex: "#1e5aa8"},
 			{Code: 2, Name: "Green", Hex: "#00852b"},
@@ -184,7 +165,12 @@ func (h *Handler) PutBrickInventory(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "invalid brick inventory")
 		return
 	}
-	items, err := normalizeBrickInventoryItems(req.Items)
+	catalog, err := loadActiveBuildCatalog(r.Context(), h.Queries)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to load build catalog")
+		return
+	}
+	items, err := normalizeBrickInventoryItems(req.Items, catalog.Parts)
 	if err != nil {
 		writeError(w, http.StatusBadRequest, err.Error())
 		return
@@ -224,7 +210,7 @@ func (h *Handler) PutBrickInventory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	inventory, err := qtx.SaveBrickInventory(r.Context(), db.SaveBrickInventoryParams{
-		WorkspaceID: workspaceID, CatalogVersion: buildstudio.CatalogVersion, UpdatedBy: userID,
+		WorkspaceID: workspaceID, CatalogVersion: catalog.Version, UpdatedBy: userID,
 	})
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to save brick inventory")
@@ -266,6 +252,11 @@ func (h *Handler) DeleteBrickInventory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	expectedRevision := int32(expectedRevisionValue)
+	catalog, err := loadActiveBuildCatalog(r.Context(), h.Queries)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to load build catalog")
+		return
+	}
 	tx, err := h.TxStarter.Begin(r.Context())
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to reset brick inventory")
@@ -300,7 +291,7 @@ func (h *Handler) DeleteBrickInventory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	inventory, err := qtx.ResetBrickInventory(r.Context(), db.ResetBrickInventoryParams{
-		WorkspaceID: workspaceID, CatalogVersion: buildstudio.CatalogVersion, UpdatedBy: userID,
+		WorkspaceID: workspaceID, CatalogVersion: catalog.Version, UpdatedBy: userID,
 	})
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to reset brick inventory")
@@ -323,11 +314,11 @@ func (h *Handler) DeleteBrickInventory(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, response)
 }
 
-func normalizeBrickInventoryItems(requestItems []brickInventoryItemRequest) ([]buildstudio.InventoryItem, error) {
+func normalizeBrickInventoryItems(requestItems []brickInventoryItemRequest, catalog buildstudio.PartCatalog) ([]buildstudio.InventoryItem, error) {
 	items := make([]buildstudio.InventoryItem, 0, len(requestItems))
 	seen := make(map[string]bool, len(requestItems))
 	for _, item := range requestItems {
-		if _, ok := buildstudio.StarterCatalog[item.PartID]; !ok {
+		if _, ok := catalog[item.PartID]; !ok {
 			return nil, errors.New("brick inventory contains an unknown part")
 		}
 		if !buildstudio.IsAllowedColor(item.Color) {
@@ -358,7 +349,11 @@ func normalizeBrickInventoryItems(requestItems []brickInventoryItemRequest) ([]b
 func loadBrickInventoryResponse(ctx context.Context, queries *db.Queries, workspaceID pgtype.UUID) (brickInventoryResponse, error) {
 	inventory, err := queries.GetBrickInventoryByWorkspace(ctx, workspaceID)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return unlimitedBrickInventoryResponse(), nil
+		catalog, catalogErr := loadActiveBuildCatalog(ctx, queries)
+		if catalogErr != nil {
+			return brickInventoryResponse{}, catalogErr
+		}
+		return unlimitedBrickInventoryResponse(catalog.Version), nil
 	}
 	if err != nil {
 		return brickInventoryResponse{}, err
@@ -383,9 +378,9 @@ func loadBrickInventorySnapshot(ctx context.Context, queries *db.Queries, worksp
 	if err != nil {
 		return buildstudio.InventorySnapshot{}, err
 	}
-	return buildstudio.NewInventorySnapshot(response.Configured, response.Revision, response.Items), nil
+	return buildstudio.NewInventorySnapshotForCatalog(response.Configured, response.CatalogVersion, response.Revision, response.Items), nil
 }
 
-func unlimitedBrickInventoryResponse() brickInventoryResponse {
-	return brickInventoryResponse{Configured: false, CatalogVersion: buildstudio.CatalogVersion, Revision: 0, Items: []buildstudio.InventoryItem{}}
+func unlimitedBrickInventoryResponse(catalogVersion string) brickInventoryResponse {
+	return brickInventoryResponse{Configured: false, CatalogVersion: catalogVersion, Revision: 0, Items: []buildstudio.InventoryItem{}}
 }

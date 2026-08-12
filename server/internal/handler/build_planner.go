@@ -32,12 +32,12 @@ type buildIntent struct {
 	Features  []string `json:"features"`
 }
 
-func (h *Handler) planBuildRecipe(ctx context.Context, prompt string, answers map[string]string, inventory buildstudio.InventorySnapshot) (buildstudio.AssemblyRecipe, error) {
+func (h *Handler) planBuildRecipe(ctx context.Context, prompt string, answers map[string]string, inventory buildstudio.InventorySnapshot, catalog buildstudio.PartCatalog) (buildstudio.AssemblyRecipe, error) {
 	if h.LLM == nil || !h.LLM.Enabled() {
 		return buildstudio.AssemblyRecipe{}, errors.New("build planner is not configured")
 	}
 	answerJSON, _ := json.Marshal(answers)
-	availableArchetypes := buildstudio.AvailableArchetypes(inventory)
+	availableArchetypes := buildstudio.AvailableArchetypesWithCatalog(inventory, catalog)
 	if len(availableArchetypes) == 0 {
 		return buildstudio.AssemblyRecipe{}, errors.New("brick inventory cannot complete a supported construction")
 	}

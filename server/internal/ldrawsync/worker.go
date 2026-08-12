@@ -209,13 +209,17 @@ func SyncCatalog(
 	defer library.Close()
 
 	catalogVersion := composeCatalogVersion(lock.Release, lock.ArchiveSHA256)
+	manifestByID := make(map[string]StarterKitPart, len(manifest.Parts))
+	for _, part := range manifest.Parts {
+		manifestByID[normalizeName(part.LDrawID)] = part
+	}
 	batch := make([]CompiledPart, 0, catalogSyncBatchSize)
 	completed := 0
 	flush := func() error {
 		if len(batch) == 0 {
 			return nil
 		}
-		if err := persistPartBatch(ctx, pool, catalogVersion, batch); err != nil {
+		if err := persistPartBatch(ctx, pool, catalogVersion, batch, manifestByID); err != nil {
 			return err
 		}
 		completed += len(batch)
@@ -248,7 +252,13 @@ func SyncCatalog(
 	return activateCatalogRelease(ctx, pool, lock, manifest, catalogVersion, string(releaseJSON))
 }
 
-func persistPartBatch(ctx context.Context, pool *pgxpool.Pool, catalogVersion string, parts []CompiledPart) error {
+func persistPartBatch(
+	ctx context.Context,
+	pool *pgxpool.Pool,
+	catalogVersion string,
+	parts []CompiledPart,
+	manifestByID map[string]StarterKitPart,
+) error {
 	tx, err := pool.Begin(ctx)
 	if err != nil {
 		return err
@@ -256,6 +266,14 @@ func persistPartBatch(ctx context.Context, pool *pgxpool.Pool, catalogVersion st
 	defer tx.Rollback(ctx)
 	queries := db.New(tx)
 	for _, part := range parts {
+		manifestPart, ok := manifestByID[normalizeName(part.PartID)]
+		if !ok {
+			return fmt.Errorf("part %s is missing from Starter Kit manifest", part.PartID)
+		}
+		semantics := DerivePartSemantics(manifestPart)
+		if err := semantics.Validate(); err != nil {
+			return fmt.Errorf("derive semantics for %s: %w", part.PartID, err)
+		}
 		storageKey := filepath.ToSlash(filepath.Join("ldraw", catalogVersion, part.PartID+".glb"))
 		if _, err := queries.UpsertLDrawPartRevision(ctx, db.UpsertLDrawPartRevisionParams{
 			CatalogVersion: catalogVersion, PartID: part.PartID, Revision: part.Revision, Kind: part.Kind,
@@ -264,6 +282,26 @@ func persistPartBatch(ctx context.Context, pool *pgxpool.Pool, catalogVersion st
 			StorageKey: storageKey, Payload: part.Content, PayloadSizeBytes: part.PayloadSize, PayloadFormat: 2,
 		}); err != nil {
 			return fmt.Errorf("upsert LDraw part %s: %w", part.PartID, err)
+		}
+		if err := queries.UpsertPartDefinition(ctx, db.UpsertPartDefinitionParams{
+			PartKey: semantics.PartKey, Name: semantics.Name, Category: semantics.Category,
+			PopularityRank: int32(semantics.PopularityRank), CertificationLevel: semantics.CertificationLevel,
+			AutoBuildEligible: semantics.AutoBuildEligible, GeometryProfile: semantics.GeometryProfile,
+			StudsX: int32(semantics.StudsX), StudsZ: int32(semantics.StudsZ), PlatesY: int32(semantics.PlatesY),
+			DefaultQuantity: int32(semantics.DefaultQuantity), HasTopStuds: semantics.HasTopStuds,
+			HasBottomReceptors: semantics.HasBottomReceptors,
+		}); err != nil {
+			return fmt.Errorf("upsert part definition %s: %w", semantics.PartKey, err)
+		}
+		if err := queries.UpsertPartCatalogRevision(ctx, db.UpsertPartCatalogRevisionParams{
+			CatalogVersion: catalogVersion, PartKey: semantics.PartKey, LdrawPartID: part.PartID,
+			LdrawSha256:     part.LDrawSHA256,
+			ContentSha256:   pgtype.Text{String: part.ContentSHA256, Valid: part.ContentSHA256 != ""},
+			SemanticVersion: int32(PartSemanticVersion), OriginYOffsetLdu: int32(semantics.OriginYOffsetLDU),
+			OriginCenterZOffsetLdu: int32(semantics.OriginCenterZOffsetLDU), BoundsJson: BoundsJSON(part.Bounds),
+			ConnectionsJson: semantics.ConnectionsJSON(), OccupancyJson: semantics.OccupancyJSON(),
+		}); err != nil {
+			return fmt.Errorf("upsert part catalog revision %s: %w", semantics.PartKey, err)
 		}
 	}
 	return tx.Commit(ctx)

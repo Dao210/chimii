@@ -7,9 +7,9 @@ const (
 	CatalogRelease       = "2026-05-29"
 	CatalogArchiveSHA256 = "6009f2e94204c4d3a63a4c812010b5c90bad8c5acb19b882c859fdac63734eae"
 	CatalogSourceURL     = "https://library.ldraw.org/library/updates/complete.zip"
-	ModuleLibraryVersion = "chimii-construction-modules-v1"
-	CompilerVersion      = "build-compiler-v1"
-	ValidatorVersion     = "build-validator-v1"
+	ModuleLibraryVersion = "chimii-construction-modules-v2"
+	CompilerVersion      = "build-compiler-v2"
+	ValidatorVersion     = "build-validator-v2"
 )
 
 var CatalogVersion = ComposeLDrawCatalogVersion(CatalogRelease, CatalogArchiveSHA256)
@@ -30,7 +30,7 @@ func min(a, b int) int {
 
 // StarterCatalog is deliberately small and versioned. The application never
 // asks a model to invent a part number: every placement must resolve here.
-var StarterCatalog = map[string]PartSpec{
+var StarterCatalog = PartCatalog{
 	"brick-2x4":        {ID: "brick-2x4", Name: "Brick 2 x 4", Category: "brick", LDrawID: "3001.dat", LDrawStatus: "official", License: "CC-BY-4.0", StudsX: 4, StudsZ: 2, PlatesY: 3, Quantity: 18},
 	"brick-2x2":        {ID: "brick-2x2", Name: "Brick 2 x 2", Category: "brick", LDrawID: "3003.dat", LDrawStatus: "official", License: "CC-BY-4.0", StudsX: 2, StudsZ: 2, PlatesY: 3, Quantity: 16},
 	"brick-1x2":        {ID: "brick-1x2", Name: "Brick 1 x 2", Category: "brick", LDrawID: "3004.dat", LDrawStatus: "official", License: "CC-BY-4.0", StudsX: 2, StudsZ: 1, PlatesY: 3, Quantity: 20},
@@ -44,6 +44,14 @@ var StarterCatalog = map[string]PartSpec{
 	// LDU below the plate top; the Z offset aligns the round wheel with the
 	// holder's stud-row center while occupancy stays on the integer stud grid.
 	"wheel": {ID: "wheel", Name: "Wheel Rim 6.4 x 8 with Tyre 8/75 x 8", Category: "wheel", LDrawID: "4624c04.dat", LDrawStatus: "official", License: "CC-BY-4.0", StudsX: 1, StudsZ: 1, PlatesY: 2, Quantity: 8, OriginYOffsetLDU: 5, OriginCenterZOffsetLDU: 10},
+}
+
+func CatalogCopy(parts PartCatalog) PartCatalog {
+	copy := make(PartCatalog, len(parts))
+	for key, part := range parts {
+		copy[key] = part
+	}
+	return copy
 }
 
 var allowedColors = map[int]bool{

@@ -20,6 +20,12 @@ func UnlimitedInventory() InventorySnapshot {
 
 // NewInventorySnapshot normalizes order and computes a stable audit hash.
 func NewInventorySnapshot(configured bool, revision int32, items []InventoryItem) InventorySnapshot {
+	return NewInventorySnapshotForCatalog(configured, CatalogVersion, revision, items)
+}
+
+// NewInventorySnapshotForCatalog preserves the catalog identity selected when
+// the inventory was saved. Workers must compile against this exact version.
+func NewInventorySnapshotForCatalog(configured bool, catalogVersion string, revision int32, items []InventoryItem) InventorySnapshot {
 	// Keep the JSON contract stable: an empty inventory is [] rather than null.
 	// Build plans are persisted as JSON and consumed by older installed clients,
 	// so the wire shape must not depend on whether the caller passed a nil slice.
@@ -30,9 +36,10 @@ func NewInventorySnapshot(configured bool, revision int32, items []InventoryItem
 		}
 		return normalized[i].Color < normalized[j].Color
 	})
-	snapshot := InventorySnapshot{
-		Configured: configured, CatalogVersion: CatalogVersion, Revision: revision, Items: normalized,
+	if catalogVersion == "" {
+		catalogVersion = CatalogVersion
 	}
+	snapshot := InventorySnapshot{Configured: configured, CatalogVersion: catalogVersion, Revision: revision, Items: normalized}
 	payload, _ := json.Marshal(struct {
 		Configured     bool            `json:"configured"`
 		CatalogVersion string          `json:"catalog_version"`

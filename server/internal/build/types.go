@@ -9,6 +9,10 @@ type PartSpec struct {
 	ID                     string `json:"id"`
 	Name                   string `json:"name"`
 	Category               string `json:"category"`
+	PopularityRank         int    `json:"popularity_rank,omitempty"`
+	CertificationLevel     string `json:"certification_level,omitempty"`
+	AutoBuildEligible      bool   `json:"auto_build_eligible,omitempty"`
+	GeometryProfile        string `json:"geometry_profile,omitempty"`
 	LDrawID                string `json:"ldraw_id"`
 	LDrawStatus            string `json:"ldraw_status"`
 	License                string `json:"license"`
@@ -16,9 +20,16 @@ type PartSpec struct {
 	StudsZ                 int    `json:"studs_z"`
 	PlatesY                int    `json:"plates_y"`
 	Quantity               int    `json:"quantity"`
+	HasTopStuds            bool   `json:"has_top_studs,omitempty"`
+	HasBottomReceptors     bool   `json:"has_bottom_receptors,omitempty"`
 	OriginYOffsetLDU       int    `json:"origin_y_offset_ldu,omitempty"`
 	OriginCenterZOffsetLDU int    `json:"origin_center_z_offset_ldu,omitempty"`
 }
+
+// PartCatalog is a version-frozen set of certified part semantics. BuildPlan
+// stores only the subset it actually uses, so old creations stay replayable
+// after a newer catalog release becomes active.
+type PartCatalog map[string]PartSpec
 
 // InventoryItem is one user-owned part/color combination. Quantity is an
 // upper bound for a single generated model, not a permanently consumed count.

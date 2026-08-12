@@ -16,7 +16,7 @@ func TestNormalizeBrickInventoryItems(t *testing.T) {
 		{PartID: "plate-1x2", Color: 14, Quantity: 0},
 		{PartID: "brick-2x4", Color: 4, Quantity: 6},
 		{PartID: "brick-1x1", Color: 1, Quantity: 2},
-	})
+	}, buildstudio.StarterCatalog)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -39,7 +39,7 @@ func TestNormalizeBrickInventoryItemsRejectsInvalidEntries(t *testing.T) {
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
-			if _, err := normalizeBrickInventoryItems(items); err == nil {
+			if _, err := normalizeBrickInventoryItems(items, buildstudio.StarterCatalog); err == nil {
 				t.Fatal("expected validation error")
 			}
 		})

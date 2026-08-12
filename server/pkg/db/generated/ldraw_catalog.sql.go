@@ -130,6 +130,87 @@ func (q *Queries) GetLatestActiveLDrawCatalogRelease(ctx context.Context) (Ldraw
 	return i, err
 }
 
+const listCreativeCatalogPartsByVersion = `-- name: ListCreativeCatalogPartsByVersion :many
+SELECT
+    d.part_key,
+    d.name,
+    d.category,
+    d.popularity_rank,
+    d.certification_level,
+    d.auto_build_eligible,
+    d.geometry_profile,
+    d.studs_x,
+    d.studs_z,
+    d.plates_y,
+    d.default_quantity,
+    d.has_top_studs,
+    d.has_bottom_receptors,
+    r.ldraw_part_id,
+    r.origin_y_offset_ldu,
+    r.origin_center_z_offset_ldu
+FROM part_definition AS d
+JOIN part_catalog_revision AS r ON r.part_key = d.part_key
+WHERE r.catalog_version = $1
+  AND d.certification_level IN ('basic', 'advanced', 'certified')
+ORDER BY d.popularity_rank, d.part_key
+`
+
+type ListCreativeCatalogPartsByVersionRow struct {
+	PartKey                string `json:"part_key"`
+	Name                   string `json:"name"`
+	Category               string `json:"category"`
+	PopularityRank         int32  `json:"popularity_rank"`
+	CertificationLevel     string `json:"certification_level"`
+	AutoBuildEligible      bool   `json:"auto_build_eligible"`
+	GeometryProfile        string `json:"geometry_profile"`
+	StudsX                 int32  `json:"studs_x"`
+	StudsZ                 int32  `json:"studs_z"`
+	PlatesY                int32  `json:"plates_y"`
+	DefaultQuantity        int32  `json:"default_quantity"`
+	HasTopStuds            bool   `json:"has_top_studs"`
+	HasBottomReceptors     bool   `json:"has_bottom_receptors"`
+	LdrawPartID            string `json:"ldraw_part_id"`
+	OriginYOffsetLdu       int32  `json:"origin_y_offset_ldu"`
+	OriginCenterZOffsetLdu int32  `json:"origin_center_z_offset_ldu"`
+}
+
+func (q *Queries) ListCreativeCatalogPartsByVersion(ctx context.Context, catalogVersion string) ([]ListCreativeCatalogPartsByVersionRow, error) {
+	rows, err := q.db.Query(ctx, listCreativeCatalogPartsByVersion, catalogVersion)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListCreativeCatalogPartsByVersionRow{}
+	for rows.Next() {
+		var i ListCreativeCatalogPartsByVersionRow
+		if err := rows.Scan(
+			&i.PartKey,
+			&i.Name,
+			&i.Category,
+			&i.PopularityRank,
+			&i.CertificationLevel,
+			&i.AutoBuildEligible,
+			&i.GeometryProfile,
+			&i.StudsX,
+			&i.StudsZ,
+			&i.PlatesY,
+			&i.DefaultQuantity,
+			&i.HasTopStuds,
+			&i.HasBottomReceptors,
+			&i.LdrawPartID,
+			&i.OriginYOffsetLdu,
+			&i.OriginCenterZOffsetLdu,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const upsertLDrawCatalogRelease = `-- name: UpsertLDrawCatalogRelease :one
 INSERT INTO ldraw_catalog_release (
     catalog_version,
@@ -292,4 +373,155 @@ func (q *Queries) UpsertLDrawPartRevision(ctx context.Context, arg UpsertLDrawPa
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const upsertPartCatalogRevision = `-- name: UpsertPartCatalogRevision :exec
+INSERT INTO part_catalog_revision (
+    catalog_version,
+    part_key,
+    ldraw_part_id,
+    ldraw_sha256,
+    content_sha256,
+    semantic_version,
+    origin_y_offset_ldu,
+    origin_center_z_offset_ldu,
+    bounds_json,
+    connections_json,
+    occupancy_json
+) VALUES (
+    $1,
+    $2,
+    $3,
+    $4,
+    $5,
+    $6,
+    $7,
+    $8,
+    $9,
+    $10,
+    $11
+)
+ON CONFLICT (catalog_version, part_key) DO UPDATE
+SET ldraw_part_id = EXCLUDED.ldraw_part_id,
+    ldraw_sha256 = EXCLUDED.ldraw_sha256,
+    content_sha256 = EXCLUDED.content_sha256,
+    semantic_version = EXCLUDED.semantic_version,
+    origin_y_offset_ldu = EXCLUDED.origin_y_offset_ldu,
+    origin_center_z_offset_ldu = EXCLUDED.origin_center_z_offset_ldu,
+    bounds_json = EXCLUDED.bounds_json,
+    connections_json = EXCLUDED.connections_json,
+    occupancy_json = EXCLUDED.occupancy_json,
+    updated_at = now()
+`
+
+type UpsertPartCatalogRevisionParams struct {
+	CatalogVersion         string      `json:"catalog_version"`
+	PartKey                string      `json:"part_key"`
+	LdrawPartID            string      `json:"ldraw_part_id"`
+	LdrawSha256            string      `json:"ldraw_sha256"`
+	ContentSha256          pgtype.Text `json:"content_sha256"`
+	SemanticVersion        int32       `json:"semantic_version"`
+	OriginYOffsetLdu       int32       `json:"origin_y_offset_ldu"`
+	OriginCenterZOffsetLdu int32       `json:"origin_center_z_offset_ldu"`
+	BoundsJson             []byte      `json:"bounds_json"`
+	ConnectionsJson        []byte      `json:"connections_json"`
+	OccupancyJson          []byte      `json:"occupancy_json"`
+}
+
+func (q *Queries) UpsertPartCatalogRevision(ctx context.Context, arg UpsertPartCatalogRevisionParams) error {
+	_, err := q.db.Exec(ctx, upsertPartCatalogRevision,
+		arg.CatalogVersion,
+		arg.PartKey,
+		arg.LdrawPartID,
+		arg.LdrawSha256,
+		arg.ContentSha256,
+		arg.SemanticVersion,
+		arg.OriginYOffsetLdu,
+		arg.OriginCenterZOffsetLdu,
+		arg.BoundsJson,
+		arg.ConnectionsJson,
+		arg.OccupancyJson,
+	)
+	return err
+}
+
+const upsertPartDefinition = `-- name: UpsertPartDefinition :exec
+INSERT INTO part_definition (
+    part_key,
+    name,
+    category,
+    popularity_rank,
+    certification_level,
+    auto_build_eligible,
+    geometry_profile,
+    studs_x,
+    studs_z,
+    plates_y,
+    default_quantity,
+    has_top_studs,
+    has_bottom_receptors
+) VALUES (
+    $1,
+    $2,
+    $3,
+    $4,
+    $5,
+    $6,
+    $7,
+    $8,
+    $9,
+    $10,
+    $11,
+    $12,
+    $13
+)
+ON CONFLICT (part_key) DO UPDATE
+SET name = EXCLUDED.name,
+    category = EXCLUDED.category,
+    popularity_rank = EXCLUDED.popularity_rank,
+    certification_level = EXCLUDED.certification_level,
+    auto_build_eligible = EXCLUDED.auto_build_eligible,
+    geometry_profile = EXCLUDED.geometry_profile,
+    studs_x = EXCLUDED.studs_x,
+    studs_z = EXCLUDED.studs_z,
+    plates_y = EXCLUDED.plates_y,
+    default_quantity = EXCLUDED.default_quantity,
+    has_top_studs = EXCLUDED.has_top_studs,
+    has_bottom_receptors = EXCLUDED.has_bottom_receptors,
+    updated_at = now()
+`
+
+type UpsertPartDefinitionParams struct {
+	PartKey            string `json:"part_key"`
+	Name               string `json:"name"`
+	Category           string `json:"category"`
+	PopularityRank     int32  `json:"popularity_rank"`
+	CertificationLevel string `json:"certification_level"`
+	AutoBuildEligible  bool   `json:"auto_build_eligible"`
+	GeometryProfile    string `json:"geometry_profile"`
+	StudsX             int32  `json:"studs_x"`
+	StudsZ             int32  `json:"studs_z"`
+	PlatesY            int32  `json:"plates_y"`
+	DefaultQuantity    int32  `json:"default_quantity"`
+	HasTopStuds        bool   `json:"has_top_studs"`
+	HasBottomReceptors bool   `json:"has_bottom_receptors"`
+}
+
+func (q *Queries) UpsertPartDefinition(ctx context.Context, arg UpsertPartDefinitionParams) error {
+	_, err := q.db.Exec(ctx, upsertPartDefinition,
+		arg.PartKey,
+		arg.Name,
+		arg.Category,
+		arg.PopularityRank,
+		arg.CertificationLevel,
+		arg.AutoBuildEligible,
+		arg.GeometryProfile,
+		arg.StudsX,
+		arg.StudsZ,
+		arg.PlatesY,
+		arg.DefaultQuantity,
+		arg.HasTopStuds,
+		arg.HasBottomReceptors,
+	)
+	return err
 }

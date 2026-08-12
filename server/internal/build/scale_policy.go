@@ -180,23 +180,27 @@ func targetPartCount(recipe AssemblyRecipe) int {
 }
 
 func scalePlacementsToTarget(placements []Placement, recipe AssemblyRecipe) []Placement {
+	return scalePlacementsToTargetWithCatalog(placements, recipe, StarterCatalog)
+}
+
+func scalePlacementsToTargetWithCatalog(placements []Placement, recipe AssemblyRecipe, catalog PartCatalog) []Placement {
 	target := targetPartCount(recipe)
 	if target == 0 || target == len(placements) || len(placements) == 0 {
 		return placements
 	}
 	if target < len(placements) {
 		if recipe.Archetype == "robot" {
-			return shrinkRobotPlacements(placements, target)
+			return shrinkRobotPlacementsWithCatalog(placements, target, catalog)
 		}
 		return normalizePlacementSteps(append([]Placement(nil), placements[:target]...))
 	}
 
 	scaled := append([]Placement(nil), placements...)
 	anchor := scaled[0]
-	maxTop := topY(anchor)
+	maxTop := topYWith(anchor, catalog)
 	maxStep := anchor.Step
 	for _, placement := range scaled[1:] {
-		if top := topY(placement); top > maxTop {
+		if top := topYWith(placement, catalog); top > maxTop {
 			anchor = placement
 			maxTop = top
 		}
@@ -207,7 +211,7 @@ func scalePlacementsToTarget(placements []Placement, recipe AssemblyRecipe) []Pl
 	for len(scaled) < target {
 		next := anchor
 		next.ID = fmt.Sprintf("difficulty-%04d", len(scaled)+1)
-		next.Y = topY(anchor)
+		next.Y = topYWith(anchor, catalog)
 		next.Step = maxStep + len(scaled) - len(placements) + 1
 		next.Module = "difficulty-detail"
 		scaled = append(scaled, next)
@@ -217,6 +221,10 @@ func scalePlacementsToTarget(placements []Placement, recipe AssemblyRecipe) []Pl
 }
 
 func shrinkRobotPlacements(placements []Placement, target int) []Placement {
+	return shrinkRobotPlacementsWithCatalog(placements, target, StarterCatalog)
+}
+
+func shrinkRobotPlacementsWithCatalog(placements []Placement, target int, catalog PartCatalog) []Placement {
 	if target <= 0 {
 		return nil
 	}
@@ -240,14 +248,14 @@ func shrinkRobotPlacements(placements []Placement, target int) []Placement {
 	kept := make([]Placement, 0, target)
 	for _, placement := range placements {
 		if placement.Module == dominantModule {
-			if top := topY(placement); top > originalDominantTop {
+			if top := topYWith(placement, catalog); top > originalDominantTop {
 				originalDominantTop = top
 			}
 			if keepDominant == 0 {
 				continue
 			}
 			keepDominant--
-			if top := topY(placement); top > keptDominantTop {
+			if top := topYWith(placement, catalog); top > keptDominantTop {
 				keptDominantTop = top
 			}
 		}

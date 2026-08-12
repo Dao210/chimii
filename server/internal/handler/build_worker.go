@@ -133,11 +133,15 @@ func (w *BuildWorker) ProcessNext(ctx context.Context) (bool, error) {
 			inventory = stored
 		}
 	}
-	recipe, err := w.h.planBuildRecipe(ctx, session.Prompt, answers, inventory)
+	catalog, err := loadBuildCatalogParts(ctx, w.h.Queries, inventory.CatalogVersion)
+	if err != nil {
+		return true, w.retry(ctx, job, fmt.Errorf("load certified build catalog: %w", err))
+	}
+	recipe, err := w.h.planBuildRecipe(ctx, session.Prompt, answers, inventory, catalog)
 	if err != nil {
 		return true, w.retry(ctx, job, fmt.Errorf("plan build intent: %w", err))
 	}
-	result, err := buildstudio.Compile(recipe, inventory, time.Now())
+	result, err := buildstudio.CompileWithCatalog(recipe, inventory, inventory.CatalogVersion, catalog, time.Now())
 	if err != nil {
 		return true, w.retry(ctx, job, err)
 	}
