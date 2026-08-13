@@ -170,6 +170,8 @@ import type {
   BrickInventory,
   BrickInventoryItem,
   BuildCatalog,
+  BuildCatalogPartFilters,
+  BuildCatalogPartPage,
   LDrawCatalogSyncStatus,
   BuildCreation,
   BuildCreationList,
@@ -192,11 +194,13 @@ import {
   BuildCreationListSchema,
   BuildCreationSchema,
   BuildCatalogSchema,
+  BuildCatalogPartPageSchema,
   LDrawCatalogSyncStatusSchema,
   BuildSessionSchema,
   BrickInventorySchema,
   EMPTY_BRICK_INVENTORY,
   EMPTY_BUILD_CATALOG,
+  EMPTY_BUILD_CATALOG_PART_PAGE,
   EMPTY_LDRAW_CATALOG_SYNC_STATUS,
   EMPTY_BUILD_CREATIONS,
   EMPTY_BUILD_SESSION,
@@ -3105,6 +3109,20 @@ export class ApiClient {
     const raw = await this.fetch<unknown>("/api/build/catalog");
     return parseWithFallback(raw, BuildCatalogSchema, EMPTY_BUILD_CATALOG, {
       endpoint: "GET /api/build/catalog",
+    });
+  }
+
+  async listBuildCatalogParts(filters: BuildCatalogPartFilters = {}): Promise<BuildCatalogPartPage> {
+    const params = new URLSearchParams();
+    if (filters.query?.trim()) params.set("query", filters.query.trim());
+    if (filters.category?.trim()) params.set("category", filters.category.trim());
+    if (filters.capability && filters.capability !== "all") params.set("capability", filters.capability);
+    if (filters.limit != null) params.set("limit", String(filters.limit));
+    if (filters.cursor) params.set("cursor", filters.cursor);
+    const query = params.toString();
+    const raw = await this.fetch<unknown>(`/api/build/catalog/parts${query ? `?${query}` : ""}`);
+    return parseWithFallback(raw, BuildCatalogPartPageSchema, EMPTY_BUILD_CATALOG_PART_PAGE, {
+      endpoint: "GET /api/build/catalog/parts",
     });
   }
 

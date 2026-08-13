@@ -2,6 +2,11 @@ export interface BuildPartSpec {
   id: string;
   name: string;
   category: string;
+  popularity_rank?: number;
+  certification_level?: "asset_only" | "basic" | "advanced" | "certified";
+  auto_build_eligible?: boolean;
+  inventory_eligible?: boolean;
+  geometry_profile?: string;
   ldraw_id: string;
   ldraw_status?: string;
   license?: string;
@@ -11,6 +16,28 @@ export interface BuildPartSpec {
   quantity: number;
   origin_y_offset_ldu?: number;
   origin_center_z_offset_ldu?: number;
+}
+
+export type BuildCatalogCapability = "all" | "auto_build" | "inventory" | "preview";
+
+export interface BuildCatalogPartPage {
+  kit_id: string;
+  kit_version: number;
+  kit_name: string;
+  catalog_version: string;
+  profile_total: number;
+  filtered_total: number;
+  categories: string[];
+  parts: BuildPartSpec[];
+  next_cursor?: string;
+}
+
+export interface BuildCatalogPartFilters {
+  query?: string;
+  category?: string;
+  capability?: BuildCatalogCapability;
+  limit?: number;
+  cursor?: string;
 }
 
 export interface BuildCatalogColor {

@@ -40,11 +40,12 @@ export const AppLink = forwardRef<HTMLAnchorElement, AppLinkProps>(
         // target="_blank" handling opens a real browser tab.
         return;
       }
-      e.preventDefault();
       // Caller's onClick runs BEFORE push so any synchronous side effect
       // (close popover, clear selection, blur the trigger) lands in the
       // same tick rather than getting deferred behind the transition.
       onClick?.(e);
+      if (e.defaultPrevented) return;
+      e.preventDefault();
       push(href);
     };
 

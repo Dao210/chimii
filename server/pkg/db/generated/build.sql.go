@@ -85,26 +85,6 @@ func (q *Queries) CompleteBuildJob(ctx context.Context, arg CompleteBuildJobPara
 	return i, err
 }
 
-const failBuildJob = `-- name: FailBuildJob :one
-UPDATE build_job
-SET status = 'failed', leased_until = NULL, last_error = $1, updated_at = now()
-WHERE id = $2 AND lease_token = $3 AND status = 'running'
-RETURNING id, workspace_id, session_id, status, attempts, available_at, leased_until, lease_token, last_error, created_at, updated_at
-`
-
-type FailBuildJobParams struct {
-	LastError  pgtype.Text `json:"last_error"`
-	ID         pgtype.UUID `json:"id"`
-	LeaseToken pgtype.UUID `json:"lease_token"`
-}
-
-func (q *Queries) FailBuildJob(ctx context.Context, arg FailBuildJobParams) (BuildJob, error) {
-	row := q.db.QueryRow(ctx, failBuildJob, arg.LastError, arg.ID, arg.LeaseToken)
-	var i BuildJob
-	err := row.Scan(&i.ID, &i.WorkspaceID, &i.SessionID, &i.Status, &i.Attempts, &i.AvailableAt, &i.LeasedUntil, &i.LeaseToken, &i.LastError, &i.CreatedAt, &i.UpdatedAt)
-	return i, err
-}
-
 const completeBuildSession = `-- name: CompleteBuildSession :one
 UPDATE build_session
 SET status = 'completed', creation_id = $1, error = NULL, updated_at = now()
@@ -304,6 +284,38 @@ type EnqueueBuildJobParams struct {
 
 func (q *Queries) EnqueueBuildJob(ctx context.Context, arg EnqueueBuildJobParams) (BuildJob, error) {
 	row := q.db.QueryRow(ctx, enqueueBuildJob, arg.WorkspaceID, arg.SessionID)
+	var i BuildJob
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.SessionID,
+		&i.Status,
+		&i.Attempts,
+		&i.AvailableAt,
+		&i.LeasedUntil,
+		&i.LeaseToken,
+		&i.LastError,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const failBuildJob = `-- name: FailBuildJob :one
+UPDATE build_job
+SET status = 'failed', leased_until = NULL, last_error = $1, updated_at = now()
+WHERE id = $2 AND lease_token = $3 AND status = 'running'
+RETURNING id, workspace_id, session_id, status, attempts, available_at, leased_until, lease_token, last_error, created_at, updated_at
+`
+
+type FailBuildJobParams struct {
+	LastError  pgtype.Text `json:"last_error"`
+	ID         pgtype.UUID `json:"id"`
+	LeaseToken pgtype.UUID `json:"lease_token"`
+}
+
+func (q *Queries) FailBuildJob(ctx context.Context, arg FailBuildJobParams) (BuildJob, error) {
+	row := q.db.QueryRow(ctx, failBuildJob, arg.LastError, arg.ID, arg.LeaseToken)
 	var i BuildJob
 	err := row.Scan(
 		&i.ID,

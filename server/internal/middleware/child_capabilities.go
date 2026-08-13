@@ -43,7 +43,7 @@ func childBuildCapabilityAllowed(method, path string) bool {
 	}
 	switch segments[0] {
 	case "catalog":
-		if len(segments) == 1 && method == http.MethodGet {
+		if method == http.MethodGet && (len(segments) == 1 || (len(segments) == 2 && segments[1] == "parts")) {
 			return true
 		}
 		return len(segments) == 4 && segments[1] != "" && segments[2] == "parts" && method == http.MethodGet

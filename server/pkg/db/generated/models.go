@@ -833,6 +833,31 @@ type IssueVcsPullRequest struct {
 	LinkedAt      pgtype.Timestamptz `json:"linked_at"`
 }
 
+type KitProfile struct {
+	KitID               string             `json:"kit_id"`
+	Version             int32              `json:"version"`
+	Name                string             `json:"name"`
+	Description         string             `json:"description"`
+	SourceManifestKitID string             `json:"source_manifest_kit_id"`
+	CatalogVersion      string             `json:"catalog_version"`
+	PartCount           int32              `json:"part_count"`
+	Status              string             `json:"status"`
+	CreatedAt           pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt           pgtype.Timestamptz `json:"updated_at"`
+}
+
+type KitProfilePart struct {
+	KitID           string             `json:"kit_id"`
+	KitVersion      int32              `json:"kit_version"`
+	CatalogVersion  string             `json:"catalog_version"`
+	PartKey         string             `json:"part_key"`
+	PopularityRank  int32              `json:"popularity_rank"`
+	DefaultQuantity int32              `json:"default_quantity"`
+	Enabled         bool               `json:"enabled"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt       pgtype.Timestamptz `json:"updated_at"`
+}
+
 type LarkBindingToken struct {
 	TokenHash      string             `json:"token_hash"`
 	WorkspaceID    pgtype.UUID        `json:"workspace_id"`

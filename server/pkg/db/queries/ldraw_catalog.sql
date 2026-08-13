@@ -130,6 +130,165 @@ WHERE r.catalog_version = @catalog_version
   AND d.certification_level IN ('basic', 'advanced', 'certified')
 ORDER BY d.popularity_rank, d.part_key;
 
+-- name: GetActiveKitProfileForCatalog :one
+SELECT *
+FROM kit_profile
+WHERE kit_id = @kit_id
+  AND catalog_version = @catalog_version
+  AND status = 'active'
+ORDER BY version DESC
+LIMIT 1;
+
+-- name: DeprecateKitProfilesExcept :exec
+UPDATE kit_profile
+SET status = 'deprecated', updated_at = now()
+WHERE kit_id = @kit_id
+  AND status = 'active'
+  AND catalog_version <> @catalog_version;
+
+-- name: UpsertKitProfile :exec
+INSERT INTO kit_profile (
+    kit_id,
+    version,
+    name,
+    description,
+    source_manifest_kit_id,
+    catalog_version,
+    part_count,
+    status
+) VALUES (
+    @kit_id,
+    @version,
+    @name,
+    @description,
+    @source_manifest_kit_id,
+    @catalog_version,
+    @part_count,
+    @status
+)
+ON CONFLICT (kit_id, version, catalog_version) DO UPDATE
+SET name = EXCLUDED.name,
+    description = EXCLUDED.description,
+    source_manifest_kit_id = EXCLUDED.source_manifest_kit_id,
+    part_count = EXCLUDED.part_count,
+    status = EXCLUDED.status,
+    updated_at = now();
+
+-- name: DeleteKitProfileParts :exec
+DELETE FROM kit_profile_part
+WHERE kit_id = @kit_id
+  AND kit_version = @kit_version
+  AND catalog_version = @catalog_version;
+
+-- name: UpsertKitProfilePart :exec
+INSERT INTO kit_profile_part (
+    kit_id,
+    kit_version,
+    catalog_version,
+    part_key,
+    popularity_rank,
+    default_quantity,
+    enabled
+) VALUES (
+    @kit_id,
+    @kit_version,
+    @catalog_version,
+    @part_key,
+    @popularity_rank,
+    @default_quantity,
+    @enabled
+)
+ON CONFLICT (kit_id, kit_version, catalog_version, part_key) DO UPDATE
+SET popularity_rank = EXCLUDED.popularity_rank,
+    default_quantity = EXCLUDED.default_quantity,
+    enabled = EXCLUDED.enabled,
+    updated_at = now();
+
+-- name: CountKitCatalogParts :one
+SELECT COUNT(*)
+FROM kit_profile_part AS kit_part
+JOIN part_definition AS definition
+    ON definition.part_key = kit_part.part_key
+JOIN part_catalog_revision AS revision
+    ON revision.catalog_version = kit_part.catalog_version
+   AND revision.part_key = kit_part.part_key
+WHERE kit_part.kit_id = @kit_id
+  AND kit_part.kit_version = @kit_version
+  AND kit_part.catalog_version = @catalog_version
+  AND kit_part.enabled
+  AND (
+    sqlc.arg(search_query)::TEXT = ''
+    OR definition.name ILIKE '%' || sqlc.arg(search_query)::TEXT || '%'
+    OR definition.part_key ILIKE '%' || sqlc.arg(search_query)::TEXT || '%'
+    OR revision.ldraw_part_id ILIKE '%' || sqlc.arg(search_query)::TEXT || '%'
+  )
+  AND (sqlc.arg(category_filter)::TEXT = '' OR definition.category = sqlc.arg(category_filter)::TEXT)
+  AND CASE sqlc.arg(capability_filter)::TEXT
+    WHEN 'auto_build' THEN definition.auto_build_eligible
+    WHEN 'inventory' THEN definition.certification_level <> 'asset_only'
+    WHEN 'preview' THEN definition.certification_level = 'asset_only'
+    ELSE TRUE
+  END;
+
+-- name: ListKitCatalogCategories :many
+SELECT DISTINCT definition.category
+FROM kit_profile_part AS kit_part
+JOIN part_definition AS definition
+    ON definition.part_key = kit_part.part_key
+WHERE kit_part.kit_id = @kit_id
+  AND kit_part.kit_version = @kit_version
+  AND kit_part.catalog_version = @catalog_version
+  AND kit_part.enabled
+ORDER BY definition.category;
+
+-- name: ListKitCatalogParts :many
+SELECT
+    definition.part_key,
+    definition.name,
+    definition.category,
+    kit_part.popularity_rank,
+    definition.certification_level,
+    definition.auto_build_eligible,
+    definition.geometry_profile,
+    definition.studs_x,
+    definition.studs_z,
+    definition.plates_y,
+    kit_part.default_quantity,
+    definition.has_top_studs,
+    definition.has_bottom_receptors,
+    revision.ldraw_part_id,
+    revision.origin_y_offset_ldu,
+    revision.origin_center_z_offset_ldu
+FROM kit_profile_part AS kit_part
+JOIN part_definition AS definition
+    ON definition.part_key = kit_part.part_key
+JOIN part_catalog_revision AS revision
+    ON revision.catalog_version = kit_part.catalog_version
+   AND revision.part_key = kit_part.part_key
+WHERE kit_part.kit_id = @kit_id
+  AND kit_part.kit_version = @kit_version
+  AND kit_part.catalog_version = @catalog_version
+  AND kit_part.enabled
+  AND (
+    sqlc.arg(search_query)::TEXT = ''
+    OR definition.name ILIKE '%' || sqlc.arg(search_query)::TEXT || '%'
+    OR definition.part_key ILIKE '%' || sqlc.arg(search_query)::TEXT || '%'
+    OR revision.ldraw_part_id ILIKE '%' || sqlc.arg(search_query)::TEXT || '%'
+  )
+  AND (sqlc.arg(category_filter)::TEXT = '' OR definition.category = sqlc.arg(category_filter)::TEXT)
+  AND CASE sqlc.arg(capability_filter)::TEXT
+    WHEN 'auto_build' THEN definition.auto_build_eligible
+    WHEN 'inventory' THEN definition.certification_level <> 'asset_only'
+    WHEN 'preview' THEN definition.certification_level = 'asset_only'
+    ELSE TRUE
+  END
+  AND (
+    kit_part.popularity_rank > sqlc.arg(after_rank)::INTEGER
+    OR (kit_part.popularity_rank = sqlc.arg(after_rank)::INTEGER AND definition.part_key > sqlc.arg(after_part_key)::TEXT)
+  )
+ORDER BY kit_part.popularity_rank, definition.part_key
+LIMIT sqlc.arg(page_limit)::INTEGER;
+
 -- name: DeprecateLDrawCatalogReleasesExcept :exec
 UPDATE ldraw_catalog_release
 SET status = 'deprecated', updated_at = now()

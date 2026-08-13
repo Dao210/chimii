@@ -2,6 +2,7 @@ import { z } from "zod";
 import type {
   BrickInventory,
   BuildCatalog,
+  BuildCatalogPartPage,
   LDrawCatalogSyncStatus,
   BuildCreation,
   BuildCreationList,
@@ -12,6 +13,11 @@ const PartSpecSchema = z.looseObject({
   id: z.string(),
   name: z.string(),
   category: z.string().catch("brick"),
+  popularity_rank: z.number().int().positive().optional(),
+  certification_level: z.enum(["asset_only", "basic", "advanced", "certified"]).optional(),
+  auto_build_eligible: z.boolean().catch(false).optional(),
+  inventory_eligible: z.boolean().catch(false).optional(),
+  geometry_profile: z.string().optional(),
   ldraw_id: z.string(),
   ldraw_status: z.string().optional(),
   license: z.string().optional(),
@@ -21,6 +27,12 @@ const PartSpecSchema = z.looseObject({
   quantity: z.number().int().nonnegative(),
   origin_y_offset_ldu: z.number().int().optional(),
   origin_center_z_offset_ldu: z.number().int().optional(),
+});
+
+const CatalogBrowserPartSpecSchema = PartSpecSchema.extend({
+  studs_x: z.number().int().nonnegative(),
+  studs_z: z.number().int().nonnegative(),
+  plates_y: z.number().int().nonnegative(),
 });
 
 const InventoryItemSchema = z.looseObject({
@@ -66,6 +78,18 @@ export const BuildCatalogSchema = z.looseObject({
     name: z.string(),
     hex: z.string().regex(/^#[0-9a-fA-F]{6}$/),
   })),
+});
+
+export const BuildCatalogPartPageSchema = z.looseObject({
+  kit_id: z.string(),
+  kit_version: z.number().int().positive(),
+  kit_name: z.string(),
+  catalog_version: z.string(),
+  profile_total: z.number().int().positive(),
+  filtered_total: z.number().int().nonnegative(),
+  categories: z.array(z.string()).catch([]),
+  parts: z.array(CatalogBrowserPartSpecSchema),
+  next_cursor: z.string().optional(),
 });
 
 export const LDrawCatalogSyncStatusSchema = z.looseObject({
@@ -210,6 +234,17 @@ export const EMPTY_BUILD_CREATION: BuildCreation = {
 export const EMPTY_BUILD_CREATIONS: BuildCreationList = { creations: [] };
 
 export const EMPTY_BUILD_CATALOG: BuildCatalog = { catalog_version: "", parts: [], colors: [] };
+
+export const EMPTY_BUILD_CATALOG_PART_PAGE: BuildCatalogPartPage = {
+  kit_id: "",
+  kit_version: 0,
+  kit_name: "",
+  catalog_version: "",
+  profile_total: 0,
+  filtered_total: 0,
+  categories: [],
+  parts: [],
+};
 
 export const EMPTY_LDRAW_CATALOG_SYNC_STATUS: LDrawCatalogSyncStatus = {
   enabled: false,

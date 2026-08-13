@@ -11,12 +11,18 @@ export function BrickThumbnail({
   alt,
   eager = false,
   className,
+  studsX = 0,
+  studsZ = 0,
+  platesY = 0,
 }: {
   ldrawID: string;
   colorCode: number;
   alt: string;
   eager?: boolean;
   className?: string;
+  studsX?: number;
+  studsZ?: number;
+  platesY?: number;
 }) {
   const asset = getLDrawThumbnail(ldrawID, colorCode);
   const [status, setStatus] = useState<"loading" | "ready" | "failed">("loading");
@@ -42,7 +48,7 @@ export function BrickThumbnail({
             aria-hidden="true"
             className={cn(
               "absolute inset-3 rounded-xl bg-white/35 transition-opacity duration-300",
-              status === "ready" ? "opacity-0" : "animate-pulse opacity-100",
+              status === "ready" ? "opacity-0" : "animate-pulse opacity-100 motion-reduce:animate-none",
             )}
           />
           <img
@@ -61,6 +67,20 @@ export function BrickThumbnail({
             onError={() => setStatus("failed")}
           />
         </>
+      ) : studsX > 0 && studsZ > 0 && platesY > 0 ? (
+        <svg viewBox="0 0 160 100" role="img" aria-label={alt} className="absolute inset-0 h-full w-full p-5">
+          <g transform="translate(80 52)">
+            <path d="M-44 -8 0 -30 44 -8 0 15Z" fill="currentColor" className="text-[#f28b80]" stroke="#1d241f" strokeWidth="2" />
+            <path d="M-44 -8 0 15 0 36 -44 13Z" fill="currentColor" className="text-[#d85b50]" stroke="#1d241f" strokeWidth="2" />
+            <path d="M44 -8 0 15 0 36 44 13Z" fill="currentColor" className="text-[#b7433a]" stroke="#1d241f" strokeWidth="2" />
+            {Array.from({ length: Math.min(8, Math.max(1, studsX * studsZ)) }, (_, index) => {
+              const columns = Math.min(4, Math.max(1, studsX));
+              const row = Math.floor(index / columns);
+              const column = index % columns;
+              return <ellipse key={index} cx={(column - (columns - 1) / 2) * 16 + row * 4} cy={-20 + row * 8 - column * 4} rx="6" ry="3.2" fill="#ffaaa1" stroke="#1d241f" strokeWidth="1.4" />;
+            })}
+          </g>
+        </svg>
       ) : (
         <div role="img" aria-label={alt} className="absolute inset-0 flex items-center justify-center text-[#69736d]">
           <Box className="size-9" aria-hidden="true" />

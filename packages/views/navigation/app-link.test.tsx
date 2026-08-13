@@ -158,7 +158,7 @@ describe("AppLink", () => {
     });
   });
 
-  it("a caller-supplied onClick passed via spread cannot silently override the navigation handler", () => {
+  it("lets a caller prevent navigation after an unsaved-changes check", () => {
     const push = vi.fn();
     const adapter = makeAdapter({ push });
     const spreadOnClick = vi.fn((e: React.MouseEvent) => e.preventDefault());
@@ -173,8 +173,9 @@ describe("AppLink", () => {
     );
 
     fireEvent.click(screen.getByText("go"));
-    // Caller still runs (it was hoisted into the named param), but push runs too.
+    // Caller still runs (it was hoisted into the named param), and its
+    // cancellation is respected before the adapter transition starts.
     expect(spreadOnClick).toHaveBeenCalled();
-    expect(push).toHaveBeenCalledWith("/issues");
+    expect(push).not.toHaveBeenCalled();
   });
 });

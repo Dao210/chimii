@@ -166,6 +166,48 @@ describe("ApiClient Build Studio response schema", () => {
     });
   });
 
+  it("loads a filtered Starter Kit page through the schema boundary", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      kit_id: "chimii-starter-100",
+      kit_version: 1,
+      kit_name: "CHIMII Starter Kit 100",
+      catalog_version: "catalog-v1",
+      profile_total: 100,
+      filtered_total: 27,
+      categories: ["Bricks", "Plates"],
+      parts: [{
+        id: "brick-2x4", name: "Brick 2 x 4", category: "Bricks", popularity_rank: 17,
+        certification_level: "certified", auto_build_eligible: true, inventory_eligible: true,
+        geometry_profile: "stud_tube_rect", ldraw_id: "3001.dat", studs_x: 4, studs_z: 2,
+        plates_y: 3, quantity: 18,
+      }],
+      next_cursor: "next-page",
+    }), { status: 200, headers: { "Content-Type": "application/json" } }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(new ApiClient("https://api.example.test").listBuildCatalogParts({
+      query: "brick", capability: "auto_build", limit: 24,
+    })).resolves.toMatchObject({ profile_total: 100, filtered_total: 27, next_cursor: "next-page" });
+    expect(fetchMock.mock.calls[0]![0].toString()).toContain("query=brick&capability=auto_build&limit=24");
+  });
+
+  it("falls back safely when a Starter Kit page is malformed", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      kit_id: "chimii-starter-100",
+      kit_version: 1,
+      kit_name: "Starter Kit",
+      catalog_version: "catalog-v1",
+      profile_total: 100,
+      filtered_total: "100",
+      categories: [],
+      parts: [],
+    }), { status: 200, headers: { "Content-Type": "application/json" } })));
+
+    await expect(new ApiClient("https://api.example.test").listBuildCatalogParts()).resolves.toMatchObject({
+      kit_id: "", parts: [], filtered_total: 0,
+    });
+  });
+
   it("saves a versioned brick inventory", async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(JSON.stringify({

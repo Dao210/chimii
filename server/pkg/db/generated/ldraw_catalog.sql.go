@@ -11,6 +11,56 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const countKitCatalogParts = `-- name: CountKitCatalogParts :one
+SELECT COUNT(*)
+FROM kit_profile_part AS kit_part
+JOIN part_definition AS definition
+    ON definition.part_key = kit_part.part_key
+JOIN part_catalog_revision AS revision
+    ON revision.catalog_version = kit_part.catalog_version
+   AND revision.part_key = kit_part.part_key
+WHERE kit_part.kit_id = $1
+  AND kit_part.kit_version = $2
+  AND kit_part.catalog_version = $3
+  AND kit_part.enabled
+  AND (
+    $4::TEXT = ''
+    OR definition.name ILIKE '%' || $4::TEXT || '%'
+    OR definition.part_key ILIKE '%' || $4::TEXT || '%'
+    OR revision.ldraw_part_id ILIKE '%' || $4::TEXT || '%'
+  )
+  AND ($5::TEXT = '' OR definition.category = $5::TEXT)
+  AND CASE $6::TEXT
+    WHEN 'auto_build' THEN definition.auto_build_eligible
+    WHEN 'inventory' THEN definition.certification_level <> 'asset_only'
+    WHEN 'preview' THEN definition.certification_level = 'asset_only'
+    ELSE TRUE
+  END
+`
+
+type CountKitCatalogPartsParams struct {
+	KitID            string `json:"kit_id"`
+	KitVersion       int32  `json:"kit_version"`
+	CatalogVersion   string `json:"catalog_version"`
+	SearchQuery      string `json:"search_query"`
+	CategoryFilter   string `json:"category_filter"`
+	CapabilityFilter string `json:"capability_filter"`
+}
+
+func (q *Queries) CountKitCatalogParts(ctx context.Context, arg CountKitCatalogPartsParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countKitCatalogParts,
+		arg.KitID,
+		arg.KitVersion,
+		arg.CatalogVersion,
+		arg.SearchQuery,
+		arg.CategoryFilter,
+		arg.CapabilityFilter,
+	)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const countLDrawPartRevisionsByVersion = `-- name: CountLDrawPartRevisionsByVersion :one
 SELECT COUNT(*)
 FROM ldraw_part_revision
@@ -22,6 +72,42 @@ func (q *Queries) CountLDrawPartRevisionsByVersion(ctx context.Context, catalogV
 	var count int64
 	err := row.Scan(&count)
 	return count, err
+}
+
+const deleteKitProfileParts = `-- name: DeleteKitProfileParts :exec
+DELETE FROM kit_profile_part
+WHERE kit_id = $1
+  AND kit_version = $2
+  AND catalog_version = $3
+`
+
+type DeleteKitProfilePartsParams struct {
+	KitID          string `json:"kit_id"`
+	KitVersion     int32  `json:"kit_version"`
+	CatalogVersion string `json:"catalog_version"`
+}
+
+func (q *Queries) DeleteKitProfileParts(ctx context.Context, arg DeleteKitProfilePartsParams) error {
+	_, err := q.db.Exec(ctx, deleteKitProfileParts, arg.KitID, arg.KitVersion, arg.CatalogVersion)
+	return err
+}
+
+const deprecateKitProfilesExcept = `-- name: DeprecateKitProfilesExcept :exec
+UPDATE kit_profile
+SET status = 'deprecated', updated_at = now()
+WHERE kit_id = $1
+  AND status = 'active'
+  AND catalog_version <> $2
+`
+
+type DeprecateKitProfilesExceptParams struct {
+	KitID          string `json:"kit_id"`
+	CatalogVersion string `json:"catalog_version"`
+}
+
+func (q *Queries) DeprecateKitProfilesExcept(ctx context.Context, arg DeprecateKitProfilesExceptParams) error {
+	_, err := q.db.Exec(ctx, deprecateKitProfilesExcept, arg.KitID, arg.CatalogVersion)
+	return err
 }
 
 const deprecateLDrawCatalogReleasesExcept = `-- name: DeprecateLDrawCatalogReleasesExcept :exec
@@ -39,6 +125,39 @@ type DeprecateLDrawCatalogReleasesExceptParams struct {
 func (q *Queries) DeprecateLDrawCatalogReleasesExcept(ctx context.Context, arg DeprecateLDrawCatalogReleasesExceptParams) error {
 	_, err := q.db.Exec(ctx, deprecateLDrawCatalogReleasesExcept, arg.Status, arg.CatalogVersion)
 	return err
+}
+
+const getActiveKitProfileForCatalog = `-- name: GetActiveKitProfileForCatalog :one
+SELECT kit_id, version, name, description, source_manifest_kit_id, catalog_version, part_count, status, created_at, updated_at
+FROM kit_profile
+WHERE kit_id = $1
+  AND catalog_version = $2
+  AND status = 'active'
+ORDER BY version DESC
+LIMIT 1
+`
+
+type GetActiveKitProfileForCatalogParams struct {
+	KitID          string `json:"kit_id"`
+	CatalogVersion string `json:"catalog_version"`
+}
+
+func (q *Queries) GetActiveKitProfileForCatalog(ctx context.Context, arg GetActiveKitProfileForCatalogParams) (KitProfile, error) {
+	row := q.db.QueryRow(ctx, getActiveKitProfileForCatalog, arg.KitID, arg.CatalogVersion)
+	var i KitProfile
+	err := row.Scan(
+		&i.KitID,
+		&i.Version,
+		&i.Name,
+		&i.Description,
+		&i.SourceManifestKitID,
+		&i.CatalogVersion,
+		&i.PartCount,
+		&i.Status,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
 }
 
 const getLDrawCatalogReleaseByVersion = `-- name: GetLDrawCatalogReleaseByVersion :one
@@ -209,6 +328,273 @@ func (q *Queries) ListCreativeCatalogPartsByVersion(ctx context.Context, catalog
 		return nil, err
 	}
 	return items, nil
+}
+
+const listKitCatalogCategories = `-- name: ListKitCatalogCategories :many
+SELECT DISTINCT definition.category
+FROM kit_profile_part AS kit_part
+JOIN part_definition AS definition
+    ON definition.part_key = kit_part.part_key
+WHERE kit_part.kit_id = $1
+  AND kit_part.kit_version = $2
+  AND kit_part.catalog_version = $3
+  AND kit_part.enabled
+ORDER BY definition.category
+`
+
+type ListKitCatalogCategoriesParams struct {
+	KitID          string `json:"kit_id"`
+	KitVersion     int32  `json:"kit_version"`
+	CatalogVersion string `json:"catalog_version"`
+}
+
+func (q *Queries) ListKitCatalogCategories(ctx context.Context, arg ListKitCatalogCategoriesParams) ([]string, error) {
+	rows, err := q.db.Query(ctx, listKitCatalogCategories, arg.KitID, arg.KitVersion, arg.CatalogVersion)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []string{}
+	for rows.Next() {
+		var category string
+		if err := rows.Scan(&category); err != nil {
+			return nil, err
+		}
+		items = append(items, category)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listKitCatalogParts = `-- name: ListKitCatalogParts :many
+SELECT
+    definition.part_key,
+    definition.name,
+    definition.category,
+    kit_part.popularity_rank,
+    definition.certification_level,
+    definition.auto_build_eligible,
+    definition.geometry_profile,
+    definition.studs_x,
+    definition.studs_z,
+    definition.plates_y,
+    kit_part.default_quantity,
+    definition.has_top_studs,
+    definition.has_bottom_receptors,
+    revision.ldraw_part_id,
+    revision.origin_y_offset_ldu,
+    revision.origin_center_z_offset_ldu
+FROM kit_profile_part AS kit_part
+JOIN part_definition AS definition
+    ON definition.part_key = kit_part.part_key
+JOIN part_catalog_revision AS revision
+    ON revision.catalog_version = kit_part.catalog_version
+   AND revision.part_key = kit_part.part_key
+WHERE kit_part.kit_id = $1
+  AND kit_part.kit_version = $2
+  AND kit_part.catalog_version = $3
+  AND kit_part.enabled
+  AND (
+    $4::TEXT = ''
+    OR definition.name ILIKE '%' || $4::TEXT || '%'
+    OR definition.part_key ILIKE '%' || $4::TEXT || '%'
+    OR revision.ldraw_part_id ILIKE '%' || $4::TEXT || '%'
+  )
+  AND ($5::TEXT = '' OR definition.category = $5::TEXT)
+  AND CASE $6::TEXT
+    WHEN 'auto_build' THEN definition.auto_build_eligible
+    WHEN 'inventory' THEN definition.certification_level <> 'asset_only'
+    WHEN 'preview' THEN definition.certification_level = 'asset_only'
+    ELSE TRUE
+  END
+  AND (
+    kit_part.popularity_rank > $7::INTEGER
+    OR (kit_part.popularity_rank = $7::INTEGER AND definition.part_key > $8::TEXT)
+  )
+ORDER BY kit_part.popularity_rank, definition.part_key
+LIMIT $9::INTEGER
+`
+
+type ListKitCatalogPartsParams struct {
+	KitID            string `json:"kit_id"`
+	KitVersion       int32  `json:"kit_version"`
+	CatalogVersion   string `json:"catalog_version"`
+	SearchQuery      string `json:"search_query"`
+	CategoryFilter   string `json:"category_filter"`
+	CapabilityFilter string `json:"capability_filter"`
+	AfterRank        int32  `json:"after_rank"`
+	AfterPartKey     string `json:"after_part_key"`
+	PageLimit        int32  `json:"page_limit"`
+}
+
+type ListKitCatalogPartsRow struct {
+	PartKey                string `json:"part_key"`
+	Name                   string `json:"name"`
+	Category               string `json:"category"`
+	PopularityRank         int32  `json:"popularity_rank"`
+	CertificationLevel     string `json:"certification_level"`
+	AutoBuildEligible      bool   `json:"auto_build_eligible"`
+	GeometryProfile        string `json:"geometry_profile"`
+	StudsX                 int32  `json:"studs_x"`
+	StudsZ                 int32  `json:"studs_z"`
+	PlatesY                int32  `json:"plates_y"`
+	DefaultQuantity        int32  `json:"default_quantity"`
+	HasTopStuds            bool   `json:"has_top_studs"`
+	HasBottomReceptors     bool   `json:"has_bottom_receptors"`
+	LdrawPartID            string `json:"ldraw_part_id"`
+	OriginYOffsetLdu       int32  `json:"origin_y_offset_ldu"`
+	OriginCenterZOffsetLdu int32  `json:"origin_center_z_offset_ldu"`
+}
+
+func (q *Queries) ListKitCatalogParts(ctx context.Context, arg ListKitCatalogPartsParams) ([]ListKitCatalogPartsRow, error) {
+	rows, err := q.db.Query(ctx, listKitCatalogParts,
+		arg.KitID,
+		arg.KitVersion,
+		arg.CatalogVersion,
+		arg.SearchQuery,
+		arg.CategoryFilter,
+		arg.CapabilityFilter,
+		arg.AfterRank,
+		arg.AfterPartKey,
+		arg.PageLimit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListKitCatalogPartsRow{}
+	for rows.Next() {
+		var i ListKitCatalogPartsRow
+		if err := rows.Scan(
+			&i.PartKey,
+			&i.Name,
+			&i.Category,
+			&i.PopularityRank,
+			&i.CertificationLevel,
+			&i.AutoBuildEligible,
+			&i.GeometryProfile,
+			&i.StudsX,
+			&i.StudsZ,
+			&i.PlatesY,
+			&i.DefaultQuantity,
+			&i.HasTopStuds,
+			&i.HasBottomReceptors,
+			&i.LdrawPartID,
+			&i.OriginYOffsetLdu,
+			&i.OriginCenterZOffsetLdu,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const upsertKitProfile = `-- name: UpsertKitProfile :exec
+INSERT INTO kit_profile (
+    kit_id,
+    version,
+    name,
+    description,
+    source_manifest_kit_id,
+    catalog_version,
+    part_count,
+    status
+) VALUES (
+    $1,
+    $2,
+    $3,
+    $4,
+    $5,
+    $6,
+    $7,
+    $8
+)
+ON CONFLICT (kit_id, version, catalog_version) DO UPDATE
+SET name = EXCLUDED.name,
+    description = EXCLUDED.description,
+    source_manifest_kit_id = EXCLUDED.source_manifest_kit_id,
+    part_count = EXCLUDED.part_count,
+    status = EXCLUDED.status,
+    updated_at = now()
+`
+
+type UpsertKitProfileParams struct {
+	KitID               string `json:"kit_id"`
+	Version             int32  `json:"version"`
+	Name                string `json:"name"`
+	Description         string `json:"description"`
+	SourceManifestKitID string `json:"source_manifest_kit_id"`
+	CatalogVersion      string `json:"catalog_version"`
+	PartCount           int32  `json:"part_count"`
+	Status              string `json:"status"`
+}
+
+func (q *Queries) UpsertKitProfile(ctx context.Context, arg UpsertKitProfileParams) error {
+	_, err := q.db.Exec(ctx, upsertKitProfile,
+		arg.KitID,
+		arg.Version,
+		arg.Name,
+		arg.Description,
+		arg.SourceManifestKitID,
+		arg.CatalogVersion,
+		arg.PartCount,
+		arg.Status,
+	)
+	return err
+}
+
+const upsertKitProfilePart = `-- name: UpsertKitProfilePart :exec
+INSERT INTO kit_profile_part (
+    kit_id,
+    kit_version,
+    catalog_version,
+    part_key,
+    popularity_rank,
+    default_quantity,
+    enabled
+) VALUES (
+    $1,
+    $2,
+    $3,
+    $4,
+    $5,
+    $6,
+    $7
+)
+ON CONFLICT (kit_id, kit_version, catalog_version, part_key) DO UPDATE
+SET popularity_rank = EXCLUDED.popularity_rank,
+    default_quantity = EXCLUDED.default_quantity,
+    enabled = EXCLUDED.enabled,
+    updated_at = now()
+`
+
+type UpsertKitProfilePartParams struct {
+	KitID           string `json:"kit_id"`
+	KitVersion      int32  `json:"kit_version"`
+	CatalogVersion  string `json:"catalog_version"`
+	PartKey         string `json:"part_key"`
+	PopularityRank  int32  `json:"popularity_rank"`
+	DefaultQuantity int32  `json:"default_quantity"`
+	Enabled         bool   `json:"enabled"`
+}
+
+func (q *Queries) UpsertKitProfilePart(ctx context.Context, arg UpsertKitProfilePartParams) error {
+	_, err := q.db.Exec(ctx, upsertKitProfilePart,
+		arg.KitID,
+		arg.KitVersion,
+		arg.CatalogVersion,
+		arg.PartKey,
+		arg.PopularityRank,
+		arg.DefaultQuantity,
+		arg.Enabled,
+	)
+	return err
 }
 
 const upsertLDrawCatalogRelease = `-- name: UpsertLDrawCatalogRelease :one

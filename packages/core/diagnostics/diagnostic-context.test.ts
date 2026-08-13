@@ -85,6 +85,12 @@ describe("bucketDiagnosticPath", () => {
     expect(bucketDiagnosticPath("/acme/agents")).toBe("/:slug/agents");
   });
 
+  it("recognizes Build Studio routes without exposing creation ids", () => {
+    expect(bucketDiagnosticPath("/acme/build")).toBe("/:slug/build");
+    expect(bucketDiagnosticPath("/acme/block")).toBe("/:slug/block");
+    expect(bucketDiagnosticPath("/acme/creations/creation-7")).toBe("/:slug/creations/:id");
+  });
+
   it("keeps pre-workspace routes intact", () => {
     expect(bucketDiagnosticPath("/login")).toBe("/login");
     expect(bucketDiagnosticPath("/workspaces/new")).toBe("/workspaces/new");

@@ -16,6 +16,7 @@ func TestChildCapabilitiesAllowsOnlyChildProductSurface(t *testing.T) {
 	}{
 		{http.MethodPost, "/api/build/sessions", http.StatusNoContent},
 		{http.MethodGet, "/api/build/catalog", http.StatusNoContent},
+		{http.MethodGet, "/api/build/catalog/parts", http.StatusNoContent},
 		{http.MethodGet, "/api/build/catalog/ldraw-official-2026-05-29-6009f2/parts/3001.dat", http.StatusNoContent},
 		{http.MethodGet, "/api/build/catalog/ldraw-official-2026-05-29-6009f2/parts/parts%2F4624.dat", http.StatusNoContent},
 		{http.MethodGet, "/api/build/inventory", http.StatusNoContent},

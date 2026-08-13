@@ -21,8 +21,12 @@ import (
 )
 
 const (
-	catalogSyncBatchSize    = 20
-	catalogSyncPollInterval = 2 * time.Second
+	catalogSyncBatchSize     = 20
+	catalogSyncPollInterval  = 2 * time.Second
+	starterKitProfileID      = "chimii-starter-100"
+	starterKitProfileName    = "CHIMII Starter Kit 100"
+	starterKitProfileSize    = 100
+	starterKitProfileVersion = 1
 )
 
 type CatalogWorker struct {
@@ -325,7 +329,52 @@ func activateCatalogRelease(ctx context.Context, pool *pgxpool.Pool, lock LockFi
 	}); err != nil {
 		return err
 	}
+	if err := persistStarterKitProfile(ctx, queries, manifest, catalogVersion); err != nil {
+		return err
+	}
 	return tx.Commit(ctx)
+}
+
+func persistStarterKitProfile(ctx context.Context, queries *db.Queries, manifest StarterKitManifest, catalogVersion string) error {
+	if err := queries.DeprecateKitProfilesExcept(ctx, db.DeprecateKitProfilesExceptParams{
+		KitID: starterKitProfileID, CatalogVersion: catalogVersion,
+	}); err != nil {
+		return fmt.Errorf("deprecate Starter Kit profiles: %w", err)
+	}
+	parts := make([]StarterKitPart, 0, starterKitProfileSize)
+	for _, part := range manifest.Parts {
+		if part.Rank > 0 && part.Rank <= starterKitProfileSize {
+			parts = append(parts, part)
+		}
+	}
+	if len(parts) != starterKitProfileSize {
+		return fmt.Errorf("Starter Kit profile has %d parts, want %d", len(parts), starterKitProfileSize)
+	}
+	if err := queries.UpsertKitProfile(ctx, db.UpsertKitProfileParams{
+		KitID: starterKitProfileID, Version: starterKitProfileVersion, Name: starterKitProfileName,
+		Description:         "The 100 most common parts in the pinned Starter Kit manifest.",
+		SourceManifestKitID: manifest.KitID, CatalogVersion: catalogVersion,
+		PartCount: int32(len(parts)), Status: "active",
+	}); err != nil {
+		return fmt.Errorf("upsert Starter Kit profile: %w", err)
+	}
+	identity := db.DeleteKitProfilePartsParams{
+		KitID: starterKitProfileID, KitVersion: starterKitProfileVersion, CatalogVersion: catalogVersion,
+	}
+	if err := queries.DeleteKitProfileParts(ctx, identity); err != nil {
+		return fmt.Errorf("replace Starter Kit profile parts: %w", err)
+	}
+	for _, part := range parts {
+		semantics := DerivePartSemantics(part)
+		if err := queries.UpsertKitProfilePart(ctx, db.UpsertKitProfilePartParams{
+			KitID: starterKitProfileID, KitVersion: starterKitProfileVersion, CatalogVersion: catalogVersion,
+			PartKey: semantics.PartKey, PopularityRank: int32(part.Rank),
+			DefaultQuantity: int32(semantics.DefaultQuantity), Enabled: true,
+		}); err != nil {
+			return fmt.Errorf("upsert Starter Kit profile part %s: %w", semantics.PartKey, err)
+		}
+	}
+	return nil
 }
 
 func composeCatalogVersion(release, archiveSHA string) string {
