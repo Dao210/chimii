@@ -1,6 +1,7 @@
 package build
 
 import (
+	"errors"
 	"fmt"
 	"regexp"
 	"sort"
@@ -10,8 +11,34 @@ import (
 
 const (
 	defaultBuildDifficulty = 3
-	maxRequestedPartCount  = 1000
+	minRequestedPartCount  = 6
+	maxRequestedPartCount  = 200
+	BuildErrorCountUnsupported     = "BUILD_COUNT_UNSUPPORTED"
+	BuildErrorInsufficientInventory = "BUILD_INSUFFICIENT_INVENTORY"
+	BuildErrorStructureInvalid      = "BUILD_STRUCTURE_INVALID"
 )
+
+type BuildError struct {
+	Code  string
+	Cause error
+}
+
+func (e *BuildError) Error() string {
+	if e.Cause == nil {
+		return e.Code
+	}
+	return e.Code + ": " + e.Cause.Error()
+}
+
+func (e *BuildError) Unwrap() error { return e.Cause }
+
+func BuildErrorCode(err error) (string, bool) {
+	var buildErr *BuildError
+	if errors.As(err, &buildErr) {
+		return buildErr.Code, true
+	}
+	return "", false
+}
 
 var (
 	chineseBlockCountPattern = regexp.MustCompile(`([0-9]{1,4})[[:space:]]*块`)
@@ -25,9 +52,9 @@ var (
 	englishYearsOldPattern   = regexp.MustCompile(`(?i)([0-9]{1,2})[[:space:]-]*(years?|yrs?)[[:space:]-]*old`)
 )
 
-// ApplyDifficultyPolicy records the deterministic scale decision in recipe
-// metadata. An explicitly requested part count always wins; otherwise an
-// explicit difficulty wins over the age-derived difficulty.
+// ApplyDifficultyPolicy records one deterministic scale decision before the
+// archetype is selected. An explicit part count always wins; an explicit
+// difficulty wins over age; otherwise the middle difficulty is used.
 func ApplyDifficultyPolicy(recipe AssemblyRecipe, prompt string, answers map[string]string) AssemblyRecipe {
 	if recipe.Metadata == nil {
 		recipe.Metadata = map[string]string{}
@@ -51,7 +78,6 @@ func ApplyDifficultyPolicy(recipe AssemblyRecipe, prompt string, answers map[str
 		target = explicit
 		source = "explicit"
 	}
-
 	recipe.Metadata["difficulty_level"] = strconv.Itoa(difficulty)
 	recipe.Metadata["target_part_count"] = strconv.Itoa(target)
 	recipe.Metadata["part_count_source"] = source
@@ -83,7 +109,7 @@ func parseExplicitPartCount(text string) (int, bool) {
 			continue
 		}
 		count, err := strconv.Atoi(match[1])
-		if err == nil && count > 0 && count <= maxRequestedPartCount {
+		if err == nil {
 			return count, true
 		}
 	}
@@ -94,11 +120,7 @@ func parseDifficulty(text string) (int, bool) {
 	for _, candidate := range []struct {
 		pattern *regexp.Regexp
 		group   int
-	}{
-		{chineseDifficultyPattern, 1},
-		{chineseLevelPattern, 1},
-		{englishDifficultyPattern, 2},
-	} {
+	}{{chineseDifficultyPattern, 1}, {chineseLevelPattern, 1}, {englishDifficultyPattern, 2}} {
 		match := candidate.pattern.FindStringSubmatch(text)
 		if len(match) > candidate.group {
 			level, _ := strconv.Atoi(match[candidate.group])
@@ -122,11 +144,7 @@ func parseBuilderAge(text string) (int, bool) {
 	for _, candidate := range []struct {
 		pattern *regexp.Regexp
 		group   int
-	}{
-		{chineseAgePattern, 1},
-		{englishAgePattern, 2},
-		{englishYearsOldPattern, 1},
-	} {
+	}{{chineseAgePattern, 1}, {englishAgePattern, 2}, {englishYearsOldPattern, 1}} {
 		match := candidate.pattern.FindStringSubmatch(text)
 		if len(match) > candidate.group {
 			age, _ := strconv.Atoi(match[candidate.group])
@@ -179,115 +197,97 @@ func targetPartCount(recipe AssemblyRecipe) int {
 	return target
 }
 
-func scalePlacementsToTarget(placements []Placement, recipe AssemblyRecipe) []Placement {
-	return scalePlacementsToTargetWithCatalog(placements, recipe, StarterCatalog)
-}
-
-func scalePlacementsToTargetWithCatalog(placements []Placement, recipe AssemblyRecipe, catalog PartCatalog) []Placement {
+func scalePlacementsToTargetWithCatalog(placements []Placement, recipe AssemblyRecipe, inventory InventorySnapshot, catalog PartCatalog) ([]Placement, error) {
 	target := targetPartCount(recipe)
-	if target == 0 || target == len(placements) || len(placements) == 0 {
-		return placements
+	if target == 0 || target == len(placements) {
+		return placements, nil
 	}
-	if target < len(placements) {
-		if recipe.Archetype == "robot" {
-			return shrinkRobotPlacementsWithCatalog(placements, target, catalog)
-		}
-		return normalizePlacementSteps(append([]Placement(nil), placements[:target]...))
+	if target < minRequestedPartCount || target > maxRequestedPartCount || target < len(placements) {
+		return nil, &BuildError{Code: BuildErrorCountUnsupported, Cause: fmt.Errorf("target %d is outside the supported range for %s", target, recipe.Archetype)}
 	}
 
 	scaled := append([]Placement(nil), placements...)
-	anchor := scaled[0]
-	maxTop := topYWith(anchor, catalog)
-	maxStep := anchor.Step
-	for _, placement := range scaled[1:] {
-		if top := topYWith(placement, catalog); top > maxTop {
-			anchor = placement
-			maxTop = top
-		}
-		if placement.Step > maxStep {
-			maxStep = placement.Step
-		}
-	}
 	for len(scaled) < target {
-		next := anchor
-		next.ID = fmt.Sprintf("difficulty-%04d", len(scaled)+1)
-		next.Y = topYWith(anchor, catalog)
-		next.Step = maxStep + len(scaled) - len(placements) + 1
-		next.Module = "difficulty-detail"
-		scaled = append(scaled, next)
-		anchor = next
+		candidate, ok := nextBudgetPlacement(scaled, recipe, inventory, catalog)
+		if !ok {
+			code := BuildErrorCountUnsupported
+			if inventory.Configured {
+				code = BuildErrorInsufficientInventory
+			}
+			return nil, &BuildError{Code: code, Cause: fmt.Errorf("cannot reach %d parts; stopped at %d", target, len(scaled))}
+		}
+		scaled = append(scaled, candidate)
 	}
-	return scaled
+	return scaled, nil
 }
 
-func shrinkRobotPlacements(placements []Placement, target int) []Placement {
-	return shrinkRobotPlacementsWithCatalog(placements, target, StarterCatalog)
-}
-
-func shrinkRobotPlacementsWithCatalog(placements []Placement, target int, catalog PartCatalog) []Placement {
-	if target <= 0 {
-		return nil
-	}
-	moduleCounts := map[string]int{}
-	dominantModule := ""
+func nextBudgetPlacement(placements []Placement, recipe AssemblyRecipe, inventory InventorySnapshot, catalog PartCatalog) (Placement, bool) {
+	used := map[inventoryKey]int{}
+	occupied := map[[3]int]bool{}
+	maxStep := 0
 	for _, placement := range placements {
-		moduleCounts[placement.Module]++
-		if moduleCounts[placement.Module] > moduleCounts[dominantModule] {
-			dominantModule = placement.Module
+		used[inventoryKey{partID: placement.PartID, color: placement.Color}]++
+		maxStep = max(maxStep, placement.Step)
+		spec := catalog[placement.PartID]
+		size := orientedSizeWith(placement, catalog)
+		for x := placement.X; x < placement.X+size.x; x++ {
+			for z := placement.Z; z < placement.Z+size.z; z++ {
+				for y := placement.Y; y < placement.Y+spec.PlatesY; y++ {
+					occupied[[3]int{x, y, z}] = true
+				}
+			}
 		}
 	}
-	dominantCount := moduleCounts[dominantModule]
-	otherCount := len(placements) - dominantCount
-	keepDominant := target - otherCount
-	if keepDominant <= 0 {
-		return normalizePlacementSteps(append([]Placement(nil), placements[:target]...))
-	}
-
-	originalDominantTop := 0
-	keptDominantTop := 0
-	kept := make([]Placement, 0, target)
-	for _, placement := range placements {
-		if placement.Module == dominantModule {
-			if top := topYWith(placement, catalog); top > originalDominantTop {
-				originalDominantTop = top
-			}
-			if keepDominant == 0 {
+	available := inventory.quantities()
+	candidates := append([]Placement(nil), placements...)
+	sort.SliceStable(candidates, func(i, j int) bool {
+		if topYWith(candidates[i], catalog) != topYWith(candidates[j], catalog) {
+			return topYWith(candidates[i], catalog) < topYWith(candidates[j], catalog)
+		}
+		return candidates[i].ID < candidates[j].ID
+	})
+	for _, support := range candidates {
+		supportSpec := catalog[support.PartID]
+		if !partHasTopStuds(supportSpec) || !partHasBottomReceptors(supportSpec) {
+			continue
+		}
+		colors := append([]int{support.Color}, AllowedColorCodes()...)
+		for _, color := range colors {
+			key := inventoryKey{partID: support.PartID, color: color}
+			if inventory.Configured && used[key] >= available[key] {
 				continue
 			}
-			keepDominant--
-			if top := topYWith(placement, catalog); top > keptDominantTop {
-				keptDominantTop = top
+			next := support
+			next.ID = fmt.Sprintf("budget-%04d", len(placements)+1)
+			next.Y = topYWith(support, catalog)
+			next.Step = maxStep + 1
+			next.Color = color
+			next.Module = "difficulty-detail"
+			if !placementVolumeIsFree(next, occupied, catalog) {
+				continue
+			}
+			if centerOverBase(append(placements, next), catalog) {
+				return next, true
 			}
 		}
-		kept = append(kept, placement)
 	}
-	shift := originalDominantTop - keptDominantTop
-	if shift > 0 {
-		for index := range kept {
-			if kept[index].Module != dominantModule && kept[index].Y >= originalDominantTop {
-				kept[index].Y -= shift
-			}
-		}
-	}
-	return normalizePlacementSteps(kept)
+	return Placement{}, false
 }
 
-func normalizePlacementSteps(placements []Placement) []Placement {
-	steps := make([]int, 0, len(placements))
-	seen := map[int]bool{}
-	for _, placement := range placements {
-		if !seen[placement.Step] {
-			seen[placement.Step] = true
-			steps = append(steps, placement.Step)
+func placementVolumeIsFree(placement Placement, occupied map[[3]int]bool, catalog PartCatalog) bool {
+	spec, ok := catalog[placement.PartID]
+	if !ok || placement.X < -16 || placement.X > 16 || placement.Z < -16 || placement.Z > 16 {
+		return false
+	}
+	size := orientedSizeWith(placement, catalog)
+	for x := placement.X; x < placement.X+size.x; x++ {
+		for z := placement.Z; z < placement.Z+size.z; z++ {
+			for y := placement.Y; y < placement.Y+spec.PlatesY; y++ {
+				if occupied[[3]int{x, y, z}] {
+					return false
+				}
+			}
 		}
 	}
-	sort.Ints(steps)
-	normalized := make(map[int]int, len(steps))
-	for index, step := range steps {
-		normalized[step] = index + 1
-	}
-	for index := range placements {
-		placements[index].Step = normalized[placements[index].Step]
-	}
-	return placements
+	return true
 }

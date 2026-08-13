@@ -139,10 +139,16 @@ func (w *BuildWorker) ProcessNext(ctx context.Context) (bool, error) {
 	}
 	recipe, err := w.h.planBuildRecipe(ctx, session.Prompt, answers, inventory, catalog)
 	if err != nil {
+		if code, ok := buildstudio.BuildErrorCode(err); ok {
+			return true, w.failPermanently(ctx, job, code, err)
+		}
 		return true, w.retry(ctx, job, fmt.Errorf("plan build intent: %w", err))
 	}
 	result, err := buildstudio.CompileWithCatalog(recipe, inventory, inventory.CatalogVersion, catalog, time.Now())
 	if err != nil {
+		if code, ok := buildstudio.BuildErrorCode(err); ok {
+			return true, w.failPermanently(ctx, job, code, err)
+		}
 		return true, w.retry(ctx, job, err)
 	}
 	recipeJSON, _ := json.Marshal(result.Recipe)
@@ -193,6 +199,32 @@ func (w *BuildWorker) ProcessNext(ctx context.Context) (bool, error) {
 		return true, fmt.Errorf("commit build completion: %w", err)
 	}
 	return true, nil
+}
+
+func (w *BuildWorker) failPermanently(ctx context.Context, job db.BuildJob, code string, cause error) error {
+	tx, err := w.h.TxStarter.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("begin permanent build failure: %w", err)
+	}
+	defer tx.Rollback(ctx)
+	qtx := w.h.Queries.WithTx(tx)
+	if err := qtx.FailBuildSession(ctx, db.FailBuildSessionParams{
+		ID: job.SessionID, Error: pgtype.Text{String: code, Valid: true},
+	}); err != nil {
+		return fmt.Errorf("fail build session: %w", err)
+	}
+	if _, err := qtx.FailBuildJob(ctx, db.FailBuildJobParams{
+		LastError: pgtype.Text{String: cause.Error(), Valid: true}, ID: job.ID, LeaseToken: job.LeaseToken,
+	}); err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return fmt.Errorf("fail build job: %w", err)
+	} else if errors.Is(err, pgx.ErrNoRows) {
+		return nil
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("commit permanent build failure: %w", err)
+	}
+	slog.Warn("build worker: permanent build failure", "code", code, "job_id", uuidToString(job.ID), "session_id", uuidToString(job.SessionID))
+	return nil
 }
 
 func (w *BuildWorker) retry(ctx context.Context, job db.BuildJob, cause error) error {

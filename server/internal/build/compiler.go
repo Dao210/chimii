@@ -80,8 +80,12 @@ func CompileWithCatalog(recipe AssemblyRecipe, inventory InventorySnapshot, cata
 	}
 	placements := placementsFor(recipe)
 	placements = resolveCertifiedVariants(placements, recipe, inventory, catalog)
-	placements = scalePlacementsToTargetWithCatalog(placements, recipe, catalog)
 	placements = resolveInventoryColors(placements, inventory)
+	var err error
+	placements, err = scalePlacementsToTargetWithCatalog(placements, recipe, inventory, catalog)
+	if err != nil {
+		return CompileResult{Recipe: recipe}, err
+	}
 	report := ValidateWithCatalog(placements, inventory, catalog)
 	plan := BuildPlan{
 		Version: 2, KitID: StarterKitID, CatalogVersion: catalogVersion,
@@ -93,7 +97,14 @@ func CompileWithCatalog(recipe AssemblyRecipe, inventory InventorySnapshot, cata
 	}
 	plan.ContentHash = physicalContentHash(plan)
 	if !report.Buildable {
-		return CompileResult{Recipe: recipe, Plan: plan}, fmt.Errorf("compiled plan is not buildable: %v", report.Issues)
+		code := BuildErrorStructureInvalid
+		for _, issue := range report.Issues {
+			if issue.Code == "inventory_exceeded" {
+				code = BuildErrorInsufficientInventory
+				break
+			}
+		}
+		return CompileResult{Recipe: recipe, Plan: plan}, &BuildError{Code: code, Cause: fmt.Errorf("compiled plan is not buildable: %v", report.Issues)}
 	}
 	return CompileResult{Recipe: recipe, Plan: plan, MPD: ExportMPD(plan)}, nil
 }
@@ -106,12 +117,21 @@ func AvailableArchetypes(inventory InventorySnapshot) []string {
 }
 
 func AvailableArchetypesWithCatalog(inventory InventorySnapshot, catalog PartCatalog) []string {
+	return AvailableArchetypesForRecipe(AssemblyRecipe{}, inventory, catalog)
+}
+
+func AvailableArchetypesForRecipe(base AssemblyRecipe, inventory InventorySnapshot, catalog PartCatalog) []string {
 	archetypes := []string{"racer", "flyer", "robot", "creature"}
 	available := make([]string, 0, len(archetypes))
 	for _, archetype := range archetypes {
-		recipe := AssemblyRecipe{Archetype: archetype}
+		recipe := base
+		recipe.Archetype = archetype
 		placements := resolveCertifiedVariants(placementsFor(recipe), recipe, inventory, catalog)
 		placements = resolveInventoryColors(placements, inventory)
+		placements, err := scalePlacementsToTargetWithCatalog(placements, recipe, inventory, catalog)
+		if err != nil {
+			continue
+		}
 		if ValidateWithCatalog(placements, inventory, catalog).Buildable {
 			available = append(available, archetype)
 		}
@@ -138,7 +158,7 @@ func resolveCertifiedVariants(placements []Placement, recipe AssemblyRecipe, inv
 		}
 	}
 	resolved := make([]Placement, 0, len(placements)*2)
-	for _, placement := range placements {
+	for index, placement := range placements {
 		source, ok := catalog[placement.PartID]
 		if !ok || partGeometryProfile(source) != "stud_tube_rect" {
 			resolved = append(resolved, placement)
@@ -146,6 +166,13 @@ func resolveCertifiedVariants(placements []Placement, recipe AssemblyRecipe, inv
 		}
 		if inventory.Configured && remaining[placement.PartID] > 0 {
 			remaining[placement.PartID]--
+			resolved = append(resolved, placement)
+			continue
+		}
+		// A split replacement turns one physical piece into two. Stop splitting
+		// as soon as the unchanged remainder would fill the requested budget so
+		// an explicit count remains an exact physical-piece contract.
+		if target := targetPartCount(recipe); target > 0 && len(resolved)+len(placements)-index >= target {
 			resolved = append(resolved, placement)
 			continue
 		}
@@ -340,34 +367,18 @@ func robotPlacements(recipe AssemblyRecipe) []Placement {
 	accentColor := paletteColor(2, 15)
 	headColor := paletteColor(3, 1)
 
-	const robotCoreSegments = 100
-
-	parts := make([]Placement, 0, robotCoreSegments+8)
+	parts := make([]Placement, 0, 12)
 	add := func(part string, color, x, y, z, rotation, step int, module string) {
 		parts = append(parts, Placement{ID: fmt.Sprintf("r%02d", len(parts)+1), PartID: part, Color: color, X: x, Y: y, Z: z, Rotation: rotation, Step: step, Module: module})
 	}
 
 	add("brick-2x2", primaryColor, 0, 0, 0, 0, 1, "left-foot")
 	add("brick-2x2", primaryColor, 2, 0, 0, 0, 1, "right-foot")
-
-	for i := 0; i < robotCoreSegments; i++ {
-		y := 3 + i*3
-		step := 3 + i
-		rotation := 0
-		if i%3 == 1 {
-			rotation = 90
-		}
-		add("brick-1x2", coreColor, 1, y, 0, rotation, step, "core")
-	}
-
-	lastCoreY := 3 + (robotCoreSegments-1)*3
-	headY := lastCoreY + 3
-	headStep := 3 + robotCoreSegments
-	add("brick-2x2", headColor, 1, headY, 0, 0, headStep, "head")
-	add("plate-1x2", accentColor, 1, headY+3, 1, 0, headStep+1, "visor")
-	add("brick-1x1", accentColor, 1, headY+4, 1, 0, headStep+2, "left-eye")
-	add("brick-1x1", accentColor, 2, headY+4, 1, 0, headStep+2, "right-eye")
-	add("brick-1x1", coreColor, 1, headY+7, 1, 0, headStep+3, "antenna")
+	add("brick-2x4", coreColor, 0, 3, 0, 0, 2, "body")
+	add("brick-2x4", coreColor, 0, 6, 0, 0, 3, "body")
+	add("brick-2x2", headColor, 1, 9, 0, 0, 4, "head")
+	add("brick-1x1", accentColor, 1, 12, 0, 0, 5, "left-eye")
+	add("brick-1x1", accentColor, 2, 12, 0, 0, 5, "right-eye")
 
 	return parts
 }

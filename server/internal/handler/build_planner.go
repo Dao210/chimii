@@ -37,9 +37,14 @@ func (h *Handler) planBuildRecipe(ctx context.Context, prompt string, answers ma
 		return buildstudio.AssemblyRecipe{}, errors.New("build planner is not configured")
 	}
 	answerJSON, _ := json.Marshal(answers)
-	availableArchetypes := buildstudio.AvailableArchetypesWithCatalog(inventory, catalog)
+	baseRecipe := buildstudio.ApplyDifficultyPolicy(buildstudio.PlanRecipe(prompt, answers), prompt, answers)
+	availableArchetypes := buildstudio.AvailableArchetypesForRecipe(baseRecipe, inventory, catalog)
 	if len(availableArchetypes) == 0 {
-		return buildstudio.AssemblyRecipe{}, errors.New("brick inventory cannot complete a supported construction")
+		code := buildstudio.BuildErrorCountUnsupported
+		if inventory.Configured {
+			code = buildstudio.BuildErrorInsufficientInventory
+		}
+		return buildstudio.AssemblyRecipe{}, &buildstudio.BuildError{Code: code, Cause: errors.New("brick inventory cannot complete the requested construction size")}
 	}
 	requestCtx, cancel := context.WithTimeout(ctx, buildIntentTimeout)
 	defer cancel()
@@ -61,12 +66,11 @@ func (h *Handler) planBuildRecipe(ctx context.Context, prompt string, answers ma
 	if !allowedByInventory {
 		return buildstudio.AssemblyRecipe{}, errors.New("build intent does not fit the brick inventory")
 	}
-	recipe := buildstudio.PlanRecipe(prompt, answers)
+	recipe := baseRecipe
 	recipe.Archetype = intent.Archetype
 	recipe.Title = intent.Title
 	recipe.Features = intent.Features
 	recipe.Metadata["planner"] = "llm-intent+chimii-construction-grammar-v1"
-	recipe = buildstudio.ApplyDifficultyPolicy(recipe, prompt, answers)
 	return recipe, nil
 }
 

@@ -2,6 +2,7 @@ package build
 
 import (
 	"encoding/json"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -151,5 +152,37 @@ func TestEmptyConfiguredInventoryCannotBuildButUnlimitedCan(t *testing.T) {
 	}
 	if available := AvailableArchetypes(configured); len(available) != 0 {
 		t.Fatalf("empty inventory unexpectedly supports %#v", available)
+	}
+}
+
+func TestDifficultyPolicyBuildsEveryArchetypeAtEveryLevel(t *testing.T) {
+	for _, archetype := range []string{"racer", "flyer", "robot", "creature"} {
+		for level := 1; level <= 5; level++ {
+			recipe := PlanRecipe("难度 "+strconv.Itoa(level), nil)
+			recipe.Archetype = archetype
+			recipe = ApplyDifficultyPolicy(recipe, recipe.Prompt, nil)
+			result, err := Compile(recipe, UnlimitedInventory(), time.Unix(0, 0))
+			if err != nil {
+				t.Fatalf("%s level %d: %v", archetype, level, err)
+			}
+			if result.Plan.Validation.PartCount != partCountForDifficulty(level) {
+				t.Fatalf("%s level %d count = %d", archetype, level, result.Plan.Validation.PartCount)
+			}
+		}
+	}
+}
+
+func TestExplicitPartCountWinsAndInventoryFailsWithoutRetryableError(t *testing.T) {
+	recipe := ApplyDifficultyPolicy(PlanRecipe("6岁，难度5，用37块积木做机器人", nil), "6岁，难度5，用37块积木做机器人", nil)
+	if targetPartCount(recipe) != 37 || recipe.Metadata["part_count_source"] != "explicit" {
+		t.Fatalf("unexpected policy: %#v", recipe.Metadata)
+	}
+	result, err := Compile(recipe, UnlimitedInventory(), time.Unix(0, 0))
+	if err != nil || result.Plan.Validation.PartCount != 37 {
+		t.Fatalf("explicit count compile = %d, %v", result.Plan.Validation.PartCount, err)
+	}
+	_, err = Compile(recipe, NewInventorySnapshot(true, 1, nil), time.Unix(0, 0))
+	if code, ok := BuildErrorCode(err); !ok || code != BuildErrorInsufficientInventory {
+		t.Fatalf("inventory error = %v, code = %q", err, code)
 	}
 }

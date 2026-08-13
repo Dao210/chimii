@@ -49,6 +49,13 @@ export function BuildPage() {
   const creationIsUnavailable = creationQuery.isError || (!creationIsPending && !creationQuery.data?.id);
   const ideaStarters = [t($ => $.starter_car), t($ => $.starter_dragon), t($ => $.starter_robot)];
   const statusCopy = session?.status === "generating" ? t($ => $.generating) : t($ => $.queued);
+	const failedDescription = session?.error === "BUILD_INSUFFICIENT_INVENTORY"
+		? t($ => $.failed_inventory)
+		: session?.error === "BUILD_COUNT_UNSUPPORTED"
+			? t($ => $.failed_count)
+			: session?.error === "BUILD_STRUCTURE_INVALID"
+				? t($ => $.failed_structure)
+				: t($ => $.failed_description);
 
   const start = async () => {
     if (!prompt.trim()) return;
@@ -168,7 +175,7 @@ export function BuildPage() {
         ) : session?.status === "failed" ? (
           <section className="mx-auto max-w-xl pt-20 text-center">
             <h2 className="text-3xl font-black">{t($ => $.failed_title)}</h2>
-            <p className="mt-3 text-[#687068]">{t($ => $.failed_description)}</p>
+			<p className="mt-3 text-[#687068]">{failedDescription}</p>
             <Button onClick={reset} className="mt-6 rounded-xl bg-[#1d241f]">{t($ => $.create_again)}</Button>
           </section>
         ) : (

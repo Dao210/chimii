@@ -118,6 +118,12 @@ SET status = 'completed', leased_until = NULL, updated_at = now()
 WHERE id = @id AND lease_token = @lease_token AND status = 'running'
 RETURNING *;
 
+-- name: FailBuildJob :one
+UPDATE build_job
+SET status = 'failed', leased_until = NULL, last_error = @last_error, updated_at = now()
+WHERE id = @id AND lease_token = @lease_token AND status = 'running'
+RETURNING *;
+
 -- name: RetryBuildJob :one
 UPDATE build_job
 SET status = CASE WHEN attempts >= 3 THEN 'failed' ELSE 'queued' END,

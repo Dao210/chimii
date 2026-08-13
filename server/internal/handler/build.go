@@ -392,7 +392,12 @@ func toBuildSessionResponse(row db.BuildSession) buildSessionResponse {
 		// The database retains an operator-facing cause for diagnosis. Child
 		// responses expose only a stable product code and never raw LLM/upstream
 		// text, URLs, credentials, or stack details.
-		response.Error = "BUILD_GENERATION_FAILED"
+		switch row.Error.String {
+		case buildstudio.BuildErrorInsufficientInventory, buildstudio.BuildErrorCountUnsupported, buildstudio.BuildErrorStructureInvalid:
+			response.Error = row.Error.String
+		default:
+			response.Error = "BUILD_GENERATION_FAILED"
+		}
 	}
 	if len(row.Question) > 0 {
 		var q buildstudio.ClarifyingQuestion
