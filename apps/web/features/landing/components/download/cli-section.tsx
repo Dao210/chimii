@@ -3,10 +3,10 @@
 import { useState } from "react";
 import { Check, Copy, Terminal } from "lucide-react";
 import { copyText } from "@chimii/ui/lib/clipboard";
+import { CHIMII_GITHUB_INSTALL_SCRIPT_URL } from "@chimii/core/constants/release-repository";
 import { useLocale } from "../../i18n";
 
-const INSTALL_CMD =
-  "curl -fsSL https://raw.githubusercontent.com/chimii-ai/chimii/main/scripts/install.sh | bash";
+const INSTALL_CMD = `curl -fsSL ${CHIMII_GITHUB_INSTALL_SCRIPT_URL} | bash`;
 const SETUP_CMD = "chimii setup";
 
 /**

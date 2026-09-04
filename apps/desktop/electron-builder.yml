@@ -116,7 +116,7 @@ win:
   artifactName: chimii-desktop-${version}-windows-${arch}.${ext}
 publish:
   provider: github
-  owner: chimii-ai
+  owner: Dao210
   repo: chimii
   # Align with our CLI release flow which pre-creates a *published* GitHub
   # Release via `gh release create`. The electron-builder default of

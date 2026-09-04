@@ -6,8 +6,8 @@
 
 **孩子从任意想法出发，AI 理解现有零件，生成可执行方案，并陪伴孩子完成和改造。**
 
-[![CI](https://github.com/chimii-ai/chimii/actions/workflows/ci.yml/badge.svg)](https://github.com/chimii-ai/chimii/actions/workflows/ci.yml)
-[![GitHub stars](https://img.shields.io/github/stars/chimii-ai/chimii?style=flat)](https://github.com/chimii-ai/chimii/stargazers)
+[![CI](https://github.com/Dao210/chimii/actions/workflows/ci.yml/badge.svg)](https://github.com/Dao210/chimii/actions/workflows/ci.yml)
+[![GitHub stars](https://img.shields.io/github/stars/Dao210/chimii?style=flat)](https://github.com/Dao210/chimii/stargazers)
 [![License](https://img.shields.io/badge/license-Modified%20Apache%202.0-2f6f5e)](LICENSE)
 
 [官网](https://chimii.ai) · [产品愿景](docs/plans/%E5%A5%87%E8%A7%85%E5%8F%91%E6%98%8E%E5%AE%B6prd%2020260728.md) · [本地开发](#本地开发) · [X](https://x.com/ChimiiAI)

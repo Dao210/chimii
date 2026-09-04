@@ -1,7 +1,9 @@
 import {
   parseReleaseAssets,
+  hasCompleteDesktopAssetSet,
   type DownloadAssets,
 } from "./parse-release-assets";
+import { CHIMII_GITHUB_RELEASES_API_URL } from "@chimii/core/constants/release-repository";
 
 /**
  * Server-side fetcher for the latest Chimii release, designed to
@@ -28,10 +30,16 @@ export interface LatestRelease {
   publishedAt: string | null;
   htmlUrl: string | null;
   assets: DownloadAssets;
+  status: ReleaseStatus;
 }
 
-const GITHUB_RELEASES_URL =
-  "https://api.github.com/repos/chimii-ai/chimii/releases?per_page=2";
+export type ReleaseStatus =
+  | "ready"
+  | "incomplete"
+  | "no_release"
+  | "source_unavailable";
+
+const GITHUB_RELEASES_URL = `${CHIMII_GITHUB_RELEASES_API_URL}?per_page=2`;
 
 const REVALIDATE_SECONDS = 300;
 
@@ -79,21 +87,39 @@ export async function fetchLatestRelease(): Promise<LatestRelease> {
     const stable = data.filter((r) => !r.prerelease && !r.draft);
     const latest = stable[0];
     if (!latest) {
-      return emptyRelease();
+      return emptyRelease("no_release");
     }
     const previous = stable[1];
-    const chosen =
-      previous && isWithinFreshWindow(latest) ? previous : latest;
+    const latestAssets = parseReleaseAssets(latest.assets ?? []);
+    const previousAssets = previous
+      ? parseReleaseAssets(previous.assets ?? [])
+      : {};
+
+    // A fresh release may receive Windows/Linux and macOS artifacts in
+    // separate jobs. Prefer the previous complete release only while the new
+    // release is still incomplete; never hide a complete new release merely
+    // because it is less than an hour old, and never fall back to an empty
+    // previous release.
+    const shouldUsePrevious =
+      previous !== undefined &&
+      isWithinFreshWindow(latest) &&
+      !hasCompleteDesktopAssetSet(latestAssets) &&
+      hasCompleteDesktopAssetSet(previousAssets);
+    const chosen = shouldUsePrevious ? previous : latest;
+    const assets = shouldUsePrevious ? previousAssets : latestAssets;
 
     return {
       version: chosen.tag_name ?? null,
       publishedAt: chosen.published_at ?? null,
       htmlUrl: chosen.html_url ?? null,
-      assets: parseReleaseAssets(chosen.assets ?? []),
+      assets,
+      status: hasCompleteDesktopAssetSet(assets)
+        ? "ready"
+        : "incomplete",
     };
   } catch (err) {
     console.warn("[download] fetchLatestRelease failed:", err);
-    return emptyRelease();
+    return emptyRelease("source_unavailable");
   }
 }
 
@@ -104,11 +130,14 @@ function isWithinFreshWindow(release: GitHubReleasePayload): boolean {
   return Date.now() - publishedAt < FRESH_RELEASE_WINDOW_MS;
 }
 
-function emptyRelease(): LatestRelease {
+function emptyRelease(
+  status: Extract<ReleaseStatus, "no_release" | "source_unavailable">,
+): LatestRelease {
   return {
     version: null,
     publishedAt: null,
     htmlUrl: null,
     assets: {},
+    status,
   };
 }

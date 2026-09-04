@@ -4,16 +4,16 @@ The `chimii` CLI connects your local machine to Chimii. It handles authenticatio
 
 ## Installation
 
-### Homebrew (macOS/Linux)
+### Install script (macOS/Linux)
 
 ```bash
-brew install chimii-ai/tap/chimii
+curl -fsSL https://raw.githubusercontent.com/Dao210/chimii/main/scripts/install.sh | bash
 ```
 
 ### Build from Source
 
 ```bash
-git clone https://github.com/chimii-ai/chimii.git
+git clone https://github.com/Dao210/chimii.git
 cd chimii
 make build
 cp server/bin/chimii /usr/local/bin/chimii
@@ -22,16 +22,14 @@ cp server/bin/chimii /usr/local/bin/chimii
 ### Update
 
 ```bash
-brew upgrade chimii-ai/tap/chimii
-```
-
-For install script or manual installs, use:
-
-```bash
 chimii update
 ```
 
-`chimii update` auto-detects your installation method and upgrades accordingly.
+You can also run the installer again:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Dao210/chimii/main/scripts/install.sh | bash
+```
 
 ## Quick Start
 

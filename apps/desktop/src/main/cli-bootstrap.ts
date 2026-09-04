@@ -7,6 +7,7 @@ import { join, dirname } from "path";
 import { pipeline } from "stream/promises";
 import { tmpdir } from "os";
 import { Readable } from "stream";
+import { CHIMII_GITHUB_LATEST_DOWNLOAD_URL } from "@chimii/core/constants/release-repository";
 
 import { selectPlatformReleaseAssetName } from "./cli-release-asset";
 
@@ -14,8 +15,7 @@ import { selectPlatformReleaseAssetName } from "./cli-release-asset";
 // same-repo builds, but it can also repair or bootstrap a managed copy in
 // userData on first launch when the bundled binary is missing or unusable.
 
-const GITHUB_LATEST_BASE =
-  "https://github.com/chimii-ai/chimii/releases/latest/download";
+const GITHUB_LATEST_BASE = CHIMII_GITHUB_LATEST_DOWNLOAD_URL;
 
 function binaryName(): string {
   return process.platform === "win32" ? "chimii.exe" : "chimii";

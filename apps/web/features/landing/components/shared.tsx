@@ -1,6 +1,7 @@
 import { cn } from "@chimii/ui/lib/utils";
+import { CHIMII_GITHUB_REPOSITORY_URL } from "@chimii/core/constants/release-repository";
 
-export const githubUrl = "https://github.com/chimii-ai/chimii";
+export const githubUrl = CHIMII_GITHUB_REPOSITORY_URL;
 export const twitterUrl = "https://x.com/ChimiiAI";
 
 export function GitHubMark({ className }: { className?: string }) {

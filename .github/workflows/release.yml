@@ -52,9 +52,8 @@ jobs:
 
   release:
     needs: verify
-    # Only run on the canonical upstream repo. Forks do not have the
-    # Homebrew tap token and must not publish upstream release artifacts.
-    if: github.repository_owner == 'chimii-ai'
+    # Only publish from the repository that backs chimii.com/download.
+    if: github.repository == 'Dao210/chimii'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -75,7 +74,6 @@ jobs:
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          HOMEBREW_TAP_GITHUB_TOKEN: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}
 
   # Build the Desktop installers for Linux and Windows and upload them to
   # the GitHub Release that the release job above just published. macOS
@@ -126,3 +124,63 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
         run: node scripts/package.mjs --${{ matrix.target }} --x64 --arm64 --publish always
+
+  verify-assets:
+    needs: [verify, desktop]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify published CLI and Desktop assets
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ needs.verify.outputs.tag_name }}
+          RELEASE_REPOSITORY: ${{ github.repository }}
+        run: |
+          version="${RELEASE_TAG#v}"
+          mapfile -t published_assets < <(
+            gh release view "$RELEASE_TAG" \
+              --repo "$RELEASE_REPOSITORY" \
+              --json assets \
+              --jq '.assets[].name'
+          )
+
+          expected_assets=(
+            "checksums.txt"
+            "chimii-cli-${version}-darwin-amd64.tar.gz"
+            "chimii-cli-${version}-darwin-arm64.tar.gz"
+            "chimii-cli-${version}-linux-amd64.tar.gz"
+            "chimii-cli-${version}-linux-arm64.tar.gz"
+            "chimii-cli-${version}-windows-amd64.zip"
+            "chimii-cli-${version}-windows-arm64.zip"
+            "chimii-desktop-${version}-windows-x64.exe"
+            "chimii-desktop-${version}-windows-arm64.exe"
+            "chimii-desktop-${version}-linux-x86_64.AppImage"
+            "chimii-desktop-${version}-linux-amd64.deb"
+            "chimii-desktop-${version}-linux-x86_64.rpm"
+            "chimii-desktop-${version}-linux-arm64.AppImage"
+            "chimii-desktop-${version}-linux-arm64.deb"
+            "chimii-desktop-${version}-linux-arm64.rpm"
+          )
+
+          missing_assets=()
+          for expected in "${expected_assets[@]}"; do
+            found=false
+            for published in "${published_assets[@]}"; do
+              if [[ "$published" == "$expected" ]]; then
+                found=true
+                break
+              fi
+            done
+            if [[ "$found" != true ]]; then
+              missing_assets+=("$expected")
+            fi
+          done
+
+          if (( ${#missing_assets[@]} > 0 )); then
+            printf '::error::Release %s is missing required assets:\n' "$RELEASE_TAG"
+            printf '  - %s\n' "${missing_assets[@]}"
+            exit 1
+          fi
+
+          printf 'Verified %s required release assets for %s.\n' \
+            "${#expected_assets[@]}" "$RELEASE_TAG"

@@ -14,13 +14,10 @@ import {
   type DetectResult,
 } from "@/features/landing/utils/os-detect";
 import type { LatestRelease } from "@/features/landing/utils/github-release";
-
-const ALL_RELEASES_URL =
-  "https://github.com/chimii-ai/chimii/releases";
+import { CHIMII_GITHUB_RELEASES_URL } from "@chimii/core/constants/release-repository";
 
 export function DownloadClient({ release }: { release: LatestRelease }) {
   const [detected, setDetected] = useState<DetectResult | null>(null);
-  const versionUnavailable = release.version === null;
 
   useEffect(() => {
     let cancelled = false;
@@ -33,7 +30,7 @@ export function DownloadClient({ release }: { release: LatestRelease }) {
     };
   }, []);
 
-  const releaseHtmlUrl = release.htmlUrl ?? ALL_RELEASES_URL;
+  const releaseHtmlUrl = release.htmlUrl ?? CHIMII_GITHUB_RELEASES_URL;
 
   return (
     <>
@@ -48,19 +45,20 @@ export function DownloadClient({ release }: { release: LatestRelease }) {
         <DownloadHero
           detected={detected}
           assets={release.assets}
-          versionUnavailable={versionUnavailable}
+          releaseStatus={release.status}
         />
       </div>
 
       <AllPlatforms
         assets={release.assets}
-        fallbackHref={ALL_RELEASES_URL}
+        fallbackHref={CHIMII_GITHUB_RELEASES_URL}
       />
       <CliSection />
       <CloudSection />
       <VersionInfoFooter
         version={release.version}
         releaseHtmlUrl={releaseHtmlUrl}
+        status={release.status}
       />
       <LandingFooter />
     </>
@@ -70,9 +68,11 @@ export function DownloadClient({ release }: { release: LatestRelease }) {
 function VersionInfoFooter({
   version,
   releaseHtmlUrl,
+  status,
 }: {
   version: string | null;
   releaseHtmlUrl: string;
+  status: LatestRelease["status"];
 }) {
   const { t } = useLocale();
   const d = t.download.footer;
@@ -102,14 +102,14 @@ function VersionInfoFooter({
           </>
         ) : (
           <>
-            <span>{d.versionUnavailable}</span>
+            <span>{releaseStatusMessage(status, d)}</span>
             <span aria-hidden className="text-[#0a0d12]/25">
               ·
             </span>
           </>
         )}
         <Link
-          href={ALL_RELEASES_URL}
+          href={CHIMII_GITHUB_RELEASES_URL}
           className="underline decoration-[#0a0d12]/30 underline-offset-4 hover:text-[#0a0d12] hover:decoration-[#0a0d12]/70"
           target="_blank"
           rel="noreferrer"
@@ -119,4 +119,13 @@ function VersionInfoFooter({
       </div>
     </section>
   );
+}
+
+function releaseStatusMessage(
+  status: LatestRelease["status"],
+  copy: ReturnType<typeof useLocale>["t"]["download"]["footer"],
+): string {
+  if (status === "no_release") return copy.noRelease;
+  if (status === "incomplete") return copy.incompleteRelease;
+  return copy.sourceUnavailable;
 }

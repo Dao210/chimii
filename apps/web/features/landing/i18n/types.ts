@@ -250,6 +250,9 @@ export type LandingDict = {
       allReleases: string;
       currentVersion: string;
       versionUnavailable: string;
+      sourceUnavailable: string;
+      noRelease: string;
+      incompleteRelease: string;
     };
   };
   contactSales: {

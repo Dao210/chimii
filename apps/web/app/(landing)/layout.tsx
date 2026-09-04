@@ -4,6 +4,7 @@ import {
   notoSerifSC,
 } from "@/features/landing/fonts";
 import { getRequestLocale } from "@/lib/request-locale";
+import { CHIMII_GITHUB_REPOSITORY_URL } from "@chimii/core/constants/release-repository";
 
 const jsonLd = {
   "@context": "https://schema.org",
@@ -12,7 +13,7 @@ const jsonLd = {
       "@type": "Organization",
       name: "CHIMII 奇觅",
       url: "https://www.chimii.ai",
-      sameAs: ["https://github.com/chimii-ai/chimii"],
+      sameAs: [CHIMII_GITHUB_REPOSITORY_URL],
     },
     {
       "@type": "Product",

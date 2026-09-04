@@ -25,6 +25,7 @@ import {
   type FeedbackKind,
 } from "@chimii/core/feedback";
 import { useCurrentWorkspace } from "@chimii/core/paths";
+import { CHIMII_GITHUB_REPOSITORY_URL } from "@chimii/core/constants/release-repository";
 import { useT } from "../i18n";
 import { useShortcut } from "@chimii/core/shortcuts";
 import { ShortcutKeycaps } from "../common/shortcut-keycaps";
@@ -133,7 +134,7 @@ export function FeedbackModal({
           <p className="mt-1 text-xs text-muted-foreground">
             {t(($) => $.feedback.github_hint_prefix)}
             <a
-              href="https://github.com/chimii-ai/chimii/issues"
+              href={`${CHIMII_GITHUB_REPOSITORY_URL}/issues`}
               target="_blank"
               rel="noopener noreferrer"
               className="text-brand underline decoration-brand/40 underline-offset-2 hover:decoration-brand"

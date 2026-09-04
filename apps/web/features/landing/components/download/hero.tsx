@@ -3,14 +3,13 @@ import { ArrowRight, Download } from "lucide-react";
 import { useLocale } from "../../i18n";
 import type { DetectResult } from "../../utils/os-detect";
 import type { DownloadAssets } from "../../utils/parse-release-assets";
+import type { ReleaseStatus } from "../../utils/github-release";
 import { heroButtonClassName } from "../shared";
 
 interface Props {
   detected: DetectResult | null;
   assets: DownloadAssets;
-  /** True when the GitHub API fetch failed; disables all CTAs and
-   *  surfaces a "version unavailable" line. */
-  versionUnavailable: boolean;
+  releaseStatus: ReleaseStatus;
 }
 
 /**
@@ -21,12 +20,17 @@ interface Props {
 export function DownloadHero({
   detected,
   assets,
-  versionUnavailable,
+  releaseStatus,
 }: Props) {
   const { t } = useLocale();
   const d = t.download.hero;
 
-  const content = resolveContent(detected, assets, versionUnavailable, d);
+  const content = resolveContent(
+    detected,
+    assets,
+    releaseStatus !== "ready",
+    d,
+  );
 
   return (
     <section className="relative overflow-hidden bg-[#05070b] text-white">
@@ -68,9 +72,13 @@ export function DownloadHero({
           </p>
         ) : null}
 
-        {versionUnavailable ? (
+        {releaseStatus !== "ready" ? (
           <p className="mx-auto mt-6 max-w-[520px] text-[12px] uppercase tracking-[0.14em] text-white/50">
-            {t.download.footer.versionUnavailable}
+            {releaseStatus === "incomplete"
+              ? t.download.footer.incompleteRelease
+              : releaseStatus === "no_release"
+                ? t.download.footer.noRelease
+                : t.download.footer.sourceUnavailable}
           </p>
         ) : null}
       </div>

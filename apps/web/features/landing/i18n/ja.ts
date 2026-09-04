@@ -472,6 +472,9 @@ export function createJaDict(allowSignup: boolean): LandingDict {
         allReleases: "全リリースを見る",
         currentVersion: "現在のバージョン:{version}",
         versionUnavailable: "バージョン取得失敗 — GitHub で確認してください",
+        sourceUnavailable: "リリースサービスを利用できません — GitHub で確認してください",
+        noRelease: "インストーラーはまだ公開されていません",
+        incompleteRelease: "一部プラットフォーム向けインストーラーを公開中です",
       },
     },
     contactSales: {

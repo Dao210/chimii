@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { CHIMII_GITHUB_REPOSITORY } from "@chimii/core/constants/release-repository";
 
 /**
  * Live GitHub star count for the landing header's "GitHub" button.
@@ -18,8 +19,6 @@ import { useEffect, useState } from "react";
  * a loop; the button just degrades to its plain "GitHub" label.
  */
 
-const REPO = "chimii-ai/chimii";
-
 // `undefined` = never fetched; `number` = resolved count; `null` = fetch failed.
 let cachedStars: number | null | undefined;
 let inFlight: Promise<number | null> | null = null;
@@ -28,7 +27,7 @@ async function loadStars(): Promise<number | null> {
   if (cachedStars !== undefined) return cachedStars;
   if (inFlight) return inFlight;
 
-  inFlight = fetch(`https://api.github.com/repos/${REPO}`, {
+  inFlight = fetch(`https://api.github.com/repos/${CHIMII_GITHUB_REPOSITORY}`, {
     headers: { Accept: "application/vnd.github+json" },
   })
     .then((res) => {

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, type ReactNode } from "react";
 import { AlertCircle, Info, LogIn } from "lucide-react";
 import { Button } from "@chimii/ui/components/ui/button";
+import { CHIMII_GITHUB_REPOSITORY_URL } from "@chimii/core/constants/release-repository";
 import { Switch } from "@chimii/ui/components/ui/switch";
 import { cn } from "@chimii/ui/lib/utils";
 import { toast } from "sonner";
@@ -171,7 +172,7 @@ export function DaemonSettingsTab() {
               size="sm"
               onClick={() =>
                 window.desktopAPI.openExternal(
-                  "https://github.com/chimii-ai/chimii#cli-installation",
+                  `${CHIMII_GITHUB_REPOSITORY_URL}#cli-installation`,
                 )
               }
             >

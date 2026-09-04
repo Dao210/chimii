@@ -9,6 +9,7 @@ import { runtimeKeys } from "@chimii/core/runtimes/queries";
 import { useWSEvent } from "@chimii/core/realtime";
 import { paths, useWorkspaceSlug } from "@chimii/core/paths";
 import { useConfigStore } from "@chimii/core/config";
+import { CHIMII_GITHUB_INSTALL_SCRIPT_URL } from "@chimii/core/constants/release-repository";
 import {
   Dialog,
   DialogContent,
@@ -30,8 +31,7 @@ import { useT } from "../../i18n";
 
 type Step = "instructions" | "success";
 
-const INSTALL_CMD =
-  "curl -fsSL https://raw.githubusercontent.com/chimii-ai/chimii/main/scripts/install.sh | bash";
+const INSTALL_CMD = `curl -fsSL ${CHIMII_GITHUB_INSTALL_SCRIPT_URL} | bash`;
 const CLOUD_SERVER_URL = "https://api.chimii.ai";
 const CLOUD_APP_URL = "https://chimii.ai";
 

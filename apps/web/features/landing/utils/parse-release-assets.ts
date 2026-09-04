@@ -38,7 +38,7 @@ const DESKTOP_ARTIFACT_RE =
 
 function normalizeLinuxArch(arch: string): "amd64" | "arm64" | null {
   const a = arch.toLowerCase();
-  if (a === "amd64" || a === "x86_64") return "amd64";
+  if (a === "x64" || a === "amd64" || a === "x86_64") return "amd64";
   if (a === "arm64" || a === "aarch64") return "arm64";
   return null;
 }
@@ -97,4 +97,12 @@ export function parseReleaseAssets(raw: GitHubAsset[]): DownloadAssets {
 /** Whether any desktop asset was parsed out. Used for UI degradation. */
 export function hasAnyAsset(assets: DownloadAssets): boolean {
   return Object.values(assets).some((v) => typeof v === "string");
+}
+
+const EXPECTED_DESKTOP_ASSET_COUNT = 12;
+
+export function hasCompleteDesktopAssetSet(assets: DownloadAssets): boolean {
+  return (
+    Object.values(assets).filter(Boolean).length === EXPECTED_DESKTOP_ASSET_COUNT
+  );
 }

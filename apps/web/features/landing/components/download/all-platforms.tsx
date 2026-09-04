@@ -1,6 +1,9 @@
 import Link from "next/link";
 import { useLocale } from "../../i18n";
-import type { DownloadAssets } from "../../utils/parse-release-assets";
+import {
+  hasCompleteDesktopAssetSet,
+  type DownloadAssets,
+} from "../../utils/parse-release-assets";
 import { AppleIcon, LinuxIcon, WindowsIcon } from "./os-icons";
 
 interface Props {
@@ -195,11 +198,6 @@ function Row({ icon, label, formats, unavailable, isLast }: RowProps) {
   );
 }
 
-// Twelve desktop artifacts are expected per release (four Mac,
-// two Windows, six Linux). If any are missing, surface the GitHub
-// fallback link so users on an orphaned row have a way out.
-const EXPECTED_ASSET_COUNT = 12;
-
 function isFallbackNeeded(assets: DownloadAssets): boolean {
-  return Object.values(assets).filter(Boolean).length < EXPECTED_ASSET_COUNT;
+  return !hasCompleteDesktopAssetSet(assets);
 }

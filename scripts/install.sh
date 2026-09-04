@@ -2,7 +2,7 @@
 # Chimii CLI installer.
 #
 # Install / upgrade CLI only:
-#   curl -fsSL https://raw.githubusercontent.com/chimii-ai/chimii/main/scripts/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/Dao210/chimii/main/scripts/install.sh | bash
 #
 # After installation, run `chimii setup` to configure your environment.
 #
@@ -11,8 +11,7 @@ set -euo pipefail
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
-REPO_WEB_URL="https://github.com/chimii-ai/chimii"  # without .git, for GitHub web APIs
-BREW_PACKAGE="chimii-ai/tap/chimii"
+REPO_WEB_URL="https://github.com/Dao210/chimii"  # without .git, for GitHub web APIs
 
 # Colors (disabled when not a terminal)
 if [ -t 1 ] || [ -t 2 ]; then
@@ -61,7 +60,7 @@ detect_os() {
     Linux)  OS="linux" ;;
     MINGW*|MSYS*|CYGWIN*)
             fail "This script does not support Windows. Use the PowerShell installer instead:
-  irm https://raw.githubusercontent.com/chimii-ai/chimii/main/scripts/install.ps1 | iex" ;;
+  irm https://raw.githubusercontent.com/Dao210/chimii/main/scripts/install.ps1 | iex" ;;
     *)      fail "Unsupported operating system: $(uname -s). Chimii supports macOS, Linux, and Windows." ;;
   esac
 
@@ -77,41 +76,6 @@ detect_os() {
 # ---------------------------------------------------------------------------
 # CLI Installation
 # ---------------------------------------------------------------------------
-_dump_brew_log() {
-  local log="$1"
-  if [ -s "$log" ]; then
-    warn "Homebrew output (last 80 lines):"
-    tail -n 80 "$log" | sed 's/^/  /' >&2
-  fi
-}
-
-install_cli_brew() {
-  info "Installing Chimii CLI via Homebrew..."
-  local brew_log
-  brew_log=$(mktemp)
-  if ! brew tap chimii-ai/tap >"$brew_log" 2>&1; then
-    warn "Failed to add Homebrew tap. Falling back to GitHub Releases binary install."
-    _dump_brew_log "$brew_log"
-    rm -f "$brew_log"
-    return 1
-  fi
-  # brew install exits non-zero if already installed on older Homebrew versions
-  if ! brew install "$BREW_PACKAGE" >"$brew_log" 2>&1; then
-    if brew list "$BREW_PACKAGE" >/dev/null 2>&1; then
-      rm -f "$brew_log"
-      ok "Chimii CLI already installed via Homebrew"
-    else
-      warn "Failed to install chimii via Homebrew. Falling back to GitHub Releases binary install."
-      _dump_brew_log "$brew_log"
-      rm -f "$brew_log"
-      return 1
-    fi
-  else
-    rm -f "$brew_log"
-    ok "Chimii CLI installed via Homebrew"
-  fi
-}
-
 install_cli_binary() {
   info "Installing Chimii CLI from GitHub Releases..."
 
@@ -123,7 +87,7 @@ install_cli_binary() {
   fi
 
   local version="${latest#v}"
-  local url="https://github.com/chimii-ai/chimii/releases/download/${latest}/chimii-cli-${version}-${OS}-${ARCH}.tar.gz"
+  local url="${REPO_WEB_URL}/releases/download/${latest}/chimii-cli-${version}-${OS}-${ARCH}.tar.gz"
   local tmp_dir
   tmp_dir=$(mktemp -d)
 
@@ -173,17 +137,6 @@ get_latest_version() {
   curl -sI "$REPO_WEB_URL/releases/latest" 2>/dev/null | grep -i '^location:' | sed 's/.*tag\///' | tr -d '\r\n' || true
 }
 
-upgrade_cli_brew() {
-  info "Upgrading Chimii CLI via Homebrew..."
-  brew update 2>/dev/null || true
-  if brew upgrade "$BREW_PACKAGE" 2>/dev/null; then
-    ok "Chimii CLI upgraded via Homebrew"
-  else
-    # brew upgrade exits non-zero if already up to date
-    ok "Chimii CLI is already the latest version"
-  fi
-}
-
 install_cli() {
   if command_exists chimii; then
     local current_ver
@@ -203,11 +156,7 @@ install_cli() {
     fi
 
     info "Chimii CLI $current_ver installed, latest is $latest_ver — upgrading..."
-    if command_exists brew && brew list "$BREW_PACKAGE" >/dev/null 2>&1; then
-      upgrade_cli_brew
-    else
-      install_cli_binary
-    fi
+    install_cli_binary
 
     local new_ver
     new_ver=$(chimii version 2>/dev/null | awk 'NR==1{print $2}' || echo "unknown")
@@ -215,11 +164,7 @@ install_cli() {
     return 0
   fi
 
-  if command_exists brew; then
-    install_cli_brew || install_cli_binary
-  else
-    install_cli_binary
-  fi
+  install_cli_binary
 
   # Verify
   if ! command_exists chimii; then
@@ -250,7 +195,7 @@ run_default() {
   printf "\n"
   print_remote_server_token_hint
   printf "  ${BOLD}Self-hosting?${RESET} See the native Linux deployment guide:\n"
-  printf "     ${CYAN}https://github.com/chimii-ai/chimii/blob/main/SELF_HOSTING.md${RESET}\n"
+  printf "     ${CYAN}${REPO_WEB_URL}/blob/main/SELF_HOSTING.md${RESET}\n"
   printf "\n"
 }
 

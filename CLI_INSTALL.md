@@ -7,7 +7,7 @@
 Give this instruction to your AI agent:
 
 ```
-Fetch https://github.com/chimii-ai/chimii/blob/main/CLI_INSTALL.md and follow the instructions to install Chimii CLI, log in, and start the daemon on this machine.
+Fetch https://github.com/Dao210/chimii/blob/main/CLI_INSTALL.md and follow the instructions to install Chimii CLI, log in, and start the daemon on this machine.
 ```
 
 ---
@@ -29,37 +29,20 @@ chimii version
 
 > **Windows users:** Skip to [Option C: Windows (PowerShell)](#option-c-windows-powershell) below.
 
-### Option A: Homebrew (preferred — macOS/Linux)
+### Option A: Install script (macOS/Linux)
 
-Check if Homebrew is available:
-
-```bash
-which brew
-```
-
-If `brew` is found, install via Homebrew:
+Run:
 
 ```bash
-brew install chimii-ai/tap/chimii
+curl -fsSL https://raw.githubusercontent.com/Dao210/chimii/main/scripts/install.sh | bash
 ```
 
-Then verify:
+The script detects the OS and architecture, downloads the matching archive
+from GitHub Releases, and installs the `chimii` binary. Run it again to upgrade.
 
-```bash
-chimii version
-```
+### Option B: Download from GitHub Releases manually (macOS/Linux)
 
-If the version prints successfully, skip to **Step 3**.
-
-To upgrade later, run:
-
-```bash
-brew upgrade chimii-ai/tap/chimii
-```
-
-### Option B: Download from GitHub Releases (macOS/Linux, no Homebrew)
-
-If Homebrew is not available, download the binary directly.
+To install without the helper script, download the binary directly.
 
 Detect OS and architecture, then download the correct archive:
 
@@ -73,11 +56,11 @@ if [ "$ARCH" = "x86_64" ]; then
 fi
 
 # Get the latest release tag from GitHub
-LATEST=$(curl -sI https://github.com/chimii-ai/chimii/releases/latest | grep -i '^location:' | sed 's/.*tag\///' | tr -d '\r\n')
+LATEST=$(curl -sI https://github.com/Dao210/chimii/releases/latest | grep -i '^location:' | sed 's/.*tag\///' | tr -d '\r\n')
 
 # Download and extract
 VERSION="${LATEST#v}"
-curl -sL "https://github.com/chimii-ai/chimii/releases/download/${LATEST}/chimii-cli-${VERSION}-${OS}-${ARCH}.tar.gz" -o /tmp/chimii.tar.gz
+curl -sL "https://github.com/Dao210/chimii/releases/download/${LATEST}/chimii-cli-${VERSION}-${OS}-${ARCH}.tar.gz" -o /tmp/chimii.tar.gz
 tar -xzf /tmp/chimii.tar.gz -C /tmp chimii
 sudo mv /tmp/chimii /usr/local/bin/chimii
 rm /tmp/chimii.tar.gz
@@ -99,7 +82,7 @@ chimii version
 Run in PowerShell (no admin required):
 
 ```powershell
-irm https://raw.githubusercontent.com/chimii-ai/chimii/main/scripts/install.ps1 | iex
+irm https://raw.githubusercontent.com/Dao210/chimii/main/scripts/install.ps1 | iex
 ```
 
 This downloads the latest Windows binary from GitHub Releases, installs it to `%USERPROFILE%\.chimii\bin\`, and adds it to your user PATH.
@@ -112,7 +95,6 @@ chimii version
 
 **If this fails:**
 - Restart your terminal so the updated PATH takes effect.
-- If you use Scoop, the installer will use it automatically: `scoop bucket add chimii https://github.com/chimii-ai/scoop-bucket.git && scoop install chimii`
 - If your execution policy blocks the script: `Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned` then re-run.
 
 ---

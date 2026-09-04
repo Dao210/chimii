@@ -472,6 +472,9 @@ export function createKoDict(allowSignup: boolean): LandingDict {
         allReleases: "모든 릴리스 보기",
         currentVersion: "현재 버전:{version}",
         versionUnavailable: "버전 가져오기 실패 — GitHub에서 확인하세요",
+        sourceUnavailable: "릴리스 서비스를 사용할 수 없습니다 — GitHub에서 확인하세요",
+        noRelease: "설치 프로그램이 아직 게시되지 않았습니다",
+        incompleteRelease: "일부 플랫폼 설치 프로그램을 게시하는 중입니다",
       },
     },
     contactSales: {

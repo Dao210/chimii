@@ -483,6 +483,9 @@ export function createZhDict(allowSignup: boolean): LandingDict {
       allReleases: "查看所有版本",
       currentVersion: "当前版本:{version}",
       versionUnavailable: "版本获取失败——请前往 GitHub 查看",
+      sourceUnavailable: "版本服务暂时不可用——请前往 GitHub 查看",
+      noRelease: "安装包尚未发布——请稍后再来",
+      incompleteRelease: "部分平台安装包仍在发布中",
     },
   },
   contactSales: {

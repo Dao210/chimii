@@ -2,14 +2,14 @@
 
 import { useState } from "react";
 import { Check, Copy, Terminal } from "lucide-react";
+import { CHIMII_GITHUB_INSTALL_SCRIPT_URL } from "@chimii/core/constants/release-repository";
 import { Card, CardContent } from "@chimii/ui/components/ui/card";
 import { CODE_LIGATURE_CLASS } from "@chimii/ui/lib/code-style";
 import { cn } from "@chimii/ui/lib/utils";
 import { copyText } from "@chimii/ui/lib/clipboard";
 import { useT } from "../../i18n";
 
-const INSTALL_CMD =
-  "curl -fsSL https://raw.githubusercontent.com/chimii-ai/chimii/main/scripts/install.sh | bash";
+const INSTALL_CMD = `curl -fsSL ${CHIMII_GITHUB_INSTALL_SCRIPT_URL} | bash`;
 const SETUP_CMD = "chimii setup";
 
 function CopyButton({ text }: { text: string }) {

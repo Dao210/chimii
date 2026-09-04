@@ -1,14 +1,15 @@
 # Chimii installer for Windows — one command to get started.
 #
 # Install CLI (default): connects to chimii.ai
-#   irm https://raw.githubusercontent.com/chimii-ai/chimii/main/scripts/install.ps1 | iex
+#   irm https://raw.githubusercontent.com/Dao210/chimii/main/scripts/install.ps1 | iex
 #
 $ErrorActionPreference = "Stop"
 
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
-$RepoWebUrl    = "https://github.com/chimii-ai/chimii"
+$RepoWebUrl = "https://github.com/Dao210/chimii"
+$RepoApiUrl = "https://api.github.com/repos/Dao210/chimii"
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -25,7 +26,7 @@ function Test-CommandExists {
 
 function Get-LatestVersion {
     try {
-        $release = Invoke-RestMethod -Uri "https://api.github.com/repos/chimii-ai/chimii/releases/latest" -ErrorAction Stop
+        $release = Invoke-RestMethod -Uri "$RepoApiUrl/releases/latest" -ErrorAction Stop
         return $release.tag_name
     } catch {
         return $null
@@ -137,7 +138,7 @@ function Install-CliBinary {
     }
 
     $version = $latest.TrimStart('v')
-    $url = "https://github.com/chimii-ai/chimii/releases/download/$latest/chimii-cli-$version-windows-$arch.zip"
+    $url = "$RepoWebUrl/releases/download/$latest/chimii-cli-$version-windows-$arch.zip"
     $tmpDir = Join-Path ([System.IO.Path]::GetTempPath()) "chimii-install"
 
     if (Test-Path $tmpDir) { Remove-Item $tmpDir -Recurse -Force }
@@ -152,7 +153,7 @@ function Install-CliBinary {
     }
 
     # Verify SHA256 checksum
-    $checksumUrl = "https://github.com/chimii-ai/chimii/releases/download/$latest/checksums.txt"
+    $checksumUrl = "$RepoWebUrl/releases/download/$latest/checksums.txt"
     try {
         $checksums = Invoke-WebRequest -Uri $checksumUrl -UseBasicParsing -ErrorAction Stop
         $checksumContent = if ($checksums.Content -is [byte[]]) {
@@ -280,7 +281,7 @@ function Start-DefaultInstall {
     Write-Host "     chimii setup self-host      " -NoNewline; Write-Host "# Connect to a self-hosted server" -ForegroundColor DarkGray
     Write-Host ""
     Write-Host "  Self-hosting? See the native Linux deployment guide:"
-    Write-Host "     https://github.com/chimii-ai/chimii/blob/main/SELF_HOSTING.md"
+    Write-Host "     $RepoWebUrl/blob/main/SELF_HOSTING.md"
     Write-Host ""
 }
 

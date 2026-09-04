@@ -483,6 +483,9 @@ export function createEnDict(allowSignup: boolean): LandingDict {
       allReleases: "View all releases",
       currentVersion: "Current version: {version}",
       versionUnavailable: "Version fetch failed — check GitHub instead",
+      sourceUnavailable: "Release service unavailable — check GitHub instead",
+      noRelease: "Installers have not been published yet",
+      incompleteRelease: "Some platform installers are still being published",
     },
   },
   contactSales: {

@@ -4,8 +4,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 # Build a self-contained sandbox with stub `curl` and a tarball that the
-# release-binary fallback path will download. Each test supplies its own
-# `brew` stub to model a specific Homebrew failure mode.
+# release-binary path will download.
 _setup_sandbox() {
   local tmp="$1"
   local stub_bin="$tmp/stub-bin"
@@ -23,7 +22,7 @@ STUB
   cat >"$stub_bin/curl" <<'STUB'
 #!/usr/bin/env bash
 if [[ "$*" == *"-sI"* ]]; then
-  printf 'HTTP/2 302\r\nlocation: https://github.com/chimii-ai/chimii/releases/tag/v0.3.2\r\n'
+  printf 'HTTP/2 302\r\nlocation: https://github.com/Dao210/chimii/releases/tag/v0.3.2\r\n'
   exit 0
 fi
 
@@ -70,64 +69,19 @@ _run_installer() {
     return 1
   fi
 
-  if ! grep -q "Homebrew output (last 80 lines):" "$err"; then
-    echo "expected diagnostic tail in stderr" >&2
-    cat "$err" >&2 || true
+}
+
+test_install_uses_release_binary() {
+  local tmp
+  tmp="$(mktemp -d)"
+  trap 'rm -rf "$tmp"' RETURN
+
+  _setup_sandbox "$tmp"
+  _run_installer "$tmp"
+  if grep -q "Homebrew" "$tmp/install.out" "$tmp/install.err"; then
+    echo "did not expect the installer to depend on an unpublished Homebrew tap" >&2
     return 1
   fi
-}
-
-test_brew_install_failure_falls_back_to_release_binary() {
-  local tmp
-  tmp="$(mktemp -d)"
-  trap 'rm -rf "$tmp"' RETURN
-
-  _setup_sandbox "$tmp"
-  cat >"$tmp/stub-bin/brew" <<'STUB'
-#!/usr/bin/env bash
-case "${1:-}" in
-  tap)
-    exit 0
-    ;;
-  install)
-    echo "simulated brew install failure" >&2
-    exit 42
-    ;;
-  list)
-    exit 1
-    ;;
-  *)
-    exit 0
-    ;;
-esac
-STUB
-  chmod +x "$tmp/stub-bin/brew"
-
-  _run_installer "$tmp"
-}
-
-test_brew_tap_failure_falls_back_to_release_binary() {
-  local tmp
-  tmp="$(mktemp -d)"
-  trap 'rm -rf "$tmp"' RETURN
-
-  _setup_sandbox "$tmp"
-  cat >"$tmp/stub-bin/brew" <<'STUB'
-#!/usr/bin/env bash
-case "${1:-}" in
-  tap)
-    echo "simulated brew tap failure" >&2
-    exit 17
-    ;;
-  *)
-    echo "brew $* should not be reached after tap failure" >&2
-    exit 99
-    ;;
-esac
-STUB
-  chmod +x "$tmp/stub-bin/brew"
-
-  _run_installer "$tmp"
 }
 
 test_remote_ssh_install_prints_token_login_hint() {
@@ -136,25 +90,6 @@ test_remote_ssh_install_prints_token_login_hint() {
   trap 'rm -rf "$tmp"' RETURN
 
   _setup_sandbox "$tmp"
-  cat >"$tmp/stub-bin/brew" <<'STUB'
-#!/usr/bin/env bash
-case "${1:-}" in
-  tap)
-    exit 0
-    ;;
-  install)
-    echo "simulated brew install failure" >&2
-    exit 42
-    ;;
-  list)
-    exit 1
-    ;;
-  *)
-    exit 0
-    ;;
-esac
-STUB
-  chmod +x "$tmp/stub-bin/brew"
 
   (
     export SSH_CONNECTION="192.0.2.10 54321 198.51.100.20 22"
@@ -199,25 +134,6 @@ test_local_install_does_not_print_token_login_hint() {
   trap 'rm -rf "$tmp"' RETURN
 
   _setup_sandbox "$tmp"
-  cat >"$tmp/stub-bin/brew" <<'STUB'
-#!/usr/bin/env bash
-case "${1:-}" in
-  tap)
-    exit 0
-    ;;
-  install)
-    echo "simulated brew install failure" >&2
-    exit 42
-    ;;
-  list)
-    exit 1
-    ;;
-  *)
-    exit 0
-    ;;
-esac
-STUB
-  chmod +x "$tmp/stub-bin/brew"
 
   (
     unset SSH_CONNECTION SSH_CLIENT SSH_TTY
@@ -236,8 +152,7 @@ STUB
   fi
 }
 
-test_brew_install_failure_falls_back_to_release_binary
-test_brew_tap_failure_falls_back_to_release_binary
+test_install_uses_release_binary
 test_remote_ssh_install_prints_token_login_hint
 test_local_install_does_not_print_token_login_hint
 echo "install.sh tests passed"
