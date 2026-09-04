@@ -444,7 +444,7 @@ REMOTE
 }
 
 prepare_candidate() {
-  local candidate_db="chimii_candidate_$(printf '%s' "$RELEASE_ID" | cut -c1-15 | tr -cd '0-9T')"
+  local candidate_db="chimii_candidate_$(printf '%s' "$RELEASE_ID" | cut -c1-16 | tr -cd '0-9')"
   [[ "$candidate_db" =~ ^[a-z_][a-z0-9_]*$ ]] || die "invalid candidate database name"
   remote_root "REMOTE_ROOT='$REMOTE_ROOT' RELEASE_ID='$RELEASE_ID' VERSION='$VERSION' APP_USER='$APP_USER' DB_USER='$DB_USER' CANDIDATE_DB='$candidate_db' PRIMARY_DOMAIN='$PRIMARY_DOMAIN' CANDIDATE_BACKEND_PORT='$CANDIDATE_BACKEND_PORT' CANDIDATE_WEB_PORT='$CANDIDATE_WEB_PORT' ALLOW_SIGNUP='$ALLOW_SIGNUP'" <<'REMOTE'
 set -euo pipefail
@@ -724,9 +724,9 @@ test "$(cat "$REMOTE_ROOT/.deploy-lock/token")" = "$LOCK_TOKEN"
 expected_release_id="$RELEASE_ID"
 . "$REMOTE_ROOT/state/candidate.env"
 [[ "$expected_release_id" = "$RELEASE_ID" ]]
-legacy_db="chimii_legacy_$(printf '%s' "$RELEASE_ID" | cut -c1-15 | tr -cd '0-9T')"
-[[ "$CANDIDATE_DB" =~ ^chimii_candidate_[0-9T]+$ ]]
-[[ "$legacy_db" =~ ^chimii_legacy_[0-9T]+$ ]]
+legacy_db="chimii_legacy_$(printf '%s' "$RELEASE_ID" | cut -c1-16 | tr -cd '0-9')"
+[[ "$CANDIDATE_DB" =~ ^chimii_candidate_[0-9]+$ ]]
+[[ "$legacy_db" =~ ^chimii_legacy_[0-9]+$ ]]
 printf 'LEGACY_DB=%s\nCANDIDATE_DB=%s\nNEW_DB=%s\nSWITCH_COMPLETE=false\n' "$legacy_db" "$CANDIDATE_DB" "$DB_NAME" > "$REMOTE_ROOT/state/legacy/$RELEASE_ID/databases.env"
 chmod 600 "$REMOTE_ROOT/state/legacy/$RELEASE_ID/databases.env"
 runuser -u postgres -- psql -d postgres -X -v ON_ERROR_STOP=1 -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname IN ('$DB_NAME', '$CANDIDATE_DB') AND pid <> pg_backend_pid()" >/dev/null
@@ -838,8 +838,8 @@ systemctl stop chimii-web.service chimii-backend.service 2>/dev/null || true
 
 if [[ -f "$backup/databases.env" ]]; then
   . "$backup/databases.env"
-  [[ "$LEGACY_DB" =~ ^chimii_legacy_[0-9T]+$ ]]
-  [[ "$CANDIDATE_DB" =~ ^chimii_candidate_[0-9T]+$ ]]
+  [[ "$LEGACY_DB" =~ ^chimii_legacy_[0-9]+$ ]]
+  [[ "$CANDIDATE_DB" =~ ^chimii_candidate_[0-9]+$ ]]
   failed_db="chimii_failed_$(date -u +%Y%m%dT%H%M%S)"
   legacy_exists="$(runuser -u postgres -- psql -d postgres -X -Atqc "SELECT 1 FROM pg_database WHERE datname='$LEGACY_DB'")"
   if [[ "$legacy_exists" = 1 ]]; then
