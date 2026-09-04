@@ -21,7 +21,7 @@ grep -F 'chimii.com {' <<< "$block" >/dev/null
 grep -F 'reverse_proxy 127.0.0.1:8080' <<< "$block" >/dev/null
 grep -F 'reverse_proxy 127.0.0.1:3000' <<< "$block" >/dev/null
 
-release_id='20260904T043730Z-0.2.3-4ff68f04d0c5'
+release_id='20260904T043730Z-0.2.4-f58191142b9f'
 db_suffix="$(printf '%s' "$release_id" | cut -c1-16 | tr -cd '0-9')"
 [[ "$db_suffix" == 20260904043730 ]]
 [[ "chimii_candidate_$db_suffix" =~ ^chimii_candidate_[0-9]+$ ]]

@@ -74,7 +74,7 @@ function assetURL(asset: string | { readonly src: string }): string {
   return typeof asset === "string" ? asset : asset.src;
 }
 
-export const LDRAW_THUMBNAIL_CATALOG_VERSION = "ldraw-official-2026-05-29-6009f2e94204";
+export const LDRAW_THUMBNAIL_CATALOG_VERSION = "ldraw-official-2026-08-d2a695868ed2";
 export const LDRAW_THUMBNAIL_RENDER_PRESET_VERSION = "ldraw-studio-v1";
 export const LDRAW_THUMBNAIL_WIDTH = 640;
 export const LDRAW_THUMBNAIL_HEIGHT = 400;

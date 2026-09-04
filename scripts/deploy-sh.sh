@@ -38,6 +38,7 @@ KEEP_RELEASES="${KEEP_RELEASES:-2}"
 PUBLIC_ROUTE="${PUBLIC_ROUTE:-false}"
 ALLOW_SIGNUP="${ALLOW_SIGNUP:-true}"
 SKIP_LOCAL_CHECKS="${SKIP_LOCAL_CHECKS:-false}"
+LDRAW_ARCHIVE="${LDRAW_ARCHIVE:-}"
 
 SSH_ARGS=(
   -o BatchMode=yes
@@ -55,6 +56,10 @@ RELEASE_ID=""
 VERSION=""
 SOURCE_COMMIT=""
 REMOTE_UPLOAD=""
+CATALOG_RELEASE=""
+CATALOG_SHA256=""
+CATALOG_PART_COUNT=""
+CATALOG_VERSION=""
 
 log() { printf '\033[36m[chimii-sh] %s\033[0m\n' "$*"; }
 ok() { printf '\033[32m[chimii-sh] OK %s\033[0m\n' "$*"; }
@@ -142,6 +147,7 @@ validate_config() {
   [[ "$PUBLIC_ROUTE" == true || "$PUBLIC_ROUTE" == false ]] || die "PUBLIC_ROUTE must be true or false"
   [[ "$ALLOW_SIGNUP" == true || "$ALLOW_SIGNUP" == false ]] || die "ALLOW_SIGNUP must be true or false"
   [[ "$SKIP_LOCAL_CHECKS" == true || "$SKIP_LOCAL_CHECKS" == false ]] || die "SKIP_LOCAL_CHECKS must be true or false"
+  [[ -z "$LDRAW_ARCHIVE" || "$LDRAW_ARCHIVE" == /* ]] || die "LDRAW_ARCHIVE must be an absolute local path"
   [[ "$BACKEND_PORT" != "$CANDIDATE_BACKEND_PORT" ]] || die "candidate backend port must differ"
   [[ "$WEB_PORT" != "$CANDIDATE_WEB_PORT" ]] || die "candidate Web port must differ"
 }
@@ -224,11 +230,24 @@ REMOTE
 init_release() {
   require_cmd git
   require_cmd node
+  local catalog_lock="$ROOT_DIR/server/internal/ldrawsync/catalog.lock.json"
+  local catalog_manifest="$ROOT_DIR/server/internal/ldrawsync/starter-kit-1000.json"
   SOURCE_COMMIT="$(git -C "$ROOT_DIR" rev-parse HEAD)"
   VERSION="$(git -C "$ROOT_DIR" describe --tags --exact-match HEAD 2>/dev/null || true)"
   [[ -n "$VERSION" && "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || die "production deployment requires HEAD at an exact vX.Y.Z tag"
   [[ "$(git -C "$ROOT_DIR" branch --show-current)" == main ]] || die "production deployment requires branch main"
   [[ -z "$(git -C "$ROOT_DIR" status --porcelain)" ]] || die "production deployment requires a clean worktree"
+  CATALOG_RELEASE="$(node -e 'const x=require(process.argv[1]); process.stdout.write(x.release)' "$catalog_lock")"
+  CATALOG_SHA256="$(node -e 'const x=require(process.argv[1]); process.stdout.write(x.archive_sha256)' "$catalog_lock")"
+  CATALOG_PART_COUNT="$(node -e 'const x=require(process.argv[1]); process.stdout.write(String(x.part_count))' "$catalog_manifest")"
+  [[ "$CATALOG_RELEASE" =~ ^[0-9]{4}-[0-9]{2}(-[0-9]{2})?$ ]] || die "invalid embedded LDraw release"
+  [[ "$CATALOG_SHA256" =~ ^[0-9a-f]{64}$ ]] || die "invalid embedded LDraw SHA-256"
+  [[ "$CATALOG_PART_COUNT" =~ ^[1-9][0-9]*$ ]] || die "invalid embedded LDraw part count"
+  CATALOG_VERSION="ldraw-official-$CATALOG_RELEASE-${CATALOG_SHA256:0:12}"
+  if [[ -n "$LDRAW_ARCHIVE" ]]; then
+    [[ -f "$LDRAW_ARCHIVE" ]] || die "LDRAW_ARCHIVE does not exist: $LDRAW_ARCHIVE"
+    [[ "$(sha256_file "$LDRAW_ARCHIVE")" = "$CATALOG_SHA256" ]] || die "LDRAW_ARCHIVE does not match the embedded catalog SHA-256"
+  fi
   RELEASE_ID="${RELEASE_ID_OVERRIDE:-$(date -u +%Y%m%dT%H%M%SZ)-${VERSION#v}-${SOURCE_COMMIT:0:12}}"
   [[ "$RELEASE_ID" =~ ^[0-9A-Za-z._-]+$ ]] || die "invalid release id"
   REMOTE_UPLOAD="/home/ubuntu/.cache/chimii-deploy/$RELEASE_ID"
@@ -281,12 +300,16 @@ package_web() {
 }
 
 upload_artifacts() {
-  local backend_sha web_sha
+  local backend_sha web_sha ldraw_sha=""
   backend_sha="$(sha256_file "$BUILD_TMP/backend.tar.gz")"
   web_sha="$(sha256_file "$BUILD_TMP/web-source.tar.gz")"
+  [[ -z "$LDRAW_ARCHIVE" ]] || ldraw_sha="$CATALOG_SHA256"
   remote_user "install -d -m 0700 '$REMOTE_UPLOAD'"
   scp_push "$BUILD_TMP/backend.tar.gz" "$BUILD_TMP/web-source.tar.gz"
-  remote_root "REMOTE_UPLOAD='$REMOTE_UPLOAD' REMOTE_ROOT='$REMOTE_ROOT' RELEASE_ID='$RELEASE_ID' BACKEND_SHA='$backend_sha' WEB_SHA='$web_sha'" <<'REMOTE'
+  if [[ -n "$LDRAW_ARCHIVE" ]]; then
+    scp "${SSH_ARGS[@]}" "$LDRAW_ARCHIVE" "$SSH_HOST:$REMOTE_UPLOAD/ldraw-complete.zip"
+  fi
+  remote_root "REMOTE_UPLOAD='$REMOTE_UPLOAD' REMOTE_ROOT='$REMOTE_ROOT' RELEASE_ID='$RELEASE_ID' BACKEND_SHA='$backend_sha' WEB_SHA='$web_sha' LDRAW_SHA='$ldraw_sha'" <<'REMOTE'
 set -euo pipefail
 incoming="$REMOTE_ROOT/incoming/$RELEASE_ID"
 install -d -m 0700 "$incoming"
@@ -294,6 +317,10 @@ test "$(sha256sum "$REMOTE_UPLOAD/backend.tar.gz" | awk '{print $1}')" = "$BACKE
 test "$(sha256sum "$REMOTE_UPLOAD/web-source.tar.gz" | awk '{print $1}')" = "$WEB_SHA"
 install -m 0600 "$REMOTE_UPLOAD/backend.tar.gz" "$incoming/backend.tar.gz"
 install -m 0600 "$REMOTE_UPLOAD/web-source.tar.gz" "$incoming/web-source.tar.gz"
+if [[ -n "$LDRAW_SHA" ]]; then
+  test "$(sha256sum "$REMOTE_UPLOAD/ldraw-complete.zip" | awk '{print $1}')" = "$LDRAW_SHA"
+  install -m 0600 "$REMOTE_UPLOAD/ldraw-complete.zip" "$incoming/ldraw-complete.zip"
+fi
 rm -rf -- "$REMOTE_UPLOAD"
 REMOTE
 }
@@ -332,6 +359,7 @@ install -d -m 0755 "$REMOTE_ROOT" "$REMOTE_ROOT/releases" "$REMOTE_ROOT/releases
 install -d -m 0700 "$REMOTE_ROOT/incoming" "$REMOTE_ROOT/state" "$REMOTE_ROOT/state/legacy"
 install -d -o ubuntu -g ubuntu -m 0755 "$REMOTE_ROOT/builder" "$REMOTE_ROOT/builder/workspace" "$REMOTE_ROOT/builder/status"
 install -d -o "$APP_USER" -g "$APP_USER" -m 0750 /var/lib/chimii /var/lib/chimii/uploads
+install -d -o "$APP_USER" -g "$APP_USER" -m 0750 "$REMOTE_ROOT/cache" "$REMOTE_ROOT/cache/ldraw"
 install -d -m 0700 /etc/chimii
 
 umask 077
@@ -446,7 +474,7 @@ REMOTE
 prepare_candidate() {
   local candidate_db="chimii_candidate_$(printf '%s' "$RELEASE_ID" | cut -c1-16 | tr -cd '0-9')"
   [[ "$candidate_db" =~ ^[a-z_][a-z0-9_]*$ ]] || die "invalid candidate database name"
-  remote_root "REMOTE_ROOT='$REMOTE_ROOT' RELEASE_ID='$RELEASE_ID' VERSION='$VERSION' APP_USER='$APP_USER' DB_USER='$DB_USER' CANDIDATE_DB='$candidate_db' PRIMARY_DOMAIN='$PRIMARY_DOMAIN' CANDIDATE_BACKEND_PORT='$CANDIDATE_BACKEND_PORT' CANDIDATE_WEB_PORT='$CANDIDATE_WEB_PORT' ALLOW_SIGNUP='$ALLOW_SIGNUP'" <<'REMOTE'
+  remote_root "REMOTE_ROOT='$REMOTE_ROOT' RELEASE_ID='$RELEASE_ID' VERSION='$VERSION' APP_USER='$APP_USER' DB_NAME='$DB_NAME' DB_USER='$DB_USER' CANDIDATE_DB='$candidate_db' PRIMARY_DOMAIN='$PRIMARY_DOMAIN' CANDIDATE_BACKEND_PORT='$CANDIDATE_BACKEND_PORT' CANDIDATE_WEB_PORT='$CANDIDATE_WEB_PORT' ALLOW_SIGNUP='$ALLOW_SIGNUP' CATALOG_RELEASE='$CATALOG_RELEASE' CATALOG_SHA256='$CATALOG_SHA256' CATALOG_PART_COUNT='$CATALOG_PART_COUNT' CATALOG_VERSION='$CATALOG_VERSION'" <<'REMOTE'
 set -euo pipefail
 backend="$REMOTE_ROOT/releases/backend/$RELEASE_ID"
 web="$REMOTE_ROOT/releases/web/$RELEASE_ID"
@@ -497,7 +525,92 @@ EOF
 chmod 600 /etc/chimii/v2-candidate-backend.env /etc/chimii/v2-candidate-web.env
 
 runuser -u "$APP_USER" -- env DATABASE_URL="$candidate_url" "$backend/migrate" up
-runuser -u "$APP_USER" -- env DATABASE_URL="$candidate_url" "$backend/ldraw_catalog_sync"
+
+catalog_fingerprint() {
+  local database="$1"
+  runuser -u postgres -- psql -d "$database" -X -Atqc "
+COPY (
+  SELECT row_kind || E'\\t' || row_data
+  FROM (
+    SELECT '1-release' AS row_kind,
+           concat_ws(E'\\t', id, catalog_version, release, source_url, archive_sha256, status,
+                     COALESCE(release_json, '<NULL>'), part_count) AS row_data
+      FROM ldraw_catalog_release
+    UNION ALL
+    SELECT '2-revision',
+           concat_ws(E'\\t', id, catalog_version, part_id, revision, kind, ldraw_sha256,
+                     storage_backend, COALESCE(content_sha256, '<NULL>'), content_type, storage_key,
+                     COALESCE(encode(digest(payload, 'sha256'), 'hex'), '<NULL>'),
+                     payload_size_bytes, payload_format)
+      FROM ldraw_part_revision
+    UNION ALL
+    SELECT '3-definition',
+           concat_ws(E'\\t', part_key, name, category, popularity_rank, certification_level,
+                     auto_build_eligible, geometry_profile, studs_x, studs_z, plates_y,
+                     default_quantity, has_top_studs, has_bottom_receptors)
+      FROM part_definition
+    UNION ALL
+    SELECT '4-catalog-revision',
+           concat_ws(E'\\t', catalog_version, part_key, ldraw_part_id, ldraw_sha256,
+                     COALESCE(content_sha256, '<NULL>'), semantic_version, origin_y_offset_ldu,
+                     origin_center_z_offset_ldu, bounds_json, connections_json, occupancy_json)
+      FROM part_catalog_revision
+    UNION ALL
+    SELECT '5-kit',
+           concat_ws(E'\\t', kit_id, version, name, description, source_manifest_kit_id,
+                     catalog_version, part_count, status)
+      FROM kit_profile
+    UNION ALL
+    SELECT '6-kit-part',
+           concat_ws(E'\\t', kit_id, kit_version, catalog_version, part_key,
+                     popularity_rank, default_quantity, enabled)
+      FROM kit_profile_part
+  ) AS rows
+  ORDER BY row_kind, row_data
+) TO STDOUT
+" | sha256sum | awk '{print $1}'
+}
+
+sync_args=()
+uploaded_archive="$REMOTE_ROOT/incoming/$RELEASE_ID/ldraw-complete.zip"
+if [[ -f "$uploaded_archive" ]]; then
+  cached_archive="$REMOTE_ROOT/cache/ldraw/$CATALOG_SHA256.zip"
+  install -o "$APP_USER" -g "$APP_USER" -m 0400 "$uploaded_archive" "$cached_archive"
+  sync_args+=(--archive "$cached_archive")
+fi
+if ! runuser -u "$APP_USER" -- env DATABASE_URL="$candidate_url" "$backend/ldraw_catalog_sync" "${sync_args[@]}"; then
+  echo "pinned LDraw download unavailable; validating and copying the exact catalog from $DB_NAME" >&2
+  expected_counts="1|$CATALOG_PART_COUNT|$CATALOG_PART_COUNT|$CATALOG_PART_COUNT|1|100|0|0"
+  source_counts="$(runuser -u postgres -- psql -d "$DB_NAME" -X -Atqc "
+SELECT
+  (SELECT count(*) FROM ldraw_catalog_release WHERE catalog_version='$CATALOG_VERSION' AND release='$CATALOG_RELEASE' AND archive_sha256='$CATALOG_SHA256' AND status='active') || '|' ||
+  (SELECT count(*) FROM ldraw_part_revision WHERE catalog_version='$CATALOG_VERSION') || '|' ||
+  (SELECT count(*) FROM part_definition) || '|' ||
+  (SELECT count(*) FROM part_catalog_revision WHERE catalog_version='$CATALOG_VERSION') || '|' ||
+  (SELECT count(*) FROM kit_profile WHERE kit_id='chimii-starter-100' AND catalog_version='$CATALOG_VERSION' AND status='active' AND part_count=100) || '|' ||
+  (SELECT count(*) FROM kit_profile_part WHERE kit_id='chimii-starter-100' AND catalog_version='$CATALOG_VERSION' AND enabled) || '|' ||
+  (SELECT count(*) FROM ldraw_part_revision WHERE catalog_version='$CATALOG_VERSION' AND payload IS NULL) || '|' ||
+  (SELECT count(*) FROM ldraw_part_revision WHERE catalog_version='$CATALOG_VERSION' AND encode(digest(payload, 'sha256'), 'hex') IS DISTINCT FROM content_sha256)
+")"
+  [[ "$source_counts" = "$expected_counts" ]] || {
+    echo "legacy catalog validation failed: got $source_counts, expected $expected_counts" >&2
+    exit 1
+  }
+  source_fingerprint="$(catalog_fingerprint "$DB_NAME")"
+  transfer="$REMOTE_ROOT/state/catalog-transfer-$RELEASE_ID.dump"
+  runuser -u postgres -- pg_dump -Fc --data-only --no-owner -d "$DB_NAME" \
+    -t ldraw_catalog_release -t ldraw_part_revision -t part_definition \
+    -t part_catalog_revision -t kit_profile -t kit_profile_part > "$transfer"
+  runuser -u postgres -- psql -d "$CANDIDATE_DB" -X -v ON_ERROR_STOP=1 -c \
+    'TRUNCATE ldraw_catalog_release, ldraw_part_revision, part_definition, part_catalog_revision, kit_profile, kit_profile_part' >/dev/null
+  runuser -u postgres -- pg_restore --exit-on-error --data-only --no-owner -d "$CANDIDATE_DB" "$transfer"
+  rm -f -- "$transfer"
+  candidate_fingerprint="$(catalog_fingerprint "$CANDIDATE_DB")"
+  [[ "$candidate_fingerprint" = "$source_fingerprint" ]] || {
+    echo "catalog fingerprint mismatch after candidate import" >&2
+    exit 1
+  }
+fi
 
 expected="$(mktemp)"
 applied="$(mktemp)"

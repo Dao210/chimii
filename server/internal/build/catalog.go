@@ -4,8 +4,8 @@ import "fmt"
 
 const (
 	StarterKitID         = "chimii-starter-v1"
-	CatalogRelease       = "2026-05-29"
-	CatalogArchiveSHA256 = "6009f2e94204c4d3a63a4c812010b5c90bad8c5acb19b882c859fdac63734eae"
+	CatalogRelease       = "2026-08"
+	CatalogArchiveSHA256 = "d2a695868ed2b3957c45b022a6451908edab22cc043179dd61d18dd382b35e11"
 	CatalogSourceURL     = "https://library.ldraw.org/library/updates/complete.zip"
 	ModuleLibraryVersion = "chimii-construction-modules-v2"
 	CompilerVersion      = "build-compiler-v2"

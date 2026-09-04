@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "release": "2026-05-29",
+  "release": "2026-08",
   "source_url": "https://library.ldraw.org/library/updates/complete.zip",
-  "archive_sha256": "6009f2e94204c4d3a63a4c812010b5c90bad8c5acb19b882c859fdac63734eae",
+  "archive_sha256": "d2a695868ed2b3957c45b022a6451908edab22cc043179dd61d18dd382b35e11",
   "root_parts": [
     "3001.dat",
     "3003.dat",

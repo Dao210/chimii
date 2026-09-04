@@ -7,7 +7,7 @@ func TestEmbeddedCatalog(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if lock.ArchiveSHA256 != "6009f2e94204c4d3a63a4c812010b5c90bad8c5acb19b882c859fdac63734eae" {
+	if lock.ArchiveSHA256 != "d2a695868ed2b3957c45b022a6451908edab22cc043179dd61d18dd382b35e11" {
 		t.Fatalf("unexpected archive hash: %s", lock.ArchiveSHA256)
 	}
 	if manifest.KitID != "chimii-starter-1000-v1" || manifest.PartCount != 1000 {
