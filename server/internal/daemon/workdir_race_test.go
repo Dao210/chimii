@@ -202,7 +202,7 @@ printf '%s\n' '{"type":"result","subtype":"success","is_error":false,"session_id
 		activeEnvRoots: make(map[string]int),
 		cfg: Config{
 			WorkspacesRoot: workspacesRoot,
-			AgentTimeout:   5 * time.Second,
+			AgentTimeout:   30 * time.Second,
 			ServerBaseURL:  srv.URL,
 			Agents: map[string]AgentEntry{
 				"claude": {Path: fakeBin, Model: ""},

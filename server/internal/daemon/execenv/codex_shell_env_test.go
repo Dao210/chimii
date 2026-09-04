@@ -61,13 +61,13 @@ func TestCodexShellEnvAllowlistUsesExactTaskAndSafeInheritedNames(t *testing.T) 
 	want := []string{
 		"ANTHROPIC_API_KEY",
 		"APPDATA",
+		"CHIMII_SERVER_URL",
+		"CHIMII_TOKEN",
 		"COMSPEC",
 		"CUSTOM_FLAG",
 		"HTTPS_PROXY",
 		"LANG",
 		"LOCALAPPDATA",
-		"CHIMII_SERVER_URL",
-		"CHIMII_TOKEN",
 		"PATH",
 		"PATHEXT",
 		"SDKROOT",
@@ -105,8 +105,8 @@ func TestCodexShellEnvAllowlistOnlyAuthorizesExplicitCustomSecrets(t *testing.T)
 
 	got := CodexShellEnvAllowlist(inherited, explicit, authorizedExplicit)
 	want := []string{
-		"CUSTOM_ACCESS_TOKEN",
 		"CHIMII_TOKEN",
+		"CUSTOM_ACCESS_TOKEN",
 		"PATH",
 		"x_secret",
 		"Y_KEY",
