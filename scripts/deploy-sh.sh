@@ -818,15 +818,22 @@ systemctl disable chimii-daemon.service chimii-public-sales-runtime.service chim
 
 while IFS= read -r pid; do
   [[ "$pid" =~ ^[0-9]+$ ]] || continue
-  cwd="$(readlink -f "/proc/$pid/cwd" 2>/dev/null || true)"
-  case "$cwd" in
-    "$REMOTE_ROOT"/*)
-      kill -TERM "$pid"
-      for _ in $(seq 1 20); do kill -0 "$pid" 2>/dev/null || break; sleep 1; done
-      kill -0 "$pid" 2>/dev/null && kill -KILL "$pid" || true
-      ;;
-  esac
+  cwd="$(readlink "/proc/$pid/cwd" 2>/dev/null || true)"
+  cwd="${cwd% (deleted)}"
+  process_pwd="$(tr '\0' '\n' < "/proc/$pid/environ" 2>/dev/null | sed -n 's/^PWD=//p' | head -n 1 || true)"
+  if [[ "$cwd" == "$REMOTE_ROOT"/* || "$process_pwd" == "$REMOTE_ROOT"/* ]]; then
+    kill -TERM "$pid"
+    for _ in $(seq 1 20); do kill -0 "$pid" 2>/dev/null || break; sleep 1; done
+    kill -0 "$pid" 2>/dev/null && kill -KILL "$pid" || true
+  else
+    echo "refusing to stop unexpected listener on retired port 3100: pid=$pid cwd=$cwd pwd=$process_pwd" >&2
+    exit 1
+  fi
 done < <(ss -ltnp | sed -nE 's/.*127\.0\.0\.1:3100.*pid=([0-9]+).*/\1/p')
+if ss -lnt | grep -Eq '127\.0\.0\.1:(3100|9443)'; then
+  echo 'retired listener remains on port 3100 or 9443' >&2
+  exit 1
+fi
 REMOTE
 }
 
@@ -863,6 +870,9 @@ old_web="$(readlink -f "$REMOTE_ROOT/current-web" 2>/dev/null || true)"
 [[ -n "$old_web" ]] && printf '%s\n' "$old_web" > "$REMOTE_ROOT/state/previous-web"
 ln -sfn "$backend" "$REMOTE_ROOT/current-backend"
 ln -sfn "$web" "$REMOTE_ROOT/current-web"
+for legacy_link in current server-current web-current daemon-current chimii-cli backend-current; do
+  [[ -L "$REMOTE_ROOT/$legacy_link" ]] && rm -f -- "$REMOTE_ROOT/$legacy_link"
+done
 rm -f "$REMOTE_ROOT/.env"
 ln -s /etc/chimii/backend.env "$REMOTE_ROOT/.env"
 printf 'RELEASE_ID=%s\nVERSION=%s\nSOURCE_COMMIT=%s\nBACKEND=%s\nWEB=%s\nDEPLOYED_AT=%s\n' "$RELEASE_ID" "$VERSION" "$SOURCE_COMMIT" "$backend" "$web" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$REMOTE_ROOT/state/current.env"
@@ -892,7 +902,10 @@ curl -fsS "http://127.0.0.1:$BACKEND_PORT/api/config" | grep -F "\"server_versio
 ss -lnt | grep -Eq "127.0.0.1:$BACKEND_PORT"
 ss -lnt | grep -Eq "127.0.0.1:$WEB_PORT"
 ss -lnt | grep -Eq '127\.0\.0\.1:6379'
-! ss -lnt | grep -Eq '127\.0\.0\.1:(3100|9443)'
+if ss -lnt | grep -Eq '127\.0\.0\.1:(3100|9443)'; then
+  echo 'retired listener remains on port 3100 or 9443' >&2
+  exit 1
+fi
 redis-cli -h 127.0.0.1 ping | grep -Fx PONG >/dev/null
 runuser -u postgres -- psql -d "$DB_NAME" -X -Atqc "SELECT count(*) FROM ldraw_catalog_release WHERE status='active'" | grep -Fx 1 >/dev/null
 runuser -u postgres -- psql -d "$DB_NAME" -X -Atqc "SELECT count(*) FROM kit_profile WHERE status='active' AND part_count=100" | grep -Fx 1 >/dev/null
@@ -900,7 +913,10 @@ test "$(stat -c %a /etc/chimii/backend.env)" = 600
 test "$(stat -c %a /etc/chimii/web.env)" = 600
 caddy validate --config /etc/caddy/Caddyfile >/dev/null
 if [[ "$PUBLIC_ROUTE" = false ]]; then
-  ! grep -Eq '^[[:space:]]*(chimii\.com|ai\.52tuan\.com|aurocreator\.com|www\.aurocreator\.com)[[:space:]]*([,:{]|$)' /etc/caddy/Caddyfile
+  if grep -Eq '^[[:space:]]*(chimii\.com|ai\.52tuan\.com|aurocreator\.com|www\.aurocreator\.com)[[:space:]]*([,:{]|$)' /etc/caddy/Caddyfile; then
+    echo 'an unfiled or retired public route is still present in Caddy' >&2
+    exit 1
+  fi
 fi
 printf 'release=%s\nversion=%s\nbackend=%s\nweb=%s\ndatabase=%s\npublic_route=%s\n' \
   "$(sed -n 's/^RELEASE_ID=//p' "$REMOTE_ROOT/state/current.env")" \

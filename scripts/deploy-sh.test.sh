@@ -21,10 +21,15 @@ grep -F 'chimii.com {' <<< "$block" >/dev/null
 grep -F 'reverse_proxy 127.0.0.1:8080' <<< "$block" >/dev/null
 grep -F 'reverse_proxy 127.0.0.1:3000' <<< "$block" >/dev/null
 
-release_id='20260904T043730Z-0.2.4-f58191142b9f'
+release_id='20260904T043730Z-0.2.5-f58191142b9f'
 db_suffix="$(printf '%s' "$release_id" | cut -c1-16 | tr -cd '0-9')"
 [[ "$db_suffix" == 20260904043730 ]]
 [[ "chimii_candidate_$db_suffix" =~ ^chimii_candidate_[0-9]+$ ]]
 [[ "chimii_legacy_$db_suffix" =~ ^chimii_legacy_[0-9]+$ ]]
+
+grep -F "process_pwd=\"\$(tr '\\0' '\\n'" "$SCRIPT_DIR/deploy-sh.sh" >/dev/null
+grep -F "retired listener remains on port 3100 or 9443" "$SCRIPT_DIR/deploy-sh.sh" >/dev/null
+grep -F "an unfiled or retired public route is still present in Caddy" "$SCRIPT_DIR/deploy-sh.sh" >/dev/null
+grep -F "for legacy_link in current server-current web-current daemon-current chimii-cli backend-current" "$SCRIPT_DIR/deploy-sh.sh" >/dev/null
 
 printf 'deploy-sh tests passed\n'
