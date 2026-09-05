@@ -294,6 +294,11 @@ jobs:
       - name: Verify Go test wrapper
         run: bash scripts/test-go.test.sh
 
+      - name: Setup Node for deployment script tests
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
       - name: Verify sh deployment safeguards
         run: bash scripts/deploy-sh.test.sh
 

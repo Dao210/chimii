@@ -12,6 +12,27 @@ before deployment, as required by `CLAUDE.md`. The script does not create commit
 tags, or pushes. Repeating the command for the deployed commit verifies it without
 rebuilding; `FORCE_DEPLOY=true scripts/deploy-sh.sh` forces another deployment.
 
+## Release version consistency
+
+The root `package.json` version and the release tag must match (`0.3.0` and
+`v0.3.0`, respectively). Before creating a tag, update and commit the root
+version, then run `bash scripts/check-release-version.sh v0.3.0` with the intended
+tag. After tagging, run the same check without arguments to require an exact tag
+at HEAD. This is a metadata check only: deployment also requires clean `main`.
+The release workflow and `deploy-sh.sh` share this check, so a tag with stale
+package metadata is rejected before publishing binaries.
+
+CLI and Desktop artifact versions are derived from the Git tag. Web receives
+that same tag through `NEXT_PUBLIC_APP_VERSION` during deployment. Workspace
+package versions are not the product release version; Mobile keeps its own
+release cadence. Do not bulk-rewrite dependency, catalog or migration versions.
+
+Updating `package.json` in a new commit does not update an existing tag. If a
+tag has already been pushed, do not silently move it or replace its assets:
+publish a new version, or obtain explicit approval for a same-version rebuild.
+
+## Deployment operations
+
 | Command | Behavior |
 | --- | --- |
 | `scripts/deploy-sh.sh` or `deploy` | Build and deploy both applications |

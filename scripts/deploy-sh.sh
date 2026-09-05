@@ -237,7 +237,7 @@ init_release() {
   [[ -n "$VERSION" && "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || die "production deployment requires HEAD at an exact vX.Y.Z tag"
   [[ "$(git -C "$ROOT_DIR" branch --show-current)" == main ]] || die "production deployment requires branch main"
   [[ -z "$(git -C "$ROOT_DIR" status --porcelain)" ]] || die "production deployment requires a clean worktree"
-  [[ "$VERSION" == "v$(node -p 'require("./package.json").version')" ]] || die "release tag and root package version must match"
+  bash "$ROOT_DIR/scripts/check-release-version.sh" "$VERSION" || return 1
   CATALOG_RELEASE="$(node -e 'const x=require(process.argv[1]); process.stdout.write(x.release)' "$catalog_lock")"
   CATALOG_SHA256="$(node -e 'const x=require(process.argv[1]); process.stdout.write(x.archive_sha256)' "$catalog_lock")"
   CATALOG_PART_COUNT="$(node -e 'const x=require(process.argv[1]); process.stdout.write(String(x.part_count))' "$catalog_manifest")"

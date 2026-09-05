@@ -38,6 +38,14 @@ jobs:
           fi
           echo "tag_name=$tag" >> "$GITHUB_OUTPUT"
 
+      - name: Setup Node for release metadata validation
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Validate release version consistency
+        run: bash scripts/check-release-version.sh "$GITHUB_REF_NAME"
+
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
