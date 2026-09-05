@@ -162,7 +162,7 @@ jobs:
             "chimii-desktop-${version}-linux-x86_64.rpm"
             "chimii-desktop-${version}-linux-arm64.AppImage"
             "chimii-desktop-${version}-linux-arm64.deb"
-            "chimii-desktop-${version}-linux-arm64.rpm"
+            "chimii-desktop-${version}-linux-aarch64.rpm"
           )
 
           missing_assets=()
