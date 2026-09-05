@@ -1,0 +1,40 @@
+/* Circuit-specific semantic tokens distinguish physical part families. */
+.circuit-studio {
+  --circuit-paper: color-mix(in oklch, var(--background) 94%, var(--primary));
+  --circuit-ink: var(--foreground);
+  --circuit-grid: var(--border);
+  --circuit-wire: oklch(0.52 0.13 255);
+  --circuit-switch: oklch(0.66 0.14 145);
+  --circuit-sound: oklch(0.65 0.15 30);
+  --circuit-power: oklch(0.83 0.10 80);
+  --circuit-passive: oklch(0.85 0.13 95);
+  --circuit-receiver: oklch(0.74 0.06 225);
+  color: var(--circuit-ink);
+  background: var(--circuit-paper);
+}
+.circuit-board { display: block; width: 100%; height: auto; overflow: visible; }
+.circuit-board-base { fill: var(--card); stroke: var(--border); stroke-width: 1.5; }
+.circuit-grid-line { stroke: var(--circuit-grid); stroke-width: 0.6; }
+.circuit-grid-dot { fill: var(--muted-foreground); opacity: 0.25; }
+.circuit-grid-label { fill: var(--muted-foreground); font: 600 12px ui-monospace, monospace; }
+.circuit-piece { --piece-color: var(--circuit-passive); transition: opacity 160ms ease; }
+.circuit-kind-wire { --piece-color: var(--circuit-wire); }
+.circuit-kind-switch, .circuit-kind-variable { --piece-color: var(--circuit-switch); }
+.circuit-kind-module, .circuit-kind-speaker { --piece-color: var(--circuit-sound); }
+.circuit-kind-battery, .circuit-kind-lamp { --piece-color: var(--circuit-power); }
+.circuit-kind-radio { --piece-color: var(--circuit-receiver); }
+.circuit-piece-body { fill: var(--piece-color); stroke: color-mix(in oklch, var(--piece-color) 70%, black); stroke-width: 3; }
+.circuit-piece-bar { fill: none; stroke: var(--piece-color); stroke-width: 17; }
+.circuit-snap-outer { fill: var(--muted); stroke: var(--foreground); stroke-width: 1.5; }
+.circuit-snap-inner { fill: var(--muted-foreground); }
+.circuit-piece-halo { fill: none; stroke: var(--foreground); stroke-width: 5; stroke-dasharray: 6 4; stroke-linejoin: round; }
+.circuit-piece-halo.circuit-piece-bar { stroke-width: 22; }
+.circuit-part-label-bg { fill: var(--card); opacity: 0.95; }
+.circuit-part-label { fill: var(--foreground); font: 800 13px ui-monospace, monospace; }
+.circuit-port-label { fill: var(--foreground); font: 700 10px ui-monospace, monospace; paint-order: stroke; stroke: var(--card); stroke-width: 3; stroke-linejoin: round; }
+.circuit-step-list { scrollbar-width: thin; }
+@media (prefers-reduced-motion: reduce) { .circuit-piece { transition: none; } }
+@media print {
+  .circuit-no-print { display: none !important; }
+  .circuit-studio { background: white; color: black; }
+}

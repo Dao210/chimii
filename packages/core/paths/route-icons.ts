@@ -47,6 +47,7 @@ export type RouteIconName =
 
 /** i18n label key (under the `layout.nav` namespace) for a page. */
 export type NavLabelKey =
+  | "circuit"
   | "build"
   | "creations"
   | "block"
@@ -65,6 +66,7 @@ export type NavLabelKey =
 
 /** Stable identifier for each workspace navigation page. */
 export type WorkspacePageKey =
+  | "circuit"
   | "build"
   | "creations"
   | "block"
@@ -95,6 +97,7 @@ export interface WorkspacePage {
  * destinations in paths.ts and the sidebar nav groups.
  */
 export const WORKSPACE_PAGES: Record<WorkspacePageKey, WorkspacePage> = {
+  circuit: { segment: "circuit", icon: "Zap", navKey: "circuit" },
   build: { segment: "build", icon: "Blocks", navKey: "build" },
   creations: { segment: "creations", icon: "Images", navKey: "creations" },
   block: { segment: "block", icon: "Boxes", navKey: "block" },

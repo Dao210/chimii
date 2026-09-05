@@ -148,6 +148,9 @@ cleared_vcs_connections AS (
 cleared_client_usage_workspace AS (
     UPDATE client_usage_daily SET workspace_id = NULL WHERE workspace_id = $1
 ),
+cleared_circuit_creations AS (
+    DELETE FROM circuit_creation WHERE workspace_id = $1
+),
 cleared_build_jobs AS (
     DELETE FROM build_job WHERE workspace_id = $1
 ),

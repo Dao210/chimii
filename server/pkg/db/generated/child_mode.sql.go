@@ -92,6 +92,10 @@ WITH target_build_sessions AS (
     SELECT bs.id FROM build_session AS bs
     WHERE bs.workspace_id = $1 AND bs.creator_user_id = $2
 ),
+deleted_circuit_creations AS (
+    DELETE FROM circuit_creation
+    WHERE workspace_id = $1 AND creator_user_id = $2
+),
 deleted_build_jobs AS (
     DELETE FROM build_job AS bj
     WHERE bj.workspace_id = $1

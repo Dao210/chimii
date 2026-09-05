@@ -96,6 +96,7 @@ const EMPTY_INBOX_SUMMARY: Awaited<ReturnType<typeof api.getInboxUnreadSummary>>
 // against the current workspace slug at render time (see AppSidebar body).
 // Only parameterless paths are valid nav destinations.
 type NavKey =
+  | "circuit"
   | "build"
   | "creations"
   | "block"
@@ -115,6 +116,7 @@ type NavKey =
 // Static schema (key only) — labels resolved at render via useT("layout"),
 // icons derived from the destination path via routeIconForPath.
 type NavLabelKey =
+  | "circuit"
   | "build"
   | "creations"
   | "block"
@@ -140,6 +142,7 @@ const personalNav: { key: NavKey; labelKey: NavLabelKey }[] = [
 
 const workspaceNav: { key: NavKey; labelKey: NavLabelKey }[] = [
   { key: "build", labelKey: "build" },
+  { key: "circuit", labelKey: "circuit" },
   { key: "creations", labelKey: "creations" },
   { key: "block", labelKey: "block" },
   { key: "agents", labelKey: "agents" },
@@ -614,7 +617,7 @@ export function AppSidebar({ topSlot, searchSlot, headerClassName, headerStyle }
             <SidebarGroupLabel>{t(($) => $.sidebar.workspace_group)}</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu className="gap-0.5">
-                {workspaceNav.filter((item) => parentModeReady || item.key === "build" || item.key === "creations" || item.key === "block").map((item) => {
+                {workspaceNav.filter((item) => parentModeReady || item.key === "circuit" || item.key === "build" || item.key === "creations" || item.key === "block").map((item) => {
                   const href = p[item.key]();
                   const Icon = routeIconForPath(href);
                   const isActive = !isActivePinnedRoute && isNavActive(pathname, href);

@@ -1,0 +1,1889 @@
+{
+  "version": "snap-sc500-reference-v1",
+  "kit_id": "elenco-sc500",
+  "name": "Snap Circuits SC-500",
+  "columns": 10,
+  "rows": 7,
+  "minimum_age": 8,
+  "parts": [
+    {
+      "id": "1",
+      "manufacturer_id": "6SC01",
+      "name": {
+        "en": "1-snap connector",
+        "zh": "1 扣连接片"
+      },
+      "purpose": {
+        "en": "Joins its metal snaps electrically.",
+        "zh": "把它的金属扣点连成同一条通路。"
+      },
+      "kind": "wire",
+      "ports": [
+        {
+          "id": "1",
+          "x": 0,
+          "y": 0
+        }
+      ],
+      "body": [
+        {
+          "x": 0,
+          "y": 0
+        }
+      ],
+      "quantity": 6,
+      "conductive": [
+        [
+          "1"
+        ]
+      ]
+    },
+    {
+      "id": "2",
+      "manufacturer_id": "6SC02",
+      "name": {
+        "en": "2-snap connector",
+        "zh": "2 扣连接片"
+      },
+      "purpose": {
+        "en": "Joins its metal snaps electrically.",
+        "zh": "把它的金属扣点连成同一条通路。"
+      },
+      "kind": "wire",
+      "ports": [
+        {
+          "id": "1",
+          "x": 0,
+          "y": 0
+        },
+        {
+          "id": "2",
+          "x": 1,
+          "y": 0
+        }
+      ],
+      "body": [
+        {
+          "x": 0,
+          "y": 0
+        },
+        {
+          "x": 1,
+          "y": 0
+        }
+      ],
+      "quantity": 12,
+      "conductive": [
+        [
+          "1",
+          "2"
+        ]
+      ]
+    },
+    {
+      "id": "3",
+      "manufacturer_id": "6SC03",
+      "name": {
+        "en": "3-snap connector",
+        "zh": "3 扣连接片"
+      },
+      "purpose": {
+        "en": "Joins its metal snaps electrically.",
+        "zh": "把它的金属扣点连成同一条通路。"
+      },
+      "kind": "wire",
+      "ports": [
+        {
+          "id": "1",
+          "x": 0,
+          "y": 0
+        },
+        {
+          "id": "2",
+          "x": 1,
+          "y": 0
+        },
+        {
+          "id": "3",
+          "x": 2,
+          "y": 0
+        }
+      ],
+      "body": [
+        {
+          "x": 0,
+          "y": 0
+        },
+        {
+          "x": 2,
+          "y": 0
+        }
+      ],
+      "quantity": 4,
+      "conductive": [
+        [
+          "1",
+          "2",
+          "3"
+        ]
+      ]
+    },
+    {
+      "id": "4",
+      "manufacturer_id": "6SC04",
+      "name": {
+        "en": "4-snap connector",
+        "zh": "4 扣连接片"
+      },
+      "purpose": {
+        "en": "Joins its metal snaps electrically.",
+        "zh": "把它的金属扣点连成同一条通路。"
+      },
+      "kind": "wire",
+      "ports": [
+        {
+          "id": "1",
+          "x": 0,
+          "y": 0
+        },
+        {
+          "id": "2",
+          "x": 1,
+          "y": 0
+        },
+        {
+          "id": "3",
+          "x": 2,
+          "y": 0
+        },
+        {
+          "id": "4",
+          "x": 3,
+          "y": 0
+        }
+      ],
+      "body": [
+        {
+          "x": 0,
+          "y": 0
+        },
+        {
+          "x": 3,
+          "y": 0
+        }
+      ],
+      "quantity": 2,
+      "conductive": [
+        [
+          "1",
+          "2",
+          "3",
+          "4"
+        ]
+      ]
+    },
+    {
+      "id": "5",
+      "manufacturer_id": "6SC05",
+      "name": {
+        "en": "5-snap connector",
+        "zh": "5 扣连接片"
+      },
+      "purpose": {
+        "en": "Joins its metal snaps electrically.",
+        "zh": "把它的金属扣点连成同一条通路。"
+      },
+      "kind": "wire",
+      "ports": [
+        {
+          "id": "1",
+          "x": 0,
+          "y": 0
+        },
+        {
+          "id": "2",
+          "x": 1,
+          "y": 0
+        },
+        {
+          "id": "3",
+          "x": 2,
+          "y": 0
+        },
+        {
+          "id": "4",
+          "x": 3,
+          "y": 0
+        },
+        {
+          "id": "5",
+          "x": 4,
+          "y": 0
+        }
+      ],
+      "body": [
+        {
+          "x": 0,
+          "y": 0
+        },
+        {
+          "x": 4,
+          "y": 0
+        }
+      ],
+      "quantity": 2,
+      "conductive": [
+        [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5"
+        ]
+      ]
+    },
+    {
+      "id": "6",
+      "manufacturer_id": "6SC06",
+      "name": {
+        "en": "6-snap connector",
+        "zh": "6 扣连接片"
+      },
+      "purpose": {
+        "en": "Joins its metal snaps electrically.",
+        "zh": "把它的金属扣点连成同一条通路。"
+      },
+      "kind": "wire",
+      "ports": [
+        {
+          "id": "1",
+          "x": 0,
+          "y": 0
+        },
+        {
+          "id": "2",
+          "x": 1,
+          "y": 0
+        },
+        {
+          "id": "3",
+          "x": 2,
+          "y": 0
+        },
+        {
+          "id": "4",
+          "x": 3,
+          "y": 0
+        },
+        {
+          "id": "5",
+          "x": 4,
+          "y": 0
+        },
+        {
+          "id": "6",
+          "x": 5,
+          "y": 0
+        }
+      ],
+      "body": [
+        {
+          "x": 0,
+          "y": 0
+        },
+        {
+          "x": 5,
+          "y": 0
+        }
+      ],
+      "quantity": 1,
+      "conductive": [
+        [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6"
+        ]
+      ]
+    },
+    {
+      "id": "B1",
+      "manufacturer_id": "6SCB1",
+      "name": {
+        "en": "Battery holder",
+        "zh": "电池盒"
+      },
+      "purpose": {
+        "en": "Holds two 1.5 V AA batteries.",
+        "zh": "安装两节 1.5V AA 电池。"
+      },
+      "kind": "battery",
+      "ports": [
+        {
+          "id": "+",
+          "x": 0,
+          "y": 0
+        },
+        {
+          "id": "-",
+          "x": 0,
+          "y": 2
+        }
+      ],
+      "body": [
+        {
+          "x": 0,
+          "y": 0
+        },
+        {
+          "x": 1,
+          "y": 0
+        },
+        {
+          "x": 1,
+          "y": 2
+        },
+        {
+          "x": 0,
+          "y": 2
+        }
+      ],
+      "quantity": 2,
+      "conductive": []
+    },
+    {
+      "id": "L1",
+      "manufacturer_id": "6SCL1",
+      "name": {
+        "en": "Lamp",
+        "zh": "小灯泡"
+      },
+      "purpose": {
+        "en": "Turns electrical energy into light.",
+        "zh": "接通电路后发出光。"
+      },
+      "kind": "lamp",
+      "ports": [
+        {
+          "id": "a",
+          "x": 0,
+          "y": 0
+        },
+        {
+          "id": "b",
+          "x": 2,
+          "y": 0
+        }
+      ],
+      "body": [
+        {
+          "x": 0,
+          "y": 0
+        },
+        {
+          "x": 2,
+          "y": 0
+        }
+      ],
+      "quantity": 1,
+      "conductive": []
+    },
+    {
+      "id": "S1",
+      "manufacturer_id": "6SCS1",
+      "name": {
+        "en": "Slide switch",
+        "zh": "滑动开关"
+      },
+      "purpose": {
+        "en": "Opens or closes the circuit.",
+        "zh": "控制电路接通或断开。"
+      },
+      "kind": "switch",
+      "ports": [
+        {
+          "id": "a",
+          "x": 0,
+          "y": 0
+        },
+        {
+          "id": "b",
+          "x": 2,
+          "y": 0
+        }
+      ],
+      "body": [
+        {
+          "x": 0,
+          "y": 0
+        },
+        {
+          "x": 2,
+          "y": 0
+        }
+      ],
+      "quantity": 1,
+      "conductive": []
+    },
+    {
+      "id": "SP",
+      "manufacturer_id": "6SCSP",
+      "name": {
+        "en": "Speaker",
+        "zh": "扬声器"
+      },
+      "purpose": {
+        "en": "Turns a changing electrical signal into sound.",
+        "zh": "把变化的电信号变成声音。"
+      },
+      "kind": "speaker",
+      "ports": [
+        {
+          "id": "a",
+          "x": 0,
+          "y": 0
+        },
+        {
+          "id": "b",
+          "x": 2,
+          "y": 0
+        }
+      ],
+      "body": [
+        {
+          "x": 0,
+          "y": 0
+        },
+        {
+          "x": 2,
+          "y": 0
+        }
+      ],
+      "quantity": 1,
+      "conductive": []
+    },
+    {
+      "id": "U2",
+      "manufacturer_id": "6SCU2",
+      "name": {
+        "en": "Alarm module",
+        "zh": "报警模块"
+      },
+      "purpose": {
+        "en": "Produces alarm sounds with the specified connections.",
+        "zh": "按指定方式连接后产生报警声。"
+      },
+      "kind": "module",
+      "ports": [
+        {
+          "id": "IN1",
+          "x": 0,
+          "y": 0
+        },
+        {
+          "id": "IN2",
+          "x": 1,
+          "y": 0
+        },
+        {
+          "id": "IN3",
+          "x": 2,
+          "y": 0
+        },
+        {
+          "id": "-",
+          "x": 0,
+          "y": 1
+        },
+        {
+          "id": "OUT",
+          "x": 2,
+          "y": 1
+        }
+      ],
+      "body": [
+        {
+          "x": 0,
+          "y": 0
+        },
+        {
+          "x": 2,
+          "y": 0
+        },
+        {
+          "x": 2,
+          "y": 1
+        },
+        {
+          "x": 0,
+          "y": 1
+        }
+      ],
+      "quantity": 1,
+      "conductive": []
+    },
+    {
+      "id": "FM",
+      "manufacturer_id": "6SCFM",
+      "name": {
+        "en": "FM receiver",
+        "zh": "FM 收音模块"
+      },
+      "purpose": {
+        "en": "Receives FM broadcasts; R resets and T searches.",
+        "zh": "接收 FM 广播；R 重新搜索，T 搜索下一台。"
+      },
+      "kind": "radio",
+      "ports": [
+        {
+          "id": "+",
+          "x": 0,
+          "y": 0
+        },
+        {
+          "id": "OUT",
+          "x": 0,
+          "y": 1
+        },
+        {
+          "id": "-",
+          "x": 0,
+          "y": 2
+        }
+      ],
+      "body": [
+        {
+          "x": -1,
+          "y": 0
+        },
+        {
+          "x": 0,
+          "y": 0
+        },
+        {
+          "x": 0,
+          "y": 2
+        },
+        {
+          "x": -1,
+          "y": 2
+        }
+      ],
+      "quantity": 1,
+      "conductive": []
+    },
+    {
+      "id": "U4",
+      "manufacturer_id": "6SCU4",
+      "name": {
+        "en": "Power amplifier",
+        "zh": "功放模块"
+      },
+      "purpose": {
+        "en": "Amplifies the sound signal for the speaker.",
+        "zh": "放大声音信号，驱动扬声器。"
+      },
+      "kind": "module",
+      "ports": [
+        {
+          "id": "-",
+          "x": 0,
+          "y": 0
+        },
+        {
+          "id": "INP",
+          "x": 1,
+          "y": 0
+        },
+        {
+          "id": "FIL",
+          "x": 2,
+          "y": 0
+        },
+        {
+          "id": "OUT",
+          "x": 0,
+          "y": 1
+        },
+        {
+          "id": "+",
+          "x": 2,
+          "y": 1
+        }
+      ],
+      "body": [
+        {
+          "x": 0,
+          "y": 0
+        },
+        {
+          "x": 2,
+          "y": 0
+        },
+        {
+          "x": 2,
+          "y": 1
+        },
+        {
+          "x": 0,
+          "y": 1
+        }
+      ],
+      "quantity": 1,
+      "conductive": []
+    },
+    {
+      "id": "RV",
+      "manufacturer_id": "6SCRV",
+      "name": {
+        "en": "Volume control",
+        "zh": "可调电阻"
+      },
+      "purpose": {
+        "en": "Changes the signal level at its middle terminal.",
+        "zh": "通过中间接点调整信号大小。"
+      },
+      "kind": "variable",
+      "ports": [
+        {
+          "id": "a",
+          "x": 0,
+          "y": 0
+        },
+        {
+          "id": "b",
+          "x": 2,
+          "y": 0
+        },
+        {
+          "id": "W",
+          "x": 1,
+          "y": 1
+        }
+      ],
+      "body": [
+        {
+          "x": 0,
+          "y": 0
+        },
+        {
+          "x": 2,
+          "y": 0
+        },
+        {
+          "x": 1,
+          "y": 1
+        }
+      ],
+      "quantity": 1,
+      "conductive": []
+    },
+    {
+      "id": "R3",
+      "manufacturer_id": "6SCR3",
+      "name": {
+        "en": "5.1 kΩ resistor",
+        "zh": "5.1 kΩ 电阻"
+      },
+      "purpose": {
+        "en": "Limits current in the receiver circuit.",
+        "zh": "在收音机电路中限制电流。"
+      },
+      "kind": "resistor",
+      "ports": [
+        {
+          "id": "a",
+          "x": 0,
+          "y": 0
+        },
+        {
+          "id": "b",
+          "x": 2,
+          "y": 0
+        }
+      ],
+      "body": [
+        {
+          "x": 0,
+          "y": 0
+        },
+        {
+          "x": 2,
+          "y": 0
+        }
+      ],
+      "quantity": 1,
+      "conductive": []
+    },
+    {
+      "id": "C4",
+      "manufacturer_id": "6SCC4",
+      "name": {
+        "en": "100 µF capacitor",
+        "zh": "100 µF 电容"
+      },
+      "purpose": {
+        "en": "Passes a changing audio signal; observe its + marking.",
+        "zh": "传递变化的声音信号；留意正极标记。"
+      },
+      "kind": "capacitor",
+      "ports": [
+        {
+          "id": "+",
+          "x": 0,
+          "y": 0
+        },
+        {
+          "id": "-",
+          "x": 2,
+          "y": 0
+        }
+      ],
+      "body": [
+        {
+          "x": 0,
+          "y": 0
+        },
+        {
+          "x": 2,
+          "y": 0
+        }
+      ],
+      "quantity": 1,
+      "conductive": []
+    }
+  ],
+  "projects": [
+    {
+      "id": "switch-light",
+      "title": {
+        "en": "A light of my own",
+        "zh": "我的第一盏灯"
+      },
+      "description": {
+        "en": "Make a lamp turn on and off.",
+        "zh": "用一个开关，让小灯泡亮起来。"
+      },
+      "explanation": {
+        "en": "The lamp and switch form a loop with the battery. Opening the switch breaks the loop.",
+        "zh": "电池、灯泡和开关连成一圈。开关断开时，通路中断，灯就熄灭。"
+      },
+      "test_instruction": {
+        "en": "With an adult, check the complete diagram, then turn S1 on briefly and off again. Does L1 light up and go out?",
+        "zh": "和大人一起核对完整搭建图，再短暂打开 S1，然后关上。L1 是否亮起又熄灭？"
+      },
+      "troubleshooting": [
+        {
+          "en": "Switch off before checking. Match every snap and layer, then check the batteries with an adult.",
+          "zh": "先关开关再检查。逐一核对扣点和层次，再和大人一起检查电池。"
+        }
+      ],
+      "source": {
+        "url": "https://www.elenco.com/wp-content/uploads/2011/03/SC-100_REV-H_071712.pdf",
+        "title": "Elenco 753102 REV-H (2012)",
+        "page": 9,
+        "sha256": "2a49a880eed07f7cd32a80dc273d1d5b296a5576852a3c9dacf2aed6b4ac3155"
+      },
+      "placements": [
+        {
+          "id": "lamp",
+          "part_id": "L1",
+          "x": 2,
+          "y": 2,
+          "rotation": 0,
+          "layer": 1
+        },
+        {
+          "id": "switch",
+          "part_id": "S1",
+          "x": 2,
+          "y": 4,
+          "rotation": 0,
+          "layer": 1
+        },
+        {
+          "id": "battery",
+          "part_id": "B1",
+          "x": 5,
+          "y": 2,
+          "rotation": 0,
+          "layer": 1
+        },
+        {
+          "id": "left",
+          "part_id": "3",
+          "x": 1,
+          "y": 2,
+          "rotation": 90,
+          "layer": 1
+        },
+        {
+          "id": "top-left",
+          "part_id": "2",
+          "x": 1,
+          "y": 2,
+          "rotation": 0,
+          "layer": 2
+        },
+        {
+          "id": "top-right",
+          "part_id": "2",
+          "x": 4,
+          "y": 2,
+          "rotation": 0,
+          "layer": 2
+        },
+        {
+          "id": "bottom-left",
+          "part_id": "2",
+          "x": 1,
+          "y": 4,
+          "rotation": 0,
+          "layer": 2
+        },
+        {
+          "id": "bottom-right",
+          "part_id": "2",
+          "x": 4,
+          "y": 4,
+          "rotation": 0,
+          "layer": 2
+        }
+      ],
+      "expected_nets": [
+        [
+          "lamp:a",
+          "switch:a"
+        ],
+        [
+          "lamp:b",
+          "battery:+"
+        ],
+        [
+          "switch:b",
+          "battery:-"
+        ]
+      ],
+      "steps": [
+        {
+          "id": "step-1",
+          "title": {
+            "en": "Place L1",
+            "zh": "放置 L1"
+          },
+          "instruction": {
+            "en": "Keep the power off. Match the highlighted snaps, orientation and layer.",
+            "zh": "保持开关关闭。对准图中高亮的扣点，核对方向和层次。"
+          },
+          "placement_ids": [
+            "lamp"
+          ]
+        },
+        {
+          "id": "step-2",
+          "title": {
+            "en": "Place S1",
+            "zh": "放置 S1"
+          },
+          "instruction": {
+            "en": "Keep the power off. Match the highlighted snaps, orientation and layer.",
+            "zh": "保持开关关闭。对准图中高亮的扣点，核对方向和层次。"
+          },
+          "placement_ids": [
+            "switch"
+          ]
+        },
+        {
+          "id": "step-3",
+          "title": {
+            "en": "Place B1",
+            "zh": "放置 B1"
+          },
+          "instruction": {
+            "en": "Keep the power off. Match the highlighted snaps, orientation and layer.",
+            "zh": "保持开关关闭。对准图中高亮的扣点，核对方向和层次。"
+          },
+          "placement_ids": [
+            "battery"
+          ]
+        },
+        {
+          "id": "step-4",
+          "title": {
+            "en": "Place 3",
+            "zh": "放置 3"
+          },
+          "instruction": {
+            "en": "Keep the power off. Match the highlighted snaps, orientation and layer.",
+            "zh": "保持开关关闭。对准图中高亮的扣点，核对方向和层次。"
+          },
+          "placement_ids": [
+            "left"
+          ]
+        },
+        {
+          "id": "step-5",
+          "title": {
+            "en": "Place 2",
+            "zh": "放置 2"
+          },
+          "instruction": {
+            "en": "Keep the power off. Match the highlighted snaps, orientation and layer.",
+            "zh": "保持开关关闭。对准图中高亮的扣点，核对方向和层次。"
+          },
+          "placement_ids": [
+            "top-left"
+          ]
+        },
+        {
+          "id": "step-6",
+          "title": {
+            "en": "Place 2",
+            "zh": "放置 2"
+          },
+          "instruction": {
+            "en": "Keep the power off. Match the highlighted snaps, orientation and layer.",
+            "zh": "保持开关关闭。对准图中高亮的扣点，核对方向和层次。"
+          },
+          "placement_ids": [
+            "top-right"
+          ]
+        },
+        {
+          "id": "step-7",
+          "title": {
+            "en": "Place 2",
+            "zh": "放置 2"
+          },
+          "instruction": {
+            "en": "Keep the power off. Match the highlighted snaps, orientation and layer.",
+            "zh": "保持开关关闭。对准图中高亮的扣点，核对方向和层次。"
+          },
+          "placement_ids": [
+            "bottom-left"
+          ]
+        },
+        {
+          "id": "step-8",
+          "title": {
+            "en": "Place 2",
+            "zh": "放置 2"
+          },
+          "instruction": {
+            "en": "Keep the power off. Match the highlighted snaps, orientation and layer.",
+            "zh": "保持开关关闭。对准图中高亮的扣点，核对方向和层次。"
+          },
+          "placement_ids": [
+            "bottom-right"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "alarm-sound",
+      "title": {
+        "en": "My little alarm",
+        "zh": "我的小小报警器"
+      },
+      "description": {
+        "en": "Connect a sound module and hear its alarm.",
+        "zh": "把报警模块和扬声器连接起来。"
+      },
+      "explanation": {
+        "en": "U2 generates a changing signal. The speaker turns it into sound; S1 controls the circuit.",
+        "zh": "U2 产生变化的信号，扬声器把它变成声音，S1 控制电路开关。"
+      },
+      "test_instruction": {
+        "en": "Check the diagram with an adult. Keep the speaker away from ears, briefly turn S1 on, then off.",
+        "zh": "和大人核对搭建图。扬声器远离耳朵，短暂打开 S1 听一听，再关上。"
+      },
+      "troubleshooting": [
+        {
+          "en": "Switch off. Check IN2, OUT and the minus terminal on U2 against the drawing.",
+          "zh": "先关开关。对照图检查 U2 的 IN2、OUT 和负极接点。"
+        }
+      ],
+      "source": {
+        "url": "https://www.elenco.com/wp-content/uploads/2011/03/SC-100_REV-H_071712.pdf",
+        "title": "Elenco 753102 REV-H (2012)",
+        "page": 17,
+        "sha256": "2a49a880eed07f7cd32a80dc273d1d5b296a5576852a3c9dacf2aed6b4ac3155"
+      },
+      "placements": [
+        {
+          "id": "top",
+          "part_id": "5",
+          "x": 0,
+          "y": 0,
+          "rotation": 0,
+          "layer": 1
+        },
+        {
+          "id": "bottom",
+          "part_id": "4",
+          "x": 0,
+          "y": 4,
+          "rotation": 0,
+          "layer": 1
+        },
+        {
+          "id": "alarm",
+          "part_id": "U2",
+          "x": 0,
+          "y": 2,
+          "rotation": 0,
+          "layer": 1
+        },
+        {
+          "id": "speaker",
+          "part_id": "SP",
+          "x": 3,
+          "y": 1,
+          "rotation": 90,
+          "layer": 1
+        },
+        {
+          "id": "battery",
+          "part_id": "B1",
+          "x": 4,
+          "y": 2,
+          "rotation": 0,
+          "layer": 1
+        },
+        {
+          "id": "switch",
+          "part_id": "S1",
+          "x": 4,
+          "y": 0,
+          "rotation": 90,
+          "layer": 2
+        },
+        {
+          "id": "control",
+          "part_id": "3",
+          "x": 1,
+          "y": 0,
+          "rotation": 90,
+          "layer": 2
+        },
+        {
+          "id": "speaker-plus",
+          "part_id": "2",
+          "x": 3,
+          "y": 0,
+          "rotation": 90,
+          "layer": 2
+        },
+        {
+          "id": "speaker-out",
+          "part_id": "2",
+          "x": 2,
+          "y": 3,
+          "rotation": 0,
+          "layer": 2
+        },
+        {
+          "id": "return",
+          "part_id": "2",
+          "x": 0,
+          "y": 3,
+          "rotation": 90,
+          "layer": 2
+        },
+        {
+          "id": "battery-return",
+          "part_id": "2",
+          "x": 3,
+          "y": 4,
+          "rotation": 0,
+          "layer": 2
+        }
+      ],
+      "expected_nets": [
+        [
+          "switch:a",
+          "alarm:IN2",
+          "speaker:a"
+        ],
+        [
+          "switch:b",
+          "battery:+"
+        ],
+        [
+          "speaker:b",
+          "alarm:OUT"
+        ],
+        [
+          "alarm:-",
+          "battery:-"
+        ],
+        [
+          "alarm:IN1"
+        ],
+        [
+          "alarm:IN3"
+        ]
+      ],
+      "steps": [
+        {
+          "id": "step-1",
+          "title": {
+            "en": "Place 5",
+            "zh": "放置 5"
+          },
+          "instruction": {
+            "en": "Keep the power off. Match the highlighted snaps, orientation and layer.",
+            "zh": "保持开关关闭。对准图中高亮的扣点，核对方向和层次。"
+          },
+          "placement_ids": [
+            "top"
+          ]
+        },
+        {
+          "id": "step-2",
+          "title": {
+            "en": "Place 4",
+            "zh": "放置 4"
+          },
+          "instruction": {
+            "en": "Keep the power off. Match the highlighted snaps, orientation and layer.",
+            "zh": "保持开关关闭。对准图中高亮的扣点，核对方向和层次。"
+          },
+          "placement_ids": [
+            "bottom"
+          ]
+        },
+        {
+          "id": "step-3",
+          "title": {
+            "en": "Place U2",
+            "zh": "放置 U2"
+          },
+          "instruction": {
+            "en": "Keep the power off. Match the highlighted snaps, orientation and layer.",
+            "zh": "保持开关关闭。对准图中高亮的扣点，核对方向和层次。"
+          },
+          "placement_ids": [
+            "alarm"
+          ]
+        },
+        {
+          "id": "step-4",
+          "title": {
+            "en": "Place SP",
+            "zh": "放置 SP"
+          },
+          "instruction": {
+            "en": "Keep the power off. Match the highlighted snaps, orientation and layer.",
+            "zh": "保持开关关闭。对准图中高亮的扣点，核对方向和层次。"
+          },
+          "placement_ids": [
+            "speaker"
+          ]
+        },
+        {
+          "id": "step-5",
+          "title": {
+            "en": "Place B1",
+            "zh": "放置 B1"
+          },
+          "instruction": {
+            "en": "Keep the power off. Match the highlighted snaps, orientation and layer.",
+            "zh": "保持开关关闭。对准图中高亮的扣点，核对方向和层次。"
+          },
+          "placement_ids": [
+            "battery"
+          ]
+        },
+        {
+          "id": "step-6",
+          "title": {
+            "en": "Place S1",
+            "zh": "放置 S1"
+          },
+          "instruction": {
+            "en": "Keep the power off. Match the highlighted snaps, orientation and layer.",
+            "zh": "保持开关关闭。对准图中高亮的扣点，核对方向和层次。"
+          },
+          "placement_ids": [
+            "switch"
+          ]
+        },
+        {
+          "id": "step-7",
+          "title": {
+            "en": "Place 3",
+            "zh": "放置 3"
+          },
+          "instruction": {
+            "en": "Keep the power off. Match the highlighted snaps, orientation and layer.",
+            "zh": "保持开关关闭。对准图中高亮的扣点，核对方向和层次。"
+          },
+          "placement_ids": [
+            "control"
+          ]
+        },
+        {
+          "id": "step-8",
+          "title": {
+            "en": "Place 2",
+            "zh": "放置 2"
+          },
+          "instruction": {
+            "en": "Keep the power off. Match the highlighted snaps, orientation and layer.",
+            "zh": "保持开关关闭。对准图中高亮的扣点，核对方向和层次。"
+          },
+          "placement_ids": [
+            "speaker-plus"
+          ]
+        },
+        {
+          "id": "step-9",
+          "title": {
+            "en": "Place 2",
+            "zh": "放置 2"
+          },
+          "instruction": {
+            "en": "Keep the power off. Match the highlighted snaps, orientation and layer.",
+            "zh": "保持开关关闭。对准图中高亮的扣点，核对方向和层次。"
+          },
+          "placement_ids": [
+            "speaker-out"
+          ]
+        },
+        {
+          "id": "step-10",
+          "title": {
+            "en": "Place 2",
+            "zh": "放置 2"
+          },
+          "instruction": {
+            "en": "Keep the power off. Match the highlighted snaps, orientation and layer.",
+            "zh": "保持开关关闭。对准图中高亮的扣点，核对方向和层次。"
+          },
+          "placement_ids": [
+            "return"
+          ]
+        },
+        {
+          "id": "step-11",
+          "title": {
+            "en": "Place 2",
+            "zh": "放置 2"
+          },
+          "instruction": {
+            "en": "Keep the power off. Match the highlighted snaps, orientation and layer.",
+            "zh": "保持开关关闭。对准图中高亮的扣点，核对方向和层次。"
+          },
+          "placement_ids": [
+            "battery-return"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fm-radio",
+      "title": {
+        "en": "My tabletop radio",
+        "zh": "我的桌面收音机"
+      },
+      "description": {
+        "en": "Receive a broadcast and adjust its volume.",
+        "zh": "接收广播，调一调声音的大小。"
+      },
+      "explanation": {
+        "en": "FM receives a broadcast. C4 carries the audio signal to RV; U4 amplifies it for SP. The two battery holders are connected exactly as shown.",
+        "zh": "FM 接收广播，C4 将声音信号传给 RV，U4 放大信号，让 SP 发声。两个电池盒必须按图中的方式连接。"
+      },
+      "test_instruction": {
+        "en": "With an adult, check every layer and battery direction. Turn the volume down. Turn S1 on, press R once, then T to find a station. Adjust RV gently and switch off after listening.",
+        "zh": "和大人核对每一层和电池方向，先调低音量。打开 S1，按一次 R，再按 T 找电台，轻轻调整 RV。听完关闭开关。"
+      },
+      "troubleshooting": [
+        {
+          "en": "Switch off before checking FM + / OUT / − and the two battery holders. Never add another power source.",
+          "zh": "检查前先关开关。核对 FM 的 +、OUT、− 和两个电池盒，不添加其他电源。"
+        },
+        {
+          "en": "Reception also depends on your location and available stations; a correct diagram cannot guarantee reception.",
+          "zh": "能否收到广播也取决于所在位置和当地电台；搭建图正确不等于一定能收到信号。"
+        }
+      ],
+      "source": {
+        "url": "https://www.elenco.com/wp-content/uploads/2017/11/UC60.pdf",
+        "title": "Elenco 753104 REV-D (2012), project 307; combined PDF",
+        "page": 85,
+        "sha256": "9ead0e558c6ca2ebde6e75e3c1d2d71a30053015a67d9ca3a5a5dcef3c9d585f"
+      },
+      "placements": [
+        {
+          "id": "fm",
+          "part_id": "FM",
+          "x": 1,
+          "y": 0,
+          "rotation": 0,
+          "layer": 1
+        },
+        {
+          "id": "supply",
+          "part_id": "6",
+          "x": 3,
+          "y": 0,
+          "rotation": 0,
+          "layer": 1
+        },
+        {
+          "id": "capacitor",
+          "part_id": "C4",
+          "x": 2,
+          "y": 1,
+          "rotation": 0,
+          "layer": 1
+        },
+        {
+          "id": "amp",
+          "part_id": "U4",
+          "x": 5,
+          "y": 3,
+          "rotation": 270,
+          "layer": 1
+        },
+        {
+          "id": "battery-upper",
+          "part_id": "B1",
+          "x": 8,
+          "y": 1,
+          "rotation": 0,
+          "layer": 1
+        },
+        {
+          "id": "battery-lower",
+          "part_id": "B1",
+          "x": 8,
+          "y": 5,
+          "rotation": 90,
+          "layer": 1
+        },
+        {
+          "id": "ground",
+          "part_id": "5",
+          "x": 1,
+          "y": 5,
+          "rotation": 0,
+          "layer": 1
+        },
+        {
+          "id": "rv-ground",
+          "part_id": "2",
+          "x": 4,
+          "y": 3,
+          "rotation": 90,
+          "layer": 1
+        },
+        {
+          "id": "spacer",
+          "part_id": "1",
+          "x": 2,
+          "y": 3,
+          "rotation": 0,
+          "layer": 1
+        },
+        {
+          "id": "fm-supply",
+          "part_id": "3",
+          "x": 1,
+          "y": 0,
+          "rotation": 0,
+          "layer": 2
+        },
+        {
+          "id": "amp-supply",
+          "part_id": "2",
+          "x": 6,
+          "y": 0,
+          "rotation": 90,
+          "layer": 2
+        },
+        {
+          "id": "battery-supply",
+          "part_id": "2",
+          "x": 8,
+          "y": 0,
+          "rotation": 90,
+          "layer": 2
+        },
+        {
+          "id": "audio",
+          "part_id": "2",
+          "x": 1,
+          "y": 1,
+          "rotation": 0,
+          "layer": 2
+        },
+        {
+          "id": "fm-ground",
+          "part_id": "4",
+          "x": 1,
+          "y": 2,
+          "rotation": 90,
+          "layer": 2
+        },
+        {
+          "id": "resistor-ground",
+          "part_id": "3",
+          "x": 2,
+          "y": 3,
+          "rotation": 90,
+          "layer": 2
+        },
+        {
+          "id": "amp-ground",
+          "part_id": "3",
+          "x": 5,
+          "y": 3,
+          "rotation": 90,
+          "layer": 2
+        },
+        {
+          "id": "rv-bottom",
+          "part_id": "2",
+          "x": 4,
+          "y": 4,
+          "rotation": 90,
+          "layer": 2
+        },
+        {
+          "id": "volume",
+          "part_id": "RV",
+          "x": 4,
+          "y": 3,
+          "rotation": 270,
+          "layer": 2
+        },
+        {
+          "id": "speaker",
+          "part_id": "SP",
+          "x": 6,
+          "y": 3,
+          "rotation": 90,
+          "layer": 2
+        },
+        {
+          "id": "switch",
+          "part_id": "S1",
+          "x": 8,
+          "y": 3,
+          "rotation": 90,
+          "layer": 2
+        },
+        {
+          "id": "resistor",
+          "part_id": "R3",
+          "x": 2,
+          "y": 1,
+          "rotation": 90,
+          "layer": 3
+        },
+        {
+          "id": "return-link",
+          "part_id": "2",
+          "x": 4,
+          "y": 3,
+          "rotation": 0,
+          "layer": 3
+        },
+        {
+          "id": "battery-link",
+          "part_id": "2",
+          "x": 5,
+          "y": 5,
+          "rotation": 0,
+          "layer": 3
+        }
+      ],
+      "expected_nets": [
+        [
+          "fm:+",
+          "amp:+",
+          "battery-upper:+"
+        ],
+        [
+          "fm:OUT",
+          "capacitor:+",
+          "resistor:a"
+        ],
+        [
+          "capacitor:-",
+          "volume:b"
+        ],
+        [
+          "volume:W",
+          "amp:INP"
+        ],
+        [
+          "fm:-",
+          "resistor:b",
+          "volume:a",
+          "amp:-",
+          "speaker:b",
+          "battery-lower:-"
+        ],
+        [
+          "amp:OUT",
+          "speaker:a"
+        ],
+        [
+          "battery-upper:-",
+          "switch:a"
+        ],
+        [
+          "switch:b",
+          "battery-lower:+"
+        ],
+        [
+          "amp:FIL"
+        ]
+      ],
+      "steps": [
+        {
+          "id": "step-1",
+          "title": {
+            "en": "Place FM",
+            "zh": "放置 FM"
+          },
+          "instruction": {
+            "en": "Keep the power off. Match the highlighted snaps, orientation and layer.",
+            "zh": "保持开关关闭。对准图中高亮的扣点，核对方向和层次。"
+          },
+          "placement_ids": [
+            "fm"
+          ]
+        },
+        {
+          "id": "step-2",
+          "title": {
+            "en": "Place 6",
+            "zh": "放置 6"
+          },
+          "instruction": {
+            "en": "Keep the power off. Match the highlighted snaps, orientation and layer.",
+            "zh": "保持开关关闭。对准图中高亮的扣点，核对方向和层次。"
+          },
+          "placement_ids": [
+            "supply"
+          ]
+        },
+        {
+          "id": "step-3",
+          "title": {
+            "en": "Place C4",
+            "zh": "放置 C4"
+          },
+          "instruction": {
+            "en": "Keep the power off. Match the highlighted snaps, orientation and layer.",
+            "zh": "保持开关关闭。对准图中高亮的扣点，核对方向和层次。"
+          },
+          "placement_ids": [
+            "capacitor"
+          ]
+        },
+        {
+          "id": "step-4",
+          "title": {
+            "en": "Place U4",
+            "zh": "放置 U4"
+          },
+          "instruction": {
+            "en": "Keep the power off. Match the highlighted snaps, orientation and layer.",
+            "zh": "保持开关关闭。对准图中高亮的扣点，核对方向和层次。"
+          },
+          "placement_ids": [
+            "amp"
+          ]
+        },
+        {
+          "id": "step-5",
+          "title": {
+            "en": "Place B1",
+            "zh": "放置 B1"
+          },
+          "instruction": {
+            "en": "Keep the power off. Match the highlighted snaps, orientation and layer.",
+            "zh": "保持开关关闭。对准图中高亮的扣点，核对方向和层次。"
+          },
+          "placement_ids": [
+            "battery-upper"
+          ]
+        },
+        {
+          "id": "step-6",
+          "title": {
+            "en": "Place B1",
+            "zh": "放置 B1"
+          },
+          "instruction": {
+            "en": "Keep the power off. Match the highlighted snaps, orientation and layer.",
+            "zh": "保持开关关闭。对准图中高亮的扣点，核对方向和层次。"
+          },
+          "placement_ids": [
+            "battery-lower"
+          ]
+        },
+        {
+          "id": "step-7",
+          "title": {
+            "en": "Place 5",
+            "zh": "放置 5"
+          },
+          "instruction": {
+            "en": "Keep the power off. Match the highlighted snaps, orientation and layer.",
+            "zh": "保持开关关闭。对准图中高亮的扣点，核对方向和层次。"
+          },
+          "placement_ids": [
+            "ground"
+          ]
+        },
+        {
+          "id": "step-8",
+          "title": {
+            "en": "Place 2",
+            "zh": "放置 2"
+          },
+          "instruction": {
+            "en": "Keep the power off. Match the highlighted snaps, orientation and layer.",
+            "zh": "保持开关关闭。对准图中高亮的扣点，核对方向和层次。"
+          },
+          "placement_ids": [
+            "rv-ground"
+          ]
+        },
+        {
+          "id": "step-9",
+          "title": {
+            "en": "Place 1",
+            "zh": "放置 1"
+          },
+          "instruction": {
+            "en": "Keep the power off. Match the highlighted snaps, orientation and layer.",
+            "zh": "保持开关关闭。对准图中高亮的扣点，核对方向和层次。"
+          },
+          "placement_ids": [
+            "spacer"
+          ]
+        },
+        {
+          "id": "step-10",
+          "title": {
+            "en": "Place 3",
+            "zh": "放置 3"
+          },
+          "instruction": {
+            "en": "Keep the power off. Match the highlighted snaps, orientation and layer.",
+            "zh": "保持开关关闭。对准图中高亮的扣点，核对方向和层次。"
+          },
+          "placement_ids": [
+            "fm-supply"
+          ]
+        },
+        {
+          "id": "step-11",
+          "title": {
+            "en": "Place 2",
+            "zh": "放置 2"
+          },
+          "instruction": {
+            "en": "Keep the power off. Match the highlighted snaps, orientation and layer.",
+            "zh": "保持开关关闭。对准图中高亮的扣点，核对方向和层次。"
+          },
+          "placement_ids": [
+            "amp-supply"
+          ]
+        },
+        {
+          "id": "step-12",
+          "title": {
+            "en": "Place 2",
+            "zh": "放置 2"
+          },
+          "instruction": {
+            "en": "Keep the power off. Match the highlighted snaps, orientation and layer.",
+            "zh": "保持开关关闭。对准图中高亮的扣点，核对方向和层次。"
+          },
+          "placement_ids": [
+            "battery-supply"
+          ]
+        },
+        {
+          "id": "step-13",
+          "title": {
+            "en": "Place 2",
+            "zh": "放置 2"
+          },
+          "instruction": {
+            "en": "Keep the power off. Match the highlighted snaps, orientation and layer.",
+            "zh": "保持开关关闭。对准图中高亮的扣点，核对方向和层次。"
+          },
+          "placement_ids": [
+            "audio"
+          ]
+        },
+        {
+          "id": "step-14",
+          "title": {
+            "en": "Place 4",
+            "zh": "放置 4"
+          },
+          "instruction": {
+            "en": "Keep the power off. Match the highlighted snaps, orientation and layer.",
+            "zh": "保持开关关闭。对准图中高亮的扣点，核对方向和层次。"
+          },
+          "placement_ids": [
+            "fm-ground"
+          ]
+        },
+        {
+          "id": "step-15",
+          "title": {
+            "en": "Place 3",
+            "zh": "放置 3"
+          },
+          "instruction": {
+            "en": "Keep the power off. Match the highlighted snaps, orientation and layer.",
+            "zh": "保持开关关闭。对准图中高亮的扣点，核对方向和层次。"
+          },
+          "placement_ids": [
+            "resistor-ground"
+          ]
+        },
+        {
+          "id": "step-16",
+          "title": {
+            "en": "Place 3",
+            "zh": "放置 3"
+          },
+          "instruction": {
+            "en": "Keep the power off. Match the highlighted snaps, orientation and layer.",
+            "zh": "保持开关关闭。对准图中高亮的扣点，核对方向和层次。"
+          },
+          "placement_ids": [
+            "amp-ground"
+          ]
+        },
+        {
+          "id": "step-17",
+          "title": {
+            "en": "Place 2",
+            "zh": "放置 2"
+          },
+          "instruction": {
+            "en": "Keep the power off. Match the highlighted snaps, orientation and layer.",
+            "zh": "保持开关关闭。对准图中高亮的扣点，核对方向和层次。"
+          },
+          "placement_ids": [
+            "rv-bottom"
+          ]
+        },
+        {
+          "id": "step-18",
+          "title": {
+            "en": "Place RV",
+            "zh": "放置 RV"
+          },
+          "instruction": {
+            "en": "Keep the power off. Match the highlighted snaps, orientation and layer.",
+            "zh": "保持开关关闭。对准图中高亮的扣点，核对方向和层次。"
+          },
+          "placement_ids": [
+            "volume"
+          ]
+        },
+        {
+          "id": "step-19",
+          "title": {
+            "en": "Place SP",
+            "zh": "放置 SP"
+          },
+          "instruction": {
+            "en": "Keep the power off. Match the highlighted snaps, orientation and layer.",
+            "zh": "保持开关关闭。对准图中高亮的扣点，核对方向和层次。"
+          },
+          "placement_ids": [
+            "speaker"
+          ]
+        },
+        {
+          "id": "step-20",
+          "title": {
+            "en": "Place S1",
+            "zh": "放置 S1"
+          },
+          "instruction": {
+            "en": "Keep the power off. Match the highlighted snaps, orientation and layer.",
+            "zh": "保持开关关闭。对准图中高亮的扣点，核对方向和层次。"
+          },
+          "placement_ids": [
+            "switch"
+          ]
+        },
+        {
+          "id": "step-21",
+          "title": {
+            "en": "Place R3",
+            "zh": "放置 R3"
+          },
+          "instruction": {
+            "en": "Keep the power off. Match the highlighted snaps, orientation and layer.",
+            "zh": "保持开关关闭。对准图中高亮的扣点，核对方向和层次。"
+          },
+          "placement_ids": [
+            "resistor"
+          ]
+        },
+        {
+          "id": "step-22",
+          "title": {
+            "en": "Place 2",
+            "zh": "放置 2"
+          },
+          "instruction": {
+            "en": "Keep the power off. Match the highlighted snaps, orientation and layer.",
+            "zh": "保持开关关闭。对准图中高亮的扣点，核对方向和层次。"
+          },
+          "placement_ids": [
+            "return-link"
+          ]
+        },
+        {
+          "id": "step-23",
+          "title": {
+            "en": "Place 2",
+            "zh": "放置 2"
+          },
+          "instruction": {
+            "en": "Keep the power off. Match the highlighted snaps, orientation and layer.",
+            "zh": "保持开关关闭。对准图中高亮的扣点，核对方向和层次。"
+          },
+          "placement_ids": [
+            "battery-link"
+          ]
+        }
+      ]
+    }
+  ],
+  "preparation": [
+    {
+      "en": "Use the exact SC-500 parts and the battery arrangement for this project. This catalogue includes only the parts used in these three projects.",
+      "zh": "使用 SC-500 对应元件和本项目指定的电池连接方式。当前目录只收录这三个项目需要的元件。"
+    },
+    {
+      "en": "Build with the switch off and adult supervision. Follow the original kit instructions; do not connect an external power supply.",
+      "zh": "在大人陪同下搭建，保持开关关闭。遵循套件原说明书，不接外部电源。"
+    },
+    {
+      "en": "Diagrams use original simplified shapes. Identify parts by ID, terminal marks and layout, as appearances can vary.",
+      "zh": "图中使用简化外形。请按元件编号、接点标记和布局辨认，实物外观可能不同。"
+    }
+  ]
+}

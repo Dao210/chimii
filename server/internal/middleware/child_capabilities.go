@@ -22,7 +22,7 @@ func ChildCapabilities(next http.Handler) http.Handler {
 			((path == "/api/workspaces" || path == "/api/workspaces/") && r.Method == http.MethodGet) ||
 			(path == "/api/child-mode" && r.Method == http.MethodGet) ||
 			(path == "/api/child-mode/exit" && r.Method == http.MethodPost) ||
-			childBuildCapabilityAllowed(r.Method, path)
+			childBuildCapabilityAllowed(r.Method, path) || childCircuitCapabilityAllowed(r.Method, path)
 		if !allowed {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusForbidden)
@@ -31,6 +31,20 @@ func ChildCapabilities(next http.Handler) http.Handler {
 		}
 		next.ServeHTTP(w, r)
 	})
+}
+
+func childCircuitCapabilityAllowed(method, path string) bool {
+	if path == "/api/circuit/catalog" {
+		return method == http.MethodGet
+	}
+	if path == "/api/circuit/creations" {
+		return method == http.MethodGet || method == http.MethodPost
+	}
+	if !strings.HasPrefix(path, "/api/circuit/creations/") {
+		return false
+	}
+	segments := strings.Split(strings.TrimPrefix(path, "/api/circuit/creations/"), "/")
+	return segments[0] != "" && ((len(segments) == 1 && method == http.MethodGet) || (len(segments) == 2 && segments[1] == "progress" && method == http.MethodPut))
 }
 
 func childBuildCapabilityAllowed(method, path string) bool {

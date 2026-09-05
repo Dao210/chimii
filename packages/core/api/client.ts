@@ -1,3 +1,4 @@
+import { CircuitCatalogSchema, CircuitCreationSchema, CircuitListSchema, parseCircuit, type CreateCircuitInput, type CircuitProgressInput } from "../circuit/schemas";
 import type {
   Issue,
   IssuePriority,
@@ -3102,6 +3103,22 @@ export class ApiClient {
       method: "POST",
       body: JSON.stringify({ token }),
     });
+  }
+
+  async getCircuitCatalog() {
+    return parseCircuit(await this.fetch<unknown>("/api/circuit/catalog"), CircuitCatalogSchema, "GET /api/circuit/catalog");
+  }
+  async listCircuitCreations() {
+    return parseCircuit(await this.fetch<unknown>("/api/circuit/creations"), CircuitListSchema, "GET /api/circuit/creations");
+  }
+  async getCircuitCreation(id: string) {
+    return parseCircuit(await this.fetch<unknown>(`/api/circuit/creations/${encodeURIComponent(id)}`), CircuitCreationSchema, "GET /api/circuit/creations/{id}");
+  }
+  async createCircuit(input: CreateCircuitInput) {
+    return parseCircuit(await this.fetch<unknown>("/api/circuit/creations", { method: "POST", body: JSON.stringify(input) }), CircuitCreationSchema, "POST /api/circuit/creations");
+  }
+  async updateCircuitProgress(id: string, input: CircuitProgressInput) {
+    return parseCircuit(await this.fetch<unknown>(`/api/circuit/creations/${encodeURIComponent(id)}/progress`, { method: "PUT", body: JSON.stringify(input) }), CircuitCreationSchema, "PUT /api/circuit/creations/{id}/progress");
   }
 
   // Build Studio

@@ -15,6 +15,15 @@ func TestChildCapabilitiesAllowsOnlyChildProductSurface(t *testing.T) {
 		want   int
 	}{
 		{http.MethodPost, "/api/build/sessions", http.StatusNoContent},
+		{http.MethodGet, "/api/circuit/catalog", http.StatusNoContent},
+		{http.MethodGet, "/api/circuit/creations", http.StatusNoContent},
+		{http.MethodPost, "/api/circuit/creations", http.StatusNoContent},
+		{http.MethodGet, "/api/circuit/creations/one", http.StatusNoContent},
+		{http.MethodPut, "/api/circuit/creations/one/progress", http.StatusNoContent},
+		{http.MethodDelete, "/api/circuit/creations/one", http.StatusForbidden},
+		{http.MethodPut, "/api/circuit/catalog", http.StatusForbidden},
+		{http.MethodPut, "/api/circuit/creations/one/document", http.StatusForbidden},
+		{http.MethodPut, "/api/circuit/creations/one/progress/extra", http.StatusForbidden},
 		{http.MethodGet, "/api/build/catalog", http.StatusNoContent},
 		{http.MethodGet, "/api/build/catalog/parts", http.StatusNoContent},
 		{http.MethodGet, "/api/build/catalog/ldraw-official-2026-08-d2a695/parts/3001.dat", http.StatusNoContent},

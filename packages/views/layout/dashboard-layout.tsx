@@ -37,7 +37,7 @@ export function DashboardLayout({
   const { pathname, replace } = useNavigation();
   useEffect(() => {
     if (!isChildMode) return;
-    const allowed = pathname === workspacePaths.build() || pathname === workspacePaths.block() || pathname.startsWith(`${workspacePaths.creations()}/`) || pathname === workspacePaths.creations();
+    const allowed = pathname === workspacePaths.build() || pathname === workspacePaths.block() || pathname.startsWith(`${workspacePaths.creations()}/`) || pathname === workspacePaths.creations() || pathname === workspacePaths.circuit() || pathname.startsWith(`${workspacePaths.circuit()}/`);
     if (!allowed) replace(workspacePaths.creations());
   }, [isChildMode, pathname, replace, workspacePaths]);
   return (

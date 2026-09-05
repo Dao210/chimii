@@ -507,6 +507,22 @@ type ChildSession struct {
 	CreatedAt         pgtype.Timestamptz `json:"created_at"`
 }
 
+type CircuitCreation struct {
+	ID               pgtype.UUID        `json:"id"`
+	WorkspaceID      pgtype.UUID        `json:"workspace_id"`
+	CreatorUserID    pgtype.UUID        `json:"creator_user_id"`
+	ChildProfileID   pgtype.UUID        `json:"child_profile_id"`
+	ActorKey         string             `json:"actor_key"`
+	ClientRequestID  pgtype.UUID        `json:"client_request_id"`
+	RequestHash      string             `json:"request_hash"`
+	Document         []byte             `json:"document"`
+	CurrentStep      int32              `json:"current_step"`
+	Observation      string             `json:"observation"`
+	ProgressRevision int32              `json:"progress_revision"`
+	CreatedAt        pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt        pgtype.Timestamptz `json:"updated_at"`
+}
+
 type ClientUsageDaily struct {
 	UserID          pgtype.UUID        `json:"user_id"`
 	ClientType      string             `json:"client_type"`

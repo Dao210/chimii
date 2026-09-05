@@ -1099,6 +1099,14 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 				r.Post("/{id}/enter", h.EnterChildMode)
 			})
 
+			r.Route("/api/circuit", func(r chi.Router) {
+				r.Get("/catalog", h.GetCircuitCatalog)
+				r.Post("/creations", h.CreateCircuitCreation)
+				r.Get("/creations", h.ListCircuitCreations)
+				r.Get("/creations/{id}", h.GetCircuitCreation)
+				r.Put("/creations/{id}/progress", h.UpdateCircuitProgress)
+			})
+
 			// Build Studio: child-language prompt -> deterministic, inventory-
 			// validated construction plan. The worker persists progress in
 			// Postgres; clients poll the session while it is queued/generating.

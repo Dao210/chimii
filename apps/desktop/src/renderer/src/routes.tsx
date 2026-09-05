@@ -32,6 +32,8 @@ import { UpdatesSettingsTab } from "./components/updates-settings-tab";
 import { WorkspaceRouteLayout } from "./components/workspace-route-layout";
 import { DesktopRouteErrorPage } from "./components/route-error-page";
 import { BlockPage, BuildPage, CreationsPage } from "@chimii/views/build";
+import { CircuitPage } from "@chimii/views/circuit";
+import { CircuitDetailRoute } from "./platform/circuit-detail-route";
 import { CreationDetailPage } from "./pages/creation-detail-page";
 
 /**
@@ -124,6 +126,16 @@ export const appRoutes: RouteObject[] = [
           // safety net instead of an in-router <Navigate> (MUL-4741
           // invariant 1: the router never self-navigates).
           { index: true, element: null },
+          {
+            path: "circuit",
+            element: <CircuitPage />,
+            handle: { title: "Electronics" },
+          },
+          {
+            path: "circuit/:id",
+            element: <CircuitDetailRoute />,
+            handle: { title: "Electronics" },
+          },
           {
             path: "build",
             element: <BuildPage />,

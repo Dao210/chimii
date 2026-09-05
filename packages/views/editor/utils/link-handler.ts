@@ -20,6 +20,7 @@ import { isGlobalPath, isReservedSlug } from "@chimii/core/paths";
  */
 const WORKSPACE_ROUTE_SEGMENTS = new Set([
   "build",
+  "circuit",
   "creations",
   "block",
   "usage",

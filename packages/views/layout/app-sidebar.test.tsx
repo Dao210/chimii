@@ -119,6 +119,7 @@ vi.mock("@chimii/core/paths", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@chimii/core/paths")>()),
   paths: { workspace: (slug: string) => ({
     build: () => `/${slug}/build`,
+    circuit: () => `/${slug}/circuit`,
     creations: () => `/${slug}/creations`,
     block: () => `/${slug}/block`,
     issues: () => `/${slug}/issues`,
@@ -126,6 +127,7 @@ vi.mock("@chimii/core/paths", async (importOriginal) => ({
   useCurrentWorkspace: () => ({ id: "ws-1", name: "Acme", slug: "acme" }),
   useWorkspacePaths: () => ({
     build: () => "/acme/build",
+    circuit: () => "/acme/circuit",
     creations: () => "/acme/creations",
     block: () => "/acme/block",
     inbox: () => "/acme/inbox",

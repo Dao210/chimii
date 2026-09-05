@@ -47,6 +47,7 @@ export interface TestTableIssue {
 
 export class TestApiClient {
   private token: string | null = null;
+  private authCookies: { name: string; value: string }[] = [];
   private workspaceSlug: string | null = null;
   private workspaceId: string | null = null;
   private email: string | null = null;
@@ -93,6 +94,12 @@ export class TestApiClient {
         throw new Error(`verify-code failed: ${verifyRes.status}`);
       }
       const data = await verifyRes.json();
+
+      this.authCookies = verifyRes.headers.getSetCookie().map(cookie => {
+        const pair = cookie.split(";", 1)[0]!;
+        const separator = pair.indexOf("=");
+        return { name: pair.slice(0, separator), value: pair.slice(separator + 1) };
+      });
 
       this.token = data.token;
       this.email = email;
@@ -343,6 +350,18 @@ export class TestApiClient {
 
   getToken() {
     return this.token;
+  }
+
+  getAuthCookies() {
+    return this.authCookies;
+  }
+
+  async deleteWorkspace() {
+    if (!this.workspaceId) return;
+    const response = await this.authedFetch(`/api/workspaces/${this.workspaceId}`, { method: "DELETE" });
+    if (!response.ok) throw new Error(`Workspace cleanup failed: ${response.status}`);
+    this.workspaceId = null;
+    this.workspaceSlug = null;
   }
 
   getEmail() {

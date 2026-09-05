@@ -19,6 +19,8 @@ function workspaceScoped(slug: string) {
   return {
     root: () => `${ws}/build`,
     build: () => `${ws}/build`,
+    circuit: () => `${ws}/circuit`,
+    circuitDetail: (id: string) => `${ws}/circuit/${encode(id)}`,
     creations: () => `${ws}/creations`,
     block: () => `${ws}/block`,
     creationDetail: (id: string) => `${ws}/creations/${encode(id)}`,
