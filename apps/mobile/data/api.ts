@@ -3,6 +3,10 @@ import { Platform } from "react-native";
 import Constants from "expo-constants";
 import { BuildSummaryListSchema, type BuildSummary } from "@chimii/core/build/schemas";
 import { CircuitListSchema, type CircuitList } from "@chimii/core/circuit/schemas";
+import { BuildCatalogSchema, BuildCatalogPartPageSchema, BrickInventorySchema, BuildSessionSchema, BuildCreationSchema, BuildProgressSchema } from "@chimii/core/build/schemas";
+import { CircuitKitsSchema, CircuitCatalogSchema, CircuitInventorySchema, CircuitCreationSchema, type CreateCircuitInput, type SaveCircuitInventoryInput, type CircuitProgressInput } from "@chimii/core/circuit/schemas";
+import type { BrickInventoryItem } from "@chimii/core/build/types";
+import { fromByteArray } from "base64-js";
 /**
  * Mobile-owned fetch wrapper. Mirrors the surface area of
  * packages/core/api/client.ts that mobile actually uses, but lives in
@@ -212,6 +216,54 @@ class ApiClient {
     return attachmentHeaders(uri, API_URL ?? "", this.token, getCurrentSlug());
   }
 
+  // Creation records fail closed: an invalid response is never an empty success.
+  private async makerRequest<T>(path: string, schema: ZodType<T>, init: RequestInit = {}): Promise<T> {
+    const raw = await this.fetch<unknown>(path, { ...init, signal: init.signal ?? undefined });
+    const value = parseWithFallback<T | null>(raw, schema, null, { endpoint: path });
+    if (value === null) throw new Error("作品数据不完整，请刷新后重试");
+    return value;
+  }
+
+  buildCatalog(opts?: { signal?: AbortSignal }) { return this.makerRequest("/api/build/catalog", BuildCatalogSchema, opts); }
+  buildParts(query: string, cursor: string, opts?: { signal?: AbortSignal }) {
+    return this.makerRequest(`/api/build/catalog/parts?capability=inventory&limit=40&query=${encodeURIComponent(query)}&cursor=${encodeURIComponent(cursor)}`, BuildCatalogPartPageSchema, opts);
+  }
+  brickInventory(opts?: { signal?: AbortSignal }) { return this.makerRequest("/api/build/inventory", BrickInventorySchema, opts); }
+  saveBrickInventory(input: { expected_revision: number; items: BrickInventoryItem[] }) {
+    return this.makerRequest("/api/build/inventory", BrickInventorySchema, { method: "PUT", body: JSON.stringify(input) });
+  }
+  createBuild(input: { prompt: string; client_request_id: string }) {
+    return this.makerRequest("/api/build/sessions", BuildSessionSchema, { method: "POST", body: JSON.stringify(input) });
+  }
+  buildSession(id: string, opts?: { signal?: AbortSignal }) { return this.makerRequest(`/api/build/sessions/${encodeURIComponent(id)}`, BuildSessionSchema, opts); }
+  answerBuild(id: string, input: { answers: Record<string, string>; revision: number }) {
+    return this.makerRequest(`/api/build/sessions/${encodeURIComponent(id)}/answers`, BuildSessionSchema, { method: "POST", body: JSON.stringify(input) });
+  }
+  cancelBuild(id: string, revision: number) {
+    return this.makerRequest(`/api/build/sessions/${encodeURIComponent(id)}/cancel`, BuildSessionSchema, { method: "POST", body: JSON.stringify({ revision }) });
+  }
+  buildCreation(id: string, opts?: { signal?: AbortSignal }) { return this.makerRequest(`/api/build/creations/${encodeURIComponent(id)}`, BuildCreationSchema, opts); }
+  buildProgress(id: string, opts?: { signal?: AbortSignal }) { return this.makerRequest(`/api/build/creations/${encodeURIComponent(id)}/progress`, BuildProgressSchema, opts); }
+  saveBuildProgress(id: string, input: { current_step: number; expected_revision: number; completed?: boolean }) {
+    return this.makerRequest(`/api/build/creations/${encodeURIComponent(id)}/progress`, BuildProgressSchema, { method: "PUT", body: JSON.stringify(input) });
+  }
+  async buildPartAsset(version: string, id: string, opts?: { signal?: AbortSignal }) {
+    const bytes = await this.fetch<ArrayBuffer>(`/api/build/catalog/${encodeURIComponent(version)}/parts/${encodeURIComponent(id)}`, opts, res => res.arrayBuffer());
+    if (bytes.byteLength < 12 || bytes.byteLength > 8 * 1024 * 1024 || new DataView(bytes).getUint32(0, true) !== 0x46546c67) throw new Error("无法读取零件模型");
+    return fromByteArray(new Uint8Array(bytes));
+  }
+  circuitKits(opts?: { signal?: AbortSignal }) { return this.makerRequest("/api/circuit/kits", CircuitKitsSchema, opts); }
+  circuitCatalog(kit: string, opts?: { signal?: AbortSignal }) { return this.makerRequest(`/api/circuit/catalog?kit_id=${encodeURIComponent(kit)}`, CircuitCatalogSchema, opts); }
+  circuitInventory(kit: string, opts?: { signal?: AbortSignal }) { return this.makerRequest(`/api/circuit/inventory/${encodeURIComponent(kit)}`, CircuitInventorySchema, opts); }
+  saveCircuitInventory(kit: string, input: SaveCircuitInventoryInput) {
+    return this.makerRequest(`/api/circuit/inventory/${encodeURIComponent(kit)}`, CircuitInventorySchema, { method: "PUT", body: JSON.stringify(input) });
+  }
+  createCircuit(input: CreateCircuitInput) { return this.makerRequest("/api/circuit/creations", CircuitCreationSchema, { method: "POST", body: JSON.stringify(input) }); }
+  circuitCreation(id: string, opts?: { signal?: AbortSignal }) { return this.makerRequest(`/api/circuit/creations/${encodeURIComponent(id)}`, CircuitCreationSchema, opts); }
+  saveCircuitProgress(id: string, input: CircuitProgressInput) {
+    return this.makerRequest(`/api/circuit/creations/${encodeURIComponent(id)}/progress`, CircuitCreationSchema, { method: "PUT", body: JSON.stringify(input) });
+  }
+
   setToken(token: string | null) {
     this.token = token;
   }
@@ -223,6 +275,7 @@ class ApiClient {
   private async fetch<T>(
     path: string,
     init: RequestInit & { signal?: AbortSignal } = {},
+    read?: (response: Response) => Promise<T>,
   ): Promise<T> {
     const rid = createRequestId();
     const start = Date.now();
@@ -299,8 +352,7 @@ class ApiClient {
       }
       throw err;
     }
-    clearTimeout(timeoutId);
-    callerSignal?.removeEventListener("abort", onCallerAbort);
+    try {
     const duration = Date.now() - start;
 
     if (!res.ok) {
@@ -338,7 +390,11 @@ class ApiClient {
     });
 
     if (res.status === 204) return undefined as T;
-    return (await res.json()) as T;
+    return read ? await read(res) : (await res.json()) as T;
+    } finally {
+      clearTimeout(timeoutId);
+      callerSignal?.removeEventListener("abort", onCallerAbort);
+    }
   }
 
   /**

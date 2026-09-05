@@ -139,6 +139,7 @@
     "./skills/frontmatter": "./skills/frontmatter.ts",
     "./skills/stores": "./skills/stores/index.ts",
     "./autopilots/stores": "./autopilots/stores/index.ts",
+    "./circuit/geometry": "./circuit/geometry.ts",
     "./circuit/schemas": "./circuit/schemas.ts",
     "./circuit": "./circuit/index.ts"
   },

@@ -15,7 +15,7 @@
  *   3 — iOS native > RNR > discuss).
  *
  * Switching itself stays minimal: `router.dismiss()` to close this sheet,
- * then `router.replace(/${slug}/inbox)`. The downstream WorkspaceRouteLayout
+ * then `router.replace(/${slug}/build)`. The downstream WorkspaceRouteLayout
  * handles `setCurrentWorkspace(slug, uuid)` on mount.
  */
 import {
@@ -54,7 +54,7 @@ export default function SwitchWorkspaceRoute() {
           text: "Switch",
           onPress: () => {
             router.dismiss();
-            router.replace(`/${ws.slug}/inbox`);
+            router.replace(`/${ws.slug}/build`);
           },
         },
       ],

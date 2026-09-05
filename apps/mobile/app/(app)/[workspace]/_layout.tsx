@@ -138,6 +138,9 @@ export default function WorkspaceLayout() {
       <RealtimeSubscriptions />
       <Stack>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="account" options={{ title: "家庭与账户" }} />
+        <Stack.Screen name="circuit-inventory" options={{ title: "确认我的套件" }} />
+        <Stack.Screen name="creation/[kind]/[id]/guide" options={{ title: "步骤引导" }} />
         <Stack.Screen
           name="issue/[id]"
           options={{

@@ -2,6 +2,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 export APP_ENV="${APP_ENV:-production}"
+node scripts/build-maker-renderer.mjs
 export NODE_ENV=production
 export EXPO_NO_DOTENV=1
 if [[ -f .signing/release.env && -z "${ANDROID_KEYSTORE_PATH:-}" ]]; then
@@ -13,7 +14,7 @@ for name in ANDROID_KEYSTORE_PATH ANDROID_KEYSTORE_PASSWORD ANDROID_KEY_ALIAS AN
   [[ -n "${!name:-}" ]] || { echo "Missing $name. See docs/android-release.md." >&2; exit 1; }
 done
 [[ -f "$ANDROID_KEYSTORE_PATH" ]] || { echo 'Release keystore does not exist' >&2; exit 1; }
-export ANDROID_VERSION_CODE="${ANDROID_VERSION_CODE:-1}"
+export ANDROID_VERSION_CODE="${ANDROID_VERSION_CODE:-2}"
 [[ "$ANDROID_VERSION_CODE" =~ ^[1-9][0-9]*$ ]] || { echo 'ANDROID_VERSION_CODE must be positive' >&2; exit 1; }
 # Explicit dotenv prevents a developer's local Expo environment entering a release.
 pnpm exec dotenv -o -e ".env.$APP_ENV" -- expo prebuild --platform android --no-install

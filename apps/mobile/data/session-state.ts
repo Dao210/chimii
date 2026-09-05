@@ -7,9 +7,11 @@ import { useNewProjectDraftStore } from "./stores/new-project-draft-store";
 import { useMentionDraftStore } from "./stores/mention-draft-store";
 import { useChatSelectStore } from "./chat-select-store";
 import { useCommentSelectStore } from "./comment-select-store";
+import { useMakerDraftStore } from "./stores/maker-draft-store";
 
 /** These drafts/selections belong to an account, unlike appearance preferences. */
 export function resetSessionState() {
+  useMakerDraftStore.getState().reset();
   useChatSessionPickerStore.setState(useChatSessionPickerStore.getInitialState(), true);
   useReplyTargetStore.setState(useReplyTargetStore.getInitialState(), true);
   useFailedCommentsStore.setState(useFailedCommentsStore.getInitialState(), true);

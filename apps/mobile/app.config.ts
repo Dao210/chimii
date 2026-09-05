@@ -22,7 +22,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
         ? "Chimii (Staging)"
         : "Chimii (Dev)",
     slug: "chimii-mobile",
-    version: "0.1.0",
+    version: "0.2.0",
     orientation: "portrait",
     userInterfaceStyle: "automatic",
     scheme: "chimii",
@@ -36,7 +36,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
         : isStaging
           ? "ai.chimii.mobile.staging"
           : "ai.chimii.mobile.dev",
-      versionCode: Number(process.env.ANDROID_VERSION_CODE ?? "1"),
+      versionCode: Number(process.env.ANDROID_VERSION_CODE ?? "2"),
       softwareKeyboardLayoutMode: "resize",
       // The release app does not use the development overlay window.
       blockedPermissions: isProd ? ["android.permission.SYSTEM_ALERT_WINDOW"] : [],
