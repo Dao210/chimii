@@ -1,6 +1,9 @@
 package ldrawsync
 
-import "testing"
+import (
+	"encoding/json"
+	"testing"
+)
 
 func TestEmbeddedStarterKitSemanticTiers(t *testing.T) {
 	_, manifest, err := EmbeddedCatalog()
@@ -39,5 +42,29 @@ func TestDeriveSimplePartConnections(t *testing.T) {
 	}
 	if got := len(semantics.ConnectionsJSON()); got == 0 {
 		t.Fatal("connections JSON is empty")
+	}
+}
+
+func TestLegacyWheelPairHasReviewedMechanicalSemantics(t *testing.T) {
+	holder := DerivePartSemantics(StarterKitPart{Rank: 1, LDrawID: "4600.dat", Name: "holder"})
+	wheel := DerivePartSemantics(StarterKitPart{Rank: 2, LDrawID: "4624c04.dat", Name: "wheel"})
+	if PartSemanticVersion < 2 || wheel.OriginYOffsetLDU != 13 {
+		t.Fatalf("stale wheel semantics: version=%d wheel=%#v", PartSemanticVersion, wheel)
+	}
+	var holderConnectors, wheelConnectors []semanticConnector
+	if err := json.Unmarshal(holder.ConnectionsJSON(), &holderConnectors); err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(wheel.ConnectionsJSON(), &wheelConnectors); err != nil {
+		t.Fatal(err)
+	}
+	pins := 0
+	for _, connector := range holderConnectors {
+		if connector.Kind == "wheel_pin" {
+			pins++
+		}
+	}
+	if pins != 2 || len(wheelConnectors) != 1 || wheelConnectors[0].Kind != "wheel_hole" {
+		t.Fatalf("invalid wheel pair semantics: holder=%#v wheel=%#v", holderConnectors, wheelConnectors)
 	}
 }

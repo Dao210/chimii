@@ -122,8 +122,12 @@ SELECT
     d.has_top_studs,
     d.has_bottom_receptors,
     r.ldraw_part_id,
+    r.semantic_version,
     r.origin_y_offset_ldu,
-    r.origin_center_z_offset_ldu
+    r.origin_center_z_offset_ldu,
+    r.bounds_json,
+    r.connections_json,
+    r.occupancy_json
 FROM part_definition AS d
 JOIN part_catalog_revision AS r ON r.part_key = d.part_key
 WHERE r.catalog_version = @catalog_version

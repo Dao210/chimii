@@ -2,10 +2,13 @@ package handler
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"sort"
 
 	buildstudio "github.com/chimii-ai/chimii/server/internal/build"
+	"github.com/chimii-ai/chimii/server/internal/ldrawsync"
 	db "github.com/chimii-ai/chimii/server/pkg/db/generated"
 	"github.com/jackc/pgx/v5"
 )
@@ -60,9 +63,17 @@ func loadBuildCatalogParts(ctx context.Context, queries *db.Queries, catalogVers
 	if err != nil {
 		return nil, err
 	}
+	// Catalog sync updates rows incrementally. Never expose a mixed or stale
+	// semantic generation to the compiler: keep serving the small baked,
+	// reviewed catalog until every creative row reaches the required version.
+	for _, row := range rows {
+		if row.SemanticVersion < ldrawsync.PartSemanticVersion {
+			return buildstudio.CatalogCopy(buildstudio.StarterCatalog), nil
+		}
+	}
 	parts := make(buildstudio.PartCatalog, len(rows))
 	for _, row := range rows {
-		parts[row.PartKey] = buildstudio.PartSpec{
+		part := buildstudio.PartSpec{
 			ID: row.PartKey, Name: row.Name, Category: row.Category,
 			PopularityRank: int(row.PopularityRank), CertificationLevel: row.CertificationLevel,
 			AutoBuildEligible: row.AutoBuildEligible, GeometryProfile: row.GeometryProfile,
@@ -72,6 +83,16 @@ func loadBuildCatalogParts(ctx context.Context, queries *db.Queries, catalogVers
 			HasBottomReceptors: row.HasBottomReceptors, OriginYOffsetLDU: int(row.OriginYOffsetLdu),
 			OriginCenterZOffsetLDU: int(row.OriginCenterZOffsetLdu),
 		}
+		if err := json.Unmarshal(row.BoundsJson, &part.Bounds); err != nil {
+			return nil, fmt.Errorf("decode bounds for %s: %w", row.PartKey, err)
+		}
+		if err := json.Unmarshal(row.ConnectionsJson, &part.Connectors); err != nil {
+			return nil, fmt.Errorf("decode connectors for %s: %w", row.PartKey, err)
+		}
+		if err := json.Unmarshal(row.OccupancyJson, &part.Occupancy); err != nil {
+			return nil, fmt.Errorf("decode occupancy for %s: %w", row.PartKey, err)
+		}
+		parts[row.PartKey] = part
 	}
 	if len(parts) == 0 {
 		return buildstudio.CatalogCopy(buildstudio.StarterCatalog), nil

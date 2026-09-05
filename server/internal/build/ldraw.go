@@ -30,7 +30,10 @@ func ExportMPD(plan BuildPlan) string {
 			sx, sz = sz, sx
 		}
 		x := p.X*20 + sx*10
-		y := -p.Y*8 + spec.OriginYOffsetLDU
+		// Placement Y is the lower occupancy bound, while official LDraw parts
+		// use their top surface as the vertical origin. Include the part height
+		// so stacked bottom receptors and top studs occupy the same plane.
+		y := -(p.Y+spec.PlatesY)*8 + spec.OriginYOffsetLDU
 		z := p.Z*20 + sz*10 + spec.OriginCenterZOffsetLDU
 		a, c, g, i := 1, 0, 0, 1
 		switch ((p.Rotation % 360) + 360) % 360 {

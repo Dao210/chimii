@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-const PartSemanticVersion = 1
+const PartSemanticVersion = 2
 
 type PartSemantics struct {
 	PartKey                string
@@ -29,11 +29,13 @@ type PartSemantics struct {
 }
 
 type semanticConnector struct {
-	Kind      string `json:"kind"`
-	X         int    `json:"x_ldu"`
-	Y         int    `json:"y_ldu"`
-	Z         int    `json:"z_ldu"`
-	Direction string `json:"direction"`
+	ID            string `json:"id,omitempty"`
+	Kind          string `json:"kind"`
+	X             int    `json:"x_ldu"`
+	Y             int    `json:"y_ldu"`
+	Z             int    `json:"z_ldu"`
+	Direction     string `json:"direction"`
+	CapacityUnits int    `json:"capacity_units,omitempty"`
 }
 
 type legacySemantic struct {
@@ -57,7 +59,7 @@ var legacySemantics = map[string]legacySemantic{
 	"3023.dat":    {PartKey: "plate-1x2", StudsX: 2, StudsZ: 1, PlatesY: 1, DefaultQuantity: 16, GeometryProfile: "stud_tube_rect"},
 	"3039.dat":    {PartKey: "slope-2x2", StudsX: 2, StudsZ: 2, PlatesY: 3, DefaultQuantity: 8, GeometryProfile: "legacy_special"},
 	"4600.dat":    {PartKey: "wheel-holder-2x2", StudsX: 2, StudsZ: 2, PlatesY: 1, DefaultQuantity: 4, GeometryProfile: "legacy_special"},
-	"4624c04.dat": {PartKey: "wheel", StudsX: 1, StudsZ: 1, PlatesY: 2, DefaultQuantity: 8, GeometryProfile: "legacy_special", OriginYOffsetLDU: 5, OriginCenterZOffsetLDU: 10},
+	"4624c04.dat": {PartKey: "wheel", StudsX: 1, StudsZ: 1, PlatesY: 2, DefaultQuantity: 8, GeometryProfile: "legacy_special", OriginYOffsetLDU: 13, OriginCenterZOffsetLDU: 10},
 }
 
 var (
@@ -83,7 +85,7 @@ func DerivePartSemantics(part StarterKitPart) PartSemantics {
 		semantics.GeometryProfile = legacy.GeometryProfile
 		semantics.StudsX, semantics.StudsZ, semantics.PlatesY = legacy.StudsX, legacy.StudsZ, legacy.PlatesY
 		semantics.DefaultQuantity = legacy.DefaultQuantity
-		semantics.HasTopStuds = id != "4624c04.dat"
+		semantics.HasTopStuds = id != "4624c04.dat" && id != "3039.dat"
 		semantics.HasBottomReceptors = id != "4624c04.dat"
 		semantics.OriginYOffsetLDU = legacy.OriginYOffsetLDU
 		semantics.OriginCenterZOffsetLDU = legacy.OriginCenterZOffsetLDU
@@ -136,29 +138,46 @@ func matchRect(pattern *regexp.Regexp, name string) (x, z, height int, ok bool) 
 }
 
 func (semantics PartSemantics) ConnectionsJSON() []byte {
+	if semantics.PartKey == "wheel" {
+		raw, _ := json.Marshal([]semanticConnector{{
+			ID: "wheel-hole", Kind: "wheel_hole", Direction: "north", CapacityUnits: 2,
+		}})
+		return raw
+	}
 	connectors := make([]semanticConnector, 0, semantics.StudsX*semantics.StudsZ*2)
 	for x := 0; x < semantics.StudsX; x++ {
 		for z := 0; z < semantics.StudsZ; z++ {
 			xLDU := x*20 - (semantics.StudsX-1)*10
 			zLDU := z*20 - (semantics.StudsZ-1)*10
 			if semantics.HasTopStuds {
-				connectors = append(connectors, semanticConnector{Kind: "stud", X: xLDU, Y: 0, Z: zLDU, Direction: "up"})
+				connectors = append(connectors, semanticConnector{ID: fmt.Sprintf("stud-%d-%d", x, z), Kind: "stud", X: xLDU, Z: zLDU, Direction: "up", CapacityUnits: 1})
 			}
 			if semantics.HasBottomReceptors {
-				connectors = append(connectors, semanticConnector{Kind: "receptor", X: xLDU, Y: semantics.PlatesY * 8, Z: zLDU, Direction: "down"})
+				connectors = append(connectors, semanticConnector{ID: fmt.Sprintf("receptor-%d-%d", x, z), Kind: "receptor", X: xLDU, Y: semantics.PlatesY * 8, Z: zLDU, Direction: "down", CapacityUnits: 1})
 			}
 		}
+	}
+	if semantics.PartKey == "wheel-holder-2x2" {
+		connectors = append(connectors,
+			semanticConnector{ID: "wheel-pin-west", Kind: "wheel_pin", X: -30, Y: 5, Direction: "west", CapacityUnits: 2},
+			semanticConnector{ID: "wheel-pin-east", Kind: "wheel_pin", X: 30, Y: 5, Direction: "east", CapacityUnits: 2},
+		)
 	}
 	raw, _ := json.Marshal(connectors)
 	return raw
 }
 
 func (semantics PartSemantics) OccupancyJSON() []byte {
+	groundContactProfile := "footprint"
+	if semantics.PartKey == "wheel" {
+		groundContactProfile = "wheel_point"
+	}
 	raw, _ := json.Marshal(map[string]any{
-		"profile":  semantics.GeometryProfile,
-		"studs_x":  semantics.StudsX,
-		"studs_z":  semantics.StudsZ,
-		"plates_y": semantics.PlatesY,
+		"profile":                semantics.GeometryProfile,
+		"ground_contact_profile": groundContactProfile,
+		"studs_x":                semantics.StudsX,
+		"studs_z":                semantics.StudsZ,
+		"plates_y":               semantics.PlatesY,
 	})
 	return raw
 }

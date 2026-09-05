@@ -265,8 +265,12 @@ SELECT
     d.has_top_studs,
     d.has_bottom_receptors,
     r.ldraw_part_id,
+    r.semantic_version,
     r.origin_y_offset_ldu,
-    r.origin_center_z_offset_ldu
+    r.origin_center_z_offset_ldu,
+    r.bounds_json,
+    r.connections_json,
+    r.occupancy_json
 FROM part_definition AS d
 JOIN part_catalog_revision AS r ON r.part_key = d.part_key
 WHERE r.catalog_version = $1
@@ -289,8 +293,12 @@ type ListCreativeCatalogPartsByVersionRow struct {
 	HasTopStuds            bool   `json:"has_top_studs"`
 	HasBottomReceptors     bool   `json:"has_bottom_receptors"`
 	LdrawPartID            string `json:"ldraw_part_id"`
+	SemanticVersion        int32  `json:"semantic_version"`
 	OriginYOffsetLdu       int32  `json:"origin_y_offset_ldu"`
 	OriginCenterZOffsetLdu int32  `json:"origin_center_z_offset_ldu"`
+	BoundsJson             []byte `json:"bounds_json"`
+	ConnectionsJson        []byte `json:"connections_json"`
+	OccupancyJson          []byte `json:"occupancy_json"`
 }
 
 func (q *Queries) ListCreativeCatalogPartsByVersion(ctx context.Context, catalogVersion string) ([]ListCreativeCatalogPartsByVersionRow, error) {
@@ -317,8 +325,12 @@ func (q *Queries) ListCreativeCatalogPartsByVersion(ctx context.Context, catalog
 			&i.HasTopStuds,
 			&i.HasBottomReceptors,
 			&i.LdrawPartID,
+			&i.SemanticVersion,
 			&i.OriginYOffsetLdu,
 			&i.OriginCenterZOffsetLdu,
+			&i.BoundsJson,
+			&i.ConnectionsJson,
+			&i.OccupancyJson,
 		); err != nil {
 			return nil, err
 		}

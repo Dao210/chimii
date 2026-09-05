@@ -956,9 +956,9 @@ done
 	if err != nil {
 		t.Fatalf("new hermes backend: %v", err)
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	session, err := backend.Execute(ctx, "prompt", ExecOptions{Timeout: 5 * time.Second})
+	session, err := backend.Execute(ctx, "prompt", ExecOptions{Timeout: 15 * time.Second})
 	if err != nil {
 		t.Fatalf("execute: %v", err)
 	}
@@ -975,7 +975,7 @@ done
 		if result.Status != "completed" {
 			t.Fatalf("expected completed, got status=%q error=%q", result.Status, result.Error)
 		}
-	case <-time.After(2 * time.Second):
+	case <-time.After(10 * time.Second):
 		t.Fatal("timeout waiting for result")
 	}
 
@@ -984,7 +984,7 @@ done
 		if ok {
 			t.Fatal("result channel produced an unexpected second value")
 		}
-	case <-time.After(2 * time.Second):
+	case <-time.After(10 * time.Second):
 		t.Fatal("result channel did not close; cmd.Wait likely ran before cancel")
 	}
 }

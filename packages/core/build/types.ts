@@ -1,3 +1,30 @@
+export interface BuildPartBounds {
+  min_x?: number;
+  min_y?: number;
+  min_z?: number;
+  max_x?: number;
+  max_y?: number;
+  max_z?: number;
+}
+
+export interface BuildPartConnector {
+  id?: string;
+  kind: string;
+  x_ldu: number;
+  y_ldu: number;
+  z_ldu: number;
+  direction: "up" | "down" | "north" | "east" | "south" | "west";
+  capacity_units?: number;
+}
+
+export interface BuildPartOccupancy {
+  profile?: string;
+  ground_contact_profile?: "footprint" | "wheel_point";
+  studs_x?: number;
+  studs_z?: number;
+  plates_y?: number;
+}
+
 export interface BuildPartSpec {
   id: string;
   name: string;
@@ -14,8 +41,13 @@ export interface BuildPartSpec {
   studs_z: number;
   plates_y: number;
   quantity: number;
+  has_top_studs?: boolean;
+  has_bottom_receptors?: boolean;
   origin_y_offset_ldu?: number;
   origin_center_z_offset_ldu?: number;
+  bounds?: BuildPartBounds;
+  connectors?: BuildPartConnector[];
+  occupancy?: BuildPartOccupancy;
 }
 
 export type BuildCatalogCapability = "all" | "auto_build" | "inventory" | "preview";
@@ -116,7 +148,11 @@ export interface BuildConnection {
   id: string;
   a_placement_id: string;
   b_placement_id: string;
+  a_connector_ids?: string[];
+  b_connector_ids?: string[];
   kind: string;
+  engaged_count?: number;
+  capacity_units?: number;
 }
 
 export interface BuildStep {
@@ -137,6 +173,8 @@ export interface BuildValidationReport {
   issues: BuildValidationIssue[];
   part_count: number;
   step_count: number;
+  connection_count?: number;
+  minimum_stability_margin_mils?: number;
   used_parts: Record<string, number>;
 }
 
@@ -144,6 +182,9 @@ export interface BuildPlan {
   version: number;
   kit_id: string;
   catalog_version: string;
+  connector_schema_version?: number;
+  physics_profile_version?: string;
+  generator_version?: string;
   module_library_version: string;
   compiler_version: string;
   validator_version: string;

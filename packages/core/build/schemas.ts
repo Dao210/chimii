@@ -9,6 +9,33 @@ import type {
   BuildSession,
 } from "./types";
 
+const PartBoundsSchema = z.looseObject({
+  min_x: z.number().optional(),
+  min_y: z.number().optional(),
+  min_z: z.number().optional(),
+  max_x: z.number().optional(),
+  max_y: z.number().optional(),
+  max_z: z.number().optional(),
+});
+
+const PartConnectorSchema = z.looseObject({
+  id: z.string().optional(),
+  kind: z.string(),
+  x_ldu: z.number().int(),
+  y_ldu: z.number().int(),
+  z_ldu: z.number().int(),
+  direction: z.enum(["up", "down", "north", "east", "south", "west"]),
+  capacity_units: z.number().int().positive().optional(),
+});
+
+const PartOccupancySchema = z.looseObject({
+  profile: z.string().optional(),
+  ground_contact_profile: z.enum(["footprint", "wheel_point"]).optional(),
+  studs_x: z.number().int().positive().optional(),
+  studs_z: z.number().int().positive().optional(),
+  plates_y: z.number().int().positive().optional(),
+});
+
 const PartSpecSchema = z.looseObject({
   id: z.string(),
   name: z.string(),
@@ -25,8 +52,13 @@ const PartSpecSchema = z.looseObject({
   studs_z: z.number().int().positive(),
   plates_y: z.number().int().positive(),
   quantity: z.number().int().nonnegative(),
+  has_top_studs: z.boolean().optional(),
+  has_bottom_receptors: z.boolean().optional(),
   origin_y_offset_ldu: z.number().int().optional(),
   origin_center_z_offset_ldu: z.number().int().optional(),
+  bounds: PartBoundsSchema.optional(),
+  connectors: z.array(PartConnectorSchema).optional(),
+  occupancy: PartOccupancySchema.optional(),
 });
 
 const CatalogBrowserPartSpecSchema = PartSpecSchema.extend({
@@ -134,6 +166,8 @@ export const BuildValidationSchema = z.looseObject({
     .transform((issues) => issues ?? []),
   part_count: z.number().int().nonnegative(),
   step_count: z.number().int().nonnegative(),
+  connection_count: z.number().int().nonnegative().optional(),
+  minimum_stability_margin_mils: z.number().int().optional(),
   used_parts: z.record(z.string(), z.number().int().nonnegative()),
 });
 
@@ -141,6 +175,9 @@ const BuildPlanSchema = z.looseObject({
   version: z.number().int().positive(),
   kit_id: z.string(),
   catalog_version: z.string(),
+  connector_schema_version: z.number().int().positive().optional(),
+  physics_profile_version: z.string().optional(),
+  generator_version: z.string().optional(),
   module_library_version: z.string(),
   compiler_version: z.string(),
   validator_version: z.string(),
@@ -152,7 +189,11 @@ const BuildPlanSchema = z.looseObject({
     id: z.string(),
     a_placement_id: z.string(),
     b_placement_id: z.string(),
+    a_connector_ids: z.array(z.string()).optional(),
+    b_connector_ids: z.array(z.string()).optional(),
     kind: z.string(),
+    engaged_count: z.number().int().positive().optional(),
+    capacity_units: z.number().int().positive().optional(),
   })),
   steps: z.array(z.looseObject({
     number: z.number().int().positive(),

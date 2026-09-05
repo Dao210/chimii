@@ -206,7 +206,7 @@ export function LDrawModelCanvas({
         const studsZ = rotated ? spec.studs_x : spec.studs_z;
         part.position.set(
           placement.x * 20 + studsX * 10,
-          placement.y * 8 - (spec.origin_y_offset_ldu ?? 0),
+          (placement.y + spec.plates_y) * 8 - (spec.origin_y_offset_ldu ?? 0),
           placement.z * 20 + studsZ * 10 + (spec.origin_center_z_offset_ldu ?? 0),
         );
         part.rotation.y = -three.MathUtils.degToRad(placement.rotation);

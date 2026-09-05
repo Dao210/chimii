@@ -10,10 +10,10 @@ import (
 )
 
 const (
-	defaultBuildDifficulty = 3
-	minRequestedPartCount  = 6
-	maxRequestedPartCount  = 200
-	BuildErrorCountUnsupported     = "BUILD_COUNT_UNSUPPORTED"
+	defaultBuildDifficulty          = 3
+	minRequestedPartCount           = 6
+	maxRequestedPartCount           = 200
+	BuildErrorCountUnsupported      = "BUILD_COUNT_UNSUPPORTED"
 	BuildErrorInsufficientInventory = "BUILD_INSUFFICIENT_INVENTORY"
 	BuildErrorStructureInvalid      = "BUILD_STRUCTURE_INVALID"
 )
@@ -197,97 +197,19 @@ func targetPartCount(recipe AssemblyRecipe) int {
 	return target
 }
 
-func scalePlacementsToTargetWithCatalog(placements []Placement, recipe AssemblyRecipe, inventory InventorySnapshot, catalog PartCatalog) ([]Placement, error) {
+func scalePlacementsToTargetWithCatalog(placements []Placement, recipe AssemblyRecipe, _ InventorySnapshot, _ PartCatalog) ([]Placement, error) {
 	target := targetPartCount(recipe)
 	if target == 0 || target == len(placements) {
 		return placements, nil
 	}
-	if target < minRequestedPartCount || target > maxRequestedPartCount || target < len(placements) {
+	// Difficulty and age describe the desired experience, but they must never be
+	// satisfied by stacking arbitrary duplicate parts. Until a certified module
+	// expander exists, deterministic templates keep their reviewed physical size.
+	if recipe.Metadata["part_count_source"] != "explicit" {
+		return placements, nil
+	}
+	if target < minRequestedPartCount || target > maxRequestedPartCount || target != len(placements) {
 		return nil, &BuildError{Code: BuildErrorCountUnsupported, Cause: fmt.Errorf("target %d is outside the supported range for %s", target, recipe.Archetype)}
 	}
-
-	scaled := append([]Placement(nil), placements...)
-	for len(scaled) < target {
-		candidate, ok := nextBudgetPlacement(scaled, recipe, inventory, catalog)
-		if !ok {
-			code := BuildErrorCountUnsupported
-			if inventory.Configured {
-				code = BuildErrorInsufficientInventory
-			}
-			return nil, &BuildError{Code: code, Cause: fmt.Errorf("cannot reach %d parts; stopped at %d", target, len(scaled))}
-		}
-		scaled = append(scaled, candidate)
-	}
-	return scaled, nil
-}
-
-func nextBudgetPlacement(placements []Placement, recipe AssemblyRecipe, inventory InventorySnapshot, catalog PartCatalog) (Placement, bool) {
-	used := map[inventoryKey]int{}
-	occupied := map[[3]int]bool{}
-	maxStep := 0
-	for _, placement := range placements {
-		used[inventoryKey{partID: placement.PartID, color: placement.Color}]++
-		maxStep = max(maxStep, placement.Step)
-		spec := catalog[placement.PartID]
-		size := orientedSizeWith(placement, catalog)
-		for x := placement.X; x < placement.X+size.x; x++ {
-			for z := placement.Z; z < placement.Z+size.z; z++ {
-				for y := placement.Y; y < placement.Y+spec.PlatesY; y++ {
-					occupied[[3]int{x, y, z}] = true
-				}
-			}
-		}
-	}
-	available := inventory.quantities()
-	candidates := append([]Placement(nil), placements...)
-	sort.SliceStable(candidates, func(i, j int) bool {
-		if topYWith(candidates[i], catalog) != topYWith(candidates[j], catalog) {
-			return topYWith(candidates[i], catalog) < topYWith(candidates[j], catalog)
-		}
-		return candidates[i].ID < candidates[j].ID
-	})
-	for _, support := range candidates {
-		supportSpec := catalog[support.PartID]
-		if !partHasTopStuds(supportSpec) || !partHasBottomReceptors(supportSpec) {
-			continue
-		}
-		colors := append([]int{support.Color}, AllowedColorCodes()...)
-		for _, color := range colors {
-			key := inventoryKey{partID: support.PartID, color: color}
-			if inventory.Configured && used[key] >= available[key] {
-				continue
-			}
-			next := support
-			next.ID = fmt.Sprintf("budget-%04d", len(placements)+1)
-			next.Y = topYWith(support, catalog)
-			next.Step = maxStep + 1
-			next.Color = color
-			next.Module = "difficulty-detail"
-			if !placementVolumeIsFree(next, occupied, catalog) {
-				continue
-			}
-			if centerOverBase(append(placements, next), catalog) {
-				return next, true
-			}
-		}
-	}
-	return Placement{}, false
-}
-
-func placementVolumeIsFree(placement Placement, occupied map[[3]int]bool, catalog PartCatalog) bool {
-	spec, ok := catalog[placement.PartID]
-	if !ok || placement.X < -16 || placement.X > 16 || placement.Z < -16 || placement.Z > 16 {
-		return false
-	}
-	size := orientedSizeWith(placement, catalog)
-	for x := placement.X; x < placement.X+size.x; x++ {
-		for z := placement.Z; z < placement.Z+size.z; z++ {
-			for y := placement.Y; y < placement.Y+spec.PlatesY; y++ {
-				if occupied[[3]int{x, y, z}] {
-					return false
-				}
-			}
-		}
-	}
-	return true
+	return placements, nil
 }

@@ -86,12 +86,15 @@ func CompileWithCatalog(recipe AssemblyRecipe, inventory InventorySnapshot, cata
 	if err != nil {
 		return CompileResult{Recipe: recipe}, err
 	}
-	report := ValidateWithCatalog(placements, inventory, catalog)
+	connections := deriveExactConnections(placements, catalog)
+	report := validateWithConnections(placements, connections, inventory, catalog)
 	plan := BuildPlan{
-		Version: 2, KitID: StarterKitID, CatalogVersion: catalogVersion,
+		Version: 3, KitID: StarterKitID, CatalogVersion: catalogVersion,
+		ConnectorSchemaVersion: ConnectorSchemaVersion, PhysicsProfileVersion: PhysicsProfileVersion,
+		GeneratorVersion:     GeneratorVersion,
 		ModuleLibraryVersion: ModuleLibraryVersion, CompilerVersion: CompilerVersion,
 		ValidatorVersion: ValidatorVersion, Title: recipe.Title, Prompt: recipe.Prompt,
-		Archetype: recipe.Archetype, Placements: placements, Connections: deriveConnections(placements, catalog),
+		Archetype: recipe.Archetype, Placements: placements, Connections: connections,
 		Steps: deriveSteps(placements, report.StepCount), Parts: usedCatalogParts(placements, catalog),
 		Validation: report, Inventory: inventory, GeneratedAt: now.UTC(),
 	}
@@ -139,119 +142,15 @@ func AvailableArchetypesForRecipe(base AssemblyRecipe, inventory InventorySnapsh
 	return available
 }
 
-type splitVariant struct {
-	partID   string
-	rotation int
-	sizeX    int
-	sizeZ    int
-}
-
-// resolveCertifiedVariants lets the existing, reviewed construction modules
-// consume newly certified rectangular parts without handing free-form geometry
-// to the LLM. A module cell may be replaced by two equivalent half-cells; the
-// occupied volume, height and connection surfaces remain unchanged.
-func resolveCertifiedVariants(placements []Placement, recipe AssemblyRecipe, inventory InventorySnapshot, catalog PartCatalog) []Placement {
-	remaining := map[string]int{}
-	if inventory.Configured {
-		for _, item := range inventory.Items {
-			remaining[item.PartID] += item.Quantity
-		}
-	}
-	resolved := make([]Placement, 0, len(placements)*2)
-	for index, placement := range placements {
-		source, ok := catalog[placement.PartID]
-		if !ok || partGeometryProfile(source) != "stud_tube_rect" {
-			resolved = append(resolved, placement)
-			continue
-		}
-		if inventory.Configured && remaining[placement.PartID] > 0 {
-			remaining[placement.PartID]--
-			resolved = append(resolved, placement)
-			continue
-		}
-		// A split replacement turns one physical piece into two. Stop splitting
-		// as soon as the unchanged remainder would fill the requested budget so
-		// an explicit count remains an exact physical-piece contract.
-		if target := targetPartCount(recipe); target > 0 && len(resolved)+len(placements)-index >= target {
-			resolved = append(resolved, placement)
-			continue
-		}
-		options := splitVariantsFor(placement, source, catalog)
-		if inventory.Configured {
-			filtered := options[:0]
-			for _, option := range options {
-				if remaining[option.partID] >= 2 {
-					filtered = append(filtered, option)
-				}
-			}
-			options = filtered
-		}
-		if len(options) == 0 {
-			resolved = append(resolved, placement)
-			continue
-		}
-		selector := sha256.Sum256([]byte(recipe.Archetype + "\x00" + recipe.Prompt + "\x00" + placement.ID))
-		option := options[int(selector[0])%len(options)]
-		first, second := placement, placement
-		first.ID, second.ID = placement.ID+"a", placement.ID+"b"
-		first.PartID, second.PartID = option.partID, option.partID
-		first.Rotation, second.Rotation = option.rotation, option.rotation
-		if option.sizeX*2 == orientedSizeWith(placement, catalog).x {
-			second.X += option.sizeX
-		} else {
-			second.Z += option.sizeZ
-		}
-		resolved = append(resolved, first, second)
-		if inventory.Configured {
-			remaining[option.partID] -= 2
-		}
-	}
-	return resolved
+// resolveCertifiedVariants intentionally preserves the reviewed module BOM.
+// Replacing one spanning brick with two coplanar bricks preserves occupancy but
+// can sever the load path at their seam. Variants must therefore be authored as
+// complete, mechanically certified modules rather than inferred per placement.
+func resolveCertifiedVariants(placements []Placement, _ AssemblyRecipe, _ InventorySnapshot, _ PartCatalog) []Placement {
+	return append([]Placement(nil), placements...)
 }
 
 type orientedDimensions struct{ x, z int }
-
-func splitVariantsFor(placement Placement, source PartSpec, catalog PartCatalog) []splitVariant {
-	sourceSize := orientedSizeWith(placement, catalog)
-	options := make([]splitVariant, 0)
-	for partID, candidate := range catalog {
-		if partID == placement.PartID || !candidate.AutoBuildEligible || partGeometryProfile(candidate) != "stud_tube_rect" || candidate.PlatesY != source.PlatesY {
-			continue
-		}
-		for _, rotation := range []int{0, 90} {
-			sizeX, sizeZ := candidate.StudsX, candidate.StudsZ
-			if rotation == 90 {
-				sizeX, sizeZ = sizeZ, sizeX
-			}
-			if (sizeX*2 == sourceSize.x && sizeZ == sourceSize.z) || (sizeX == sourceSize.x && sizeZ*2 == sourceSize.z) {
-				options = append(options, splitVariant{partID: partID, rotation: rotation, sizeX: sizeX, sizeZ: sizeZ})
-			}
-		}
-	}
-	sort.Slice(options, func(i, j int) bool {
-		left, right := catalog[options[i].partID], catalog[options[j].partID]
-		if left.PopularityRank != right.PopularityRank {
-			return left.PopularityRank < right.PopularityRank
-		}
-		if options[i].partID != options[j].partID {
-			return options[i].partID < options[j].partID
-		}
-		return options[i].rotation < options[j].rotation
-	})
-	return options
-}
-
-func partGeometryProfile(part PartSpec) string {
-	if part.GeometryProfile != "" {
-		return part.GeometryProfile
-	}
-	switch part.Category {
-	case "brick", "plate", "Bricks", "Plates":
-		return "stud_tube_rect"
-	default:
-		return "legacy_special"
-	}
-}
 
 func usedCatalogParts(placements []Placement, catalog PartCatalog) PartCatalog {
 	used := make(PartCatalog)
@@ -261,26 +160,6 @@ func usedCatalogParts(placements []Placement, catalog PartCatalog) PartCatalog {
 		}
 	}
 	return used
-}
-
-func deriveConnections(placements []Placement, catalog PartCatalog) []Connection {
-	connections := make([]Connection, 0)
-	for i := 0; i < len(placements); i++ {
-		for j := i + 1; j < len(placements); j++ {
-			if !placementsConnect(placements[i], placements[j], catalog) {
-				continue
-			}
-			kind := "stud"
-			if placements[i].Module == "wheels" || placements[j].Module == "wheels" {
-				kind = "wheel_pin"
-			}
-			connections = append(connections, Connection{
-				ID: fmt.Sprintf("c%02d", len(connections)+1), APlacementID: placements[i].ID,
-				BPlacementID: placements[j].ID, Kind: kind,
-			})
-		}
-	}
-	return connections
 }
 
 func deriveSteps(placements []Placement, count int) []BuildStep {
@@ -302,14 +181,22 @@ func deriveSteps(placements []Placement, count int) []BuildStep {
 
 func physicalContentHash(plan BuildPlan) string {
 	payload := struct {
-		KitID                string      `json:"kit_id"`
-		CatalogVersion       string      `json:"catalog_version"`
-		ModuleLibraryVersion string      `json:"module_library_version"`
-		CompilerVersion      string      `json:"compiler_version"`
-		ValidatorVersion     string      `json:"validator_version"`
-		Archetype            string      `json:"archetype"`
-		Placements           []Placement `json:"placements"`
-	}{plan.KitID, plan.CatalogVersion, plan.ModuleLibraryVersion, plan.CompilerVersion, plan.ValidatorVersion, plan.Archetype, plan.Placements}
+		KitID                  string      `json:"kit_id"`
+		CatalogVersion         string      `json:"catalog_version"`
+		ConnectorSchemaVersion int         `json:"connector_schema_version"`
+		PhysicsProfileVersion  string      `json:"physics_profile_version"`
+		GeneratorVersion       string      `json:"generator_version"`
+		ModuleLibraryVersion   string      `json:"module_library_version"`
+		CompilerVersion        string      `json:"compiler_version"`
+		ValidatorVersion       string      `json:"validator_version"`
+		Archetype              string      `json:"archetype"`
+		Placements             []Placement `json:"placements"`
+	}{
+		KitID: plan.KitID, CatalogVersion: plan.CatalogVersion, ConnectorSchemaVersion: plan.ConnectorSchemaVersion,
+		PhysicsProfileVersion: plan.PhysicsProfileVersion, GeneratorVersion: plan.GeneratorVersion,
+		ModuleLibraryVersion: plan.ModuleLibraryVersion, CompilerVersion: plan.CompilerVersion,
+		ValidatorVersion: plan.ValidatorVersion, Archetype: plan.Archetype, Placements: plan.Placements,
+	}
 	raw, _ := json.Marshal(payload)
 	sum := sha256.Sum256(raw)
 	return hex.EncodeToString(sum[:])
@@ -324,14 +211,16 @@ func placementsFor(recipe AssemblyRecipe) []Placement {
 	switch recipe.Archetype {
 	case "racer":
 		// 4600.dat provides real wheel pins; 4624c04.dat is the matching
-		// rim+tyre shortcut. Two holders are bridged by a rotated 2x4 plate.
-		for i, z := range []int{0, 2} {
-			step := 1 + i
-			add("wheel-holder-2x2", 71, 0, 0, z, 0, step, "rolling-base")
-			add("wheel", 71, -1, 0, z, 90, step, "wheels")
-			add("wheel", 71, 2, 0, z, 270, step, "wheels")
+		// rim+tyre shortcut. Build both holders and their bridge before adding
+		// wheels so every saved step has a real support polygon.
+		for _, z := range []int{0, 2} {
+			add("wheel-holder-2x2", 71, 0, 0, z, 0, 1, "rolling-base")
 		}
-		add("plate-2x4", 4, 0, 1, 0, 90, 3, "rolling-base")
+		add("plate-2x4", 4, 0, 1, 0, 90, 2, "rolling-base")
+		for _, z := range []int{0, 2} {
+			add("wheel", 71, -1, 0, z, 90, 3, "wheels")
+			add("wheel", 71, 2, 0, z, 270, 3, "wheels")
+		}
 		add("brick-2x4", 14, 0, 2, 0, 90, 4, "body")
 		add("brick-2x2", 1, 0, 5, 1, 0, 5, "driver-cabin")
 		add("slope-2x2", 15, 0, 8, 1, 0, 6, "driver-cabin")
@@ -350,7 +239,7 @@ func placementsFor(recipe AssemblyRecipe) []Placement {
 		add("brick-1x1", 15, 0, 6, 0, 0, 3, "left-eye")
 		add("brick-1x1", 15, 1, 6, 0, 0, 3, "right-eye")
 		add("plate-1x2", 4, 3, 3, 0, 0, 4, "tail")
-		add("slope-2x2", 4, 4, 4, 0, 0, 5, "tail-tip")
+		add("slope-2x2", 4, 3, 4, 0, 0, 5, "tail-tip")
 	}
 	return p
 }
@@ -388,21 +277,43 @@ func Validate(placements []Placement, inventory InventorySnapshot) ValidationRep
 }
 
 func ValidateWithCatalog(placements []Placement, inventory InventorySnapshot, catalog PartCatalog) ValidationReport {
+	return validateWithConnections(placements, deriveExactConnections(placements, catalog), inventory, catalog)
+}
+
+func validateWithConnections(placements []Placement, connections []Connection, inventory InventorySnapshot, catalog PartCatalog) ValidationReport {
 	report := ValidationReport{
-		Buildable: true,
-		Issues:    make([]ValidationIssue, 0),
-		UsedParts: map[string]int{},
-		PartCount: len(placements),
+		Buildable:       true,
+		Issues:          make([]ValidationIssue, 0),
+		UsedParts:       map[string]int{},
+		PartCount:       len(placements),
+		ConnectionCount: len(connections),
+	}
+	if len(placements) == 0 {
+		report.Issues = append(report.Issues, ValidationIssue{Code: "empty_build", Message: "搭建方案中没有积木块"})
 	}
 	maxStep := 0
 	occupied := map[[3]int]string{}
 	usedInventory := map[inventoryKey]int{}
 	availableInventory := inventory.quantities()
+	placementsByID := make(map[string]Placement, len(placements))
+	certificationByPartID := make(map[string]bool)
 	for _, p := range placements {
+		if _, exists := placementsByID[p.ID]; exists || p.ID == "" {
+			report.Issues = append(report.Issues, ValidationIssue{Code: "duplicate_placement", Message: "积木块标识为空或重复", PlacementID: p.ID})
+		}
+		placementsByID[p.ID] = p
 		spec, ok := catalog[p.PartID]
 		if !ok {
 			report.Issues = append(report.Issues, ValidationIssue{Code: "unknown_part", Message: "零件不在套装目录中", PlacementID: p.ID})
 			continue
+		}
+		certified, checked := certificationByPartID[p.PartID]
+		if !checked {
+			certified = partIsMechanicallyCertified(spec)
+			certificationByPartID[p.PartID] = certified
+		}
+		if !certified {
+			report.Issues = append(report.Issues, ValidationIssue{Code: "uncertified_part", Message: "零件缺少已认证的连接器或占位语义", PlacementID: p.ID})
 		}
 		if !allowedColors[p.Color] {
 			report.Issues = append(report.Issues, ValidationIssue{Code: "unknown_color", Message: "颜色不在套装目录中", PlacementID: p.ID})
@@ -413,21 +324,21 @@ func ValidateWithCatalog(placements []Placement, inventory InventorySnapshot, ca
 		if inventory.Configured && usedInventory[key] > availableInventory[key] {
 			report.Issues = append(report.Issues, ValidationIssue{Code: "inventory_exceeded", Message: "使用数量超过我的积木块库存", PlacementID: p.ID})
 		}
-		if p.Y < 0 || p.X < -16 || p.X > 16 || p.Z < -16 || p.Z > 16 {
+		size := orientedSizeWith(p, catalog)
+		if p.Y < 0 || p.X < -16 || p.X+size.x > 17 || p.Z < -16 || p.Z+size.z > 17 {
 			report.Issues = append(report.Issues, ValidationIssue{Code: "out_of_bounds", Message: "零件超出安全搭建范围", PlacementID: p.ID})
 		}
 		if p.Rotation%90 != 0 {
 			report.Issues = append(report.Issues, ValidationIssue{Code: "invalid_rotation", Message: "零件角度必须按 90° 旋转", PlacementID: p.ID})
 		}
+		if p.Step <= 0 {
+			report.Issues = append(report.Issues, ValidationIssue{Code: "invalid_step", Message: "积木块必须属于有效搭建步骤", PlacementID: p.ID})
+		}
 		if p.Step > maxStep {
 			maxStep = p.Step
 		}
-		sx, sz := spec.StudsX, spec.StudsZ
-		if p.Rotation%180 != 0 {
-			sx, sz = sz, sx
-		}
-		for x := p.X; x < p.X+sx; x++ {
-			for z := p.Z; z < p.Z+sz; z++ {
+		for x := p.X; x < p.X+size.x; x++ {
+			for z := p.Z; z < p.Z+size.z; z++ {
 				for y := p.Y; y < p.Y+spec.PlatesY; y++ {
 					cell := [3]int{x, y, z}
 					if previous, exists := occupied[cell]; exists {
@@ -439,78 +350,60 @@ func ValidateWithCatalog(placements []Placement, inventory InventorySnapshot, ca
 		}
 	}
 
-	// Every elevated part must have a legal stud surface beneath it from an
-	// earlier (or same) step. Wheel modules are the one starter-kit exception:
-	// they connect laterally through their axle module.
+	// Every elevated part must engage exact certified connectors from an earlier
+	// step. Larger parts require at least two studs so an incidental one-stud
+	// overlap cannot masquerade as a robust attachment.
 	for _, placement := range placements {
-		if placement.Y == 0 || placement.Module == "wheels" {
+		if placement.Y == 0 {
 			continue
 		}
-		supported := false
-		for _, candidate := range placements {
-			if candidate.ID == placement.ID || candidate.Step >= placement.Step {
-				continue
-			}
-			if topYWith(candidate, catalog) == placement.Y && horizontalOverlapWith(placement, candidate, catalog) && partHasTopStuds(catalog[candidate.PartID]) && partHasBottomReceptors(catalog[placement.PartID]) {
-				supported = true
-				break
-			}
-		}
-		if !supported {
-			report.Issues = append(report.Issues, ValidationIssue{Code: "unsupported", Message: "零件下方没有可连接的凸点", PlacementID: placement.ID})
+		engaged := supportEngagement(placement, placementsByID, connections, catalog)
+		if engaged == 0 {
+			report.Issues = append(report.Issues, ValidationIssue{Code: "unsupported", Message: "零件下方没有精确匹配的连接器", PlacementID: placement.ID})
+		} else if engaged < minimumSupportEngagement(placement, catalog) {
+			report.Issues = append(report.Issues, ValidationIssue{Code: "weak_connection", Message: "零件与主体的咬合点不足", PlacementID: placement.ID})
 		}
 	}
 
-	// Connectivity is evaluated as one assembly graph. Vertical stud contact
-	// forms ordinary edges; wheels may form a lateral axle edge.
+	// Connectivity is evaluated from certified connector pairs, never bounding
+	// box proximity.
 	if len(placements) > 0 {
+		adjacency := make(map[string][]string, len(placements))
+		for _, connection := range connections {
+			adjacency[connection.APlacementID] = append(adjacency[connection.APlacementID], connection.BPlacementID)
+			adjacency[connection.BPlacementID] = append(adjacency[connection.BPlacementID], connection.APlacementID)
+		}
 		visited := map[string]bool{placements[0].ID: true}
-		changed := true
-		for changed {
-			changed = false
-			for _, candidate := range placements {
-				if visited[candidate.ID] {
-					continue
-				}
-				for _, connected := range placements {
-					if visited[connected.ID] && placementsConnect(candidate, connected, catalog) {
-						visited[candidate.ID] = true
-						changed = true
-						break
-					}
+		queue := []string{placements[0].ID}
+		for len(queue) > 0 {
+			current := queue[0]
+			queue = queue[1:]
+			for _, neighbor := range adjacency[current] {
+				if !visited[neighbor] {
+					visited[neighbor] = true
+					queue = append(queue, neighbor)
 				}
 			}
 		}
 		for _, placement := range placements {
 			if !visited[placement.ID] {
-				report.Issues = append(report.Issues, ValidationIssue{Code: "disconnected", Message: "零件没有连接到主体", PlacementID: placement.ID})
+				report.Issues = append(report.Issues, ValidationIssue{Code: "disconnected", Message: "零件没有通过认证连接器连接到主体", PlacementID: placement.ID})
 			}
 		}
 	}
 
-	// A conservative stability check runs for every cumulative build step, not
-	// just the attractive final pose. This prevents instructions that pass only
-	// after a later counterweight has been added.
-	for step := 1; step <= maxStep; step++ {
-		cumulative := make([]Placement, 0, len(placements))
-		for _, placement := range placements {
-			if placement.Step <= step {
-				cumulative = append(cumulative, placement)
-			}
-		}
-		if !centerOverBase(cumulative, catalog) {
-			report.Issues = append(report.Issues, ValidationIssue{Code: "unstable_step", Message: fmt.Sprintf("第 %d 步的重心超出了底座范围", step)})
-		}
-	}
+	stabilityIssues, minimumMargin := validateStepStability(placements, connections, catalog, maxStep)
+	report.Issues = append(report.Issues, stabilityIssues...)
+	report.MinimumStabilityMarginMils = minimumMargin
 	report.StepCount = maxStep
 	report.Buildable = len(report.Issues) == 0
-	sort.Slice(report.Issues, func(i, j int) bool { return report.Issues[i].Code < report.Issues[j].Code })
+	sort.Slice(report.Issues, func(i, j int) bool {
+		if report.Issues[i].Code != report.Issues[j].Code {
+			return report.Issues[i].Code < report.Issues[j].Code
+		}
+		return report.Issues[i].PlacementID < report.Issues[j].PlacementID
+	})
 	return report
-}
-
-func orientedSize(placement Placement) (x, z int) {
-	size := orientedSizeWith(placement, StarterCatalog)
-	return size.x, size.z
 }
 
 func orientedSizeWith(placement Placement, catalog PartCatalog) orientedDimensions {
@@ -522,75 +415,6 @@ func orientedSizeWith(placement Placement, catalog PartCatalog) orientedDimensio
 	return orientedDimensions{x: x, z: z}
 }
 
-func topY(placement Placement) int { return topYWith(placement, StarterCatalog) }
-
 func topYWith(placement Placement, catalog PartCatalog) int {
 	return placement.Y + catalog[placement.PartID].PlatesY
-}
-
-func horizontalOverlap(a, b Placement) bool {
-	return horizontalOverlapWith(a, b, StarterCatalog)
-}
-
-func horizontalOverlapWith(a, b Placement, catalog PartCatalog) bool {
-	aSize, bSize := orientedSizeWith(a, catalog), orientedSizeWith(b, catalog)
-	ax, az, bx, bz := aSize.x, aSize.z, bSize.x, bSize.z
-	return a.X < b.X+bx && b.X < a.X+ax && a.Z < b.Z+bz && b.Z < a.Z+az
-}
-
-func placementsConnect(a, b Placement, catalog PartCatalog) bool {
-	if horizontalOverlapWith(a, b, catalog) {
-		if topYWith(a, catalog) == b.Y && partHasTopStuds(catalog[a.PartID]) && partHasBottomReceptors(catalog[b.PartID]) {
-			return true
-		}
-		if topYWith(b, catalog) == a.Y && partHasTopStuds(catalog[b.PartID]) && partHasBottomReceptors(catalog[a.PartID]) {
-			return true
-		}
-	}
-	if a.Module != "wheels" && b.Module != "wheels" {
-		return false
-	}
-	aSize, bSize := orientedSizeWith(a, catalog), orientedSizeWith(b, catalog)
-	ax, az, bx, bz := aSize.x, aSize.z, bSize.x, bSize.z
-	xGap := max(a.X, b.X) - min(a.X+ax, b.X+bx)
-	zGap := max(a.Z, b.Z) - min(a.Z+az, b.Z+bz)
-	yOverlap := a.Y < topYWith(b, catalog) && b.Y < topYWith(a, catalog)
-	return yOverlap && xGap <= 1 && zGap <= 1
-}
-
-func partHasTopStuds(part PartSpec) bool {
-	return part.HasTopStuds || part.CertificationLevel == ""
-}
-
-func partHasBottomReceptors(part PartSpec) bool {
-	return part.HasBottomReceptors || part.CertificationLevel == ""
-}
-
-func centerOverBase(placements []Placement, catalog PartCatalog) bool {
-	if len(placements) == 0 {
-		return false
-	}
-	minX, minZ, maxX, maxZ := 1<<30, 1<<30, -1<<30, -1<<30
-	weightedX, weightedZ, volume := 0.0, 0.0, 0.0
-	for _, placement := range placements {
-		spec, ok := catalog[placement.PartID]
-		if !ok {
-			continue
-		}
-		size := orientedSizeWith(placement, catalog)
-		sx, sz := size.x, size.z
-		partVolume := float64(sx * sz * spec.PlatesY)
-		weightedX += (float64(placement.X) + float64(sx)/2) * partVolume
-		weightedZ += (float64(placement.Z) + float64(sz)/2) * partVolume
-		volume += partVolume
-		if placement.Y == 0 {
-			minX, minZ = min(minX, placement.X), min(minZ, placement.Z)
-			maxX, maxZ = max(maxX, placement.X+sx), max(maxZ, placement.Z+sz)
-		}
-	}
-	if volume == 0 || minX > maxX {
-		return false
-	}
-	centerX, centerZ := weightedX/volume, weightedZ/volume
-	return centerX >= float64(minX) && centerX <= float64(maxX) && centerZ >= float64(minZ) && centerZ <= float64(maxZ)
 }
