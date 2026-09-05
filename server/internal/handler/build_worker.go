@@ -10,6 +10,7 @@ import (
 	"time"
 
 	buildstudio "github.com/chimii-ai/chimii/server/internal/build"
+	"github.com/chimii-ai/chimii/server/internal/util"
 	db "github.com/chimii-ai/chimii/server/pkg/db/generated"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -137,11 +138,9 @@ func (w *BuildWorker) ProcessNext(ctx context.Context) (bool, error) {
 	if err = json.Unmarshal(session.Answers, &answers); err != nil {
 		return true, w.failPermanently(ctx, job, buildstudio.BuildErrorRequirements, err)
 	}
-	var inventory buildstudio.InventorySnapshot
-	if err = json.Unmarshal(session.InventorySnapshot, &inventory); err != nil {
-		return true, w.failPermanently(ctx, job, buildstudio.BuildErrorRequirements, err)
-	}
-	catalog, err := loadBuildCatalogParts(runCtx, w.h.Queries, inventory.CatalogVersion)
+	// Availability is read for this execution, not frozen at request creation.
+	// No inventory row lock, reservation or consumption is part of generation.
+	inventory, catalog, err := w.readAvailability(runCtx, session.WorkspaceID)
 	if err != nil {
 		return true, w.retry(ctx, job, err)
 	}
@@ -151,7 +150,25 @@ func (w *BuildWorker) ProcessNext(ctx context.Context) (bool, error) {
 			return true, w.failPermanently(ctx, job, buildstudio.BuildErrorRequirements, err)
 		}
 	}
-	if session.Phase != "compiling" || recipe == nil {
+	planned := session.Phase != "compiling" || recipe == nil
+	if planned {
+		// A clarification draft deliberately has no executable design. Restore
+		// the immutable source as planning context when continuing an edit.
+		if recipe != nil && recipe.Design == nil && recipe.Metadata["parent_creation_id"] != "" {
+			parentID, parseErr := util.ParseUUID(recipe.Metadata["parent_creation_id"])
+			if parseErr != nil {
+				return true, w.failPermanently(ctx, job, buildstudio.BuildErrorRequirements, parseErr)
+			}
+			parent, loadErr := w.h.Queries.GetBuildCreationInWorkspace(runCtx, db.GetBuildCreationInWorkspaceParams{ID: parentID, WorkspaceID: session.WorkspaceID, CreatorUserID: session.CreatorUserID, ChildProfileID: session.ChildProfileID})
+			if loadErr != nil {
+				return true, w.failPermanently(ctx, job, buildstudio.BuildErrorRequirements, loadErr)
+			}
+			var base buildstudio.AssemblyRecipe
+			if decodeErr := json.Unmarshal(parent.Recipe, &base); decodeErr != nil {
+				return true, w.failPermanently(ctx, job, buildstudio.BuildErrorRequirements, decodeErr)
+			}
+			recipe.Design = base.Design
+		}
 		planStarted := time.Now()
 		decision, planErr := w.h.planBuildRecipe(runCtx, session.Prompt, answers, recipe, session.Revision, inventory, catalog)
 		slog.Info("build worker: planning", "session_id", uuidToString(session.ID), "revision", session.Revision, "elapsed_ms", time.Since(planStarted).Milliseconds(), "outcome", decision.Outcome)
@@ -178,6 +195,9 @@ func (w *BuildWorker) ProcessNext(ctx context.Context) (bool, error) {
 			return true, w.failPermanently(ctx, job, buildstudio.BuildErrorRequirements, errors.New("invalid decision"))
 		}
 		recipe.Metadata["module_library_version"] = buildstudio.ModuleLibraryVersion
+		if recipe.Design != nil {
+			recipe.Metadata["shape_generator_version"] = buildstudio.ShapeGeneratorVersion
+		}
 		if err = w.withLease(runCtx, job, func(q *db.Queries) error {
 			_, saveErr := q.SaveBuildSessionRecipe(runCtx, db.SaveBuildSessionRecipeParams{ID: session.ID, Revision: session.Revision, LeaseToken: job.LeaseToken, Recipe: mustBuildJSON(recipe)})
 			return saveErr
@@ -191,8 +211,24 @@ func (w *BuildWorker) ProcessNext(ctx context.Context) (bool, error) {
 	if recipe.Metadata["module_library_version"] != buildstudio.ModuleLibraryVersion {
 		return true, w.failPermanently(ctx, job, buildstudio.BuildErrorUnsupported, errors.New("saved module version is unavailable"))
 	}
+	if recipe.Design != nil && recipe.Metadata["shape_generator_version"] != buildstudio.ShapeGeneratorVersion {
+		return true, w.failPermanently(ctx, job, buildstudio.BuildErrorUnsupported, errors.New("saved shape generator version is unavailable"))
+	}
+	if planned {
+		// Parts may have been edited during the model call. Compilation always
+		// uses a fresh availability read, with no transaction held across planning.
+		inventory, catalog, err = w.readAvailability(runCtx, session.WorkspaceID)
+		if err != nil {
+			return true, w.retry(ctx, job, err)
+		}
+	}
 	compileStarted := time.Now()
-	result, err := buildstudio.CompileWithCatalog(*recipe, inventory, inventory.CatalogVersion, catalog, time.Now())
+	var result buildstudio.CompileResult
+	if recipe.Design != nil {
+		result, err = buildstudio.CompileDesign(runCtx, *recipe, inventory, inventory.CatalogVersion, catalog, time.Now())
+	} else {
+		result, err = buildstudio.CompileWithCatalog(*recipe, inventory, inventory.CatalogVersion, catalog, time.Now())
+	}
 	slog.Info("build worker: compile", "session_id", uuidToString(session.ID), "elapsed_ms", time.Since(compileStarted).Milliseconds())
 	if err != nil {
 		if code, ok := buildstudio.BuildErrorCode(err); ok {
@@ -203,7 +239,7 @@ func (w *BuildWorker) ProcessNext(ctx context.Context) (bool, error) {
 	return true, w.finish(ctx, job, func(q *db.Queries) error {
 		creation, err := q.CreateBuildCreation(ctx, db.CreateBuildCreationParams{
 			WorkspaceID: session.WorkspaceID, CreatorUserID: session.CreatorUserID, ChildProfileID: session.ChildProfileID, SessionID: session.ID,
-			Title: recipe.Title, Prompt: session.Prompt, Archetype: recipe.Archetype, Recipe: mustBuildJSON(result.Recipe), BuildPlan: mustBuildJSON(result.Plan), Validation: mustBuildJSON(result.Plan.Validation), LdrawMpd: result.MPD, InventorySnapshot: session.InventorySnapshot,
+			Title: recipe.Title, Prompt: session.Prompt, Archetype: recipe.Archetype, Recipe: mustBuildJSON(result.Recipe), BuildPlan: mustBuildJSON(result.Plan), Validation: mustBuildJSON(result.Plan.Validation), LdrawMpd: result.MPD, InventorySnapshot: []byte(`{}`),
 		})
 		if err != nil {
 			return err
@@ -211,6 +247,29 @@ func (w *BuildWorker) ProcessNext(ctx context.Context) (bool, error) {
 		_, err = q.CompleteBuildSession(ctx, db.CompleteBuildSessionParams{ID: session.ID, CreationID: creation.ID})
 		return err
 	})
+}
+
+// A short read-only transaction keeps the availability rows consistent without
+// taking the inventory writer lock or persisting a per-session stock snapshot.
+func (w *BuildWorker) readAvailability(ctx context.Context, workspaceID pgtype.UUID) (buildstudio.InventorySnapshot, buildstudio.PartCatalog, error) {
+	tx, err := w.h.TxStarter.Begin(ctx)
+	if err != nil {
+		return buildstudio.InventorySnapshot{}, nil, err
+	}
+	defer tx.Rollback(ctx)
+	if _, err = tx.Exec(ctx, "SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY"); err != nil {
+		return buildstudio.InventorySnapshot{}, nil, err
+	}
+	q := w.h.Queries.WithTx(tx)
+	availability, err := loadBrickInventorySnapshot(ctx, q, workspaceID)
+	if err != nil {
+		return availability, nil, err
+	}
+	catalog, err := loadBuildCatalogParts(ctx, q, availability.CatalogVersion)
+	if err != nil {
+		return availability, nil, err
+	}
+	return availability, catalog, tx.Commit(ctx)
 }
 
 // All terminal writes first consume a live lease in the same transaction. A

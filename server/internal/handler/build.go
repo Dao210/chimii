@@ -23,8 +23,11 @@ const (
 )
 
 type createBuildSessionRequest struct {
-	Prompt          string `json:"prompt"`
-	ClientRequestID string `json:"client_request_id"`
+	Prompt              string                  `json:"prompt"`
+	ClientRequestID     string                  `json:"client_request_id"`
+	Design              *buildstudio.DesignSpec `json:"design,omitempty"`
+	SourceCreationID    string                  `json:"source_creation_id,omitempty"`
+	ExpectedContentHash string                  `json:"expected_content_hash,omitempty"`
 }
 
 type submitBuildAnswersRequest struct {
@@ -61,13 +64,13 @@ type buildCreationResponse struct {
 }
 
 func (h *Handler) CreateBuildSession(w http.ResponseWriter, r *http.Request) {
-	if h.LLM == nil || !h.LLM.Enabled() {
-		writeJSON(w, http.StatusServiceUnavailable, map[string]any{"error": "Build Studio requires an LLM configuration", "code": "build_unavailable", "reason": "llm_not_configured"})
+	var req createBuildSessionRequest
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 48<<10)).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
-	var req createBuildSessionRequest
-	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 8<<10)).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid request body")
+	if req.Design == nil && (h.LLM == nil || !h.LLM.Enabled()) {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]any{"error": "Build Studio requires an LLM configuration", "code": "build_unavailable", "reason": "llm_not_configured"})
 		return
 	}
 	req.Prompt = strings.TrimSpace(req.Prompt)
@@ -135,25 +138,61 @@ func (h *Handler) CreateBuildSession(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
-	if err := qtx.LockBrickInventoryForWorkspace(r.Context(), uuidToString(workspaceID)); err != nil {
-		writeError(w, http.StatusInternalServerError, "failed to snapshot brick inventory")
-		return
+	var recipe *buildstudio.AssemblyRecipe
+	if req.SourceCreationID != "" {
+		sourceID, valid := parseUUIDOrBadRequest(w, req.SourceCreationID, "source_creation_id")
+		if !valid {
+			return
+		}
+		source, loadErr := qtx.GetBuildCreationInWorkspace(r.Context(), db.GetBuildCreationInWorkspaceParams{ID: sourceID, WorkspaceID: workspaceID, CreatorUserID: userID, ChildProfileID: childProfileID})
+		if errors.Is(loadErr, pgx.ErrNoRows) {
+			writeError(w, http.StatusNotFound, "source creation not found")
+			return
+		}
+		if loadErr != nil {
+			writeError(w, http.StatusInternalServerError, "failed to load source creation")
+			return
+		}
+		previous, decodeErr := toBuildCreationResponse(source)
+		if decodeErr != nil {
+			writeError(w, http.StatusInternalServerError, "invalid source creation")
+			return
+		}
+		if req.ExpectedContentHash == "" || req.ExpectedContentHash != previous.BuildPlan.ContentHash {
+			writeError(w, http.StatusConflict, "source design does not match expected content")
+			return
+		}
+		recipe = &previous.Recipe
+		if recipe.Metadata == nil {
+			recipe.Metadata = map[string]string{}
+		}
+		recipe.Metadata["parent_creation_id"], recipe.Metadata["parent_hash"] = uuidToString(source.ID), previous.BuildPlan.ContentHash
 	}
-	inventory, err := loadBrickInventorySnapshot(r.Context(), qtx, workspaceID)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "failed to snapshot brick inventory")
-		return
+	if req.Design != nil {
+		if _, designErr := buildstudio.RasterizeDesign(*req.Design); designErr != nil {
+			writeError(w, http.StatusBadRequest, "invalid shape design")
+			return
+		}
+		if recipe == nil {
+			recipe = &buildstudio.AssemblyRecipe{Title: string([]rune(req.Prompt)[:min(24, len([]rune(req.Prompt)))]), Subject: "custom", Archetype: "custom", Metadata: map[string]string{}, Palette: []int{}, Features: []string{}, Requirements: []string{}}
+		}
+		recipe.Version, recipe.Design, recipe.Modules = 3, req.Design, []buildstudio.ModuleInstance{}
+		recipe.Constraints.RequiredModules = []string{}
+		recipe.Constraints.ExactColors = true
+		recipe.Prompt = req.Prompt
+		recipe.Summary = string([]rune(req.Prompt)[:min(240, len([]rune(req.Prompt)))])
+		recipe.Metadata["module_library_version"] = buildstudio.ModuleLibraryVersion
+		recipe.Metadata["shape_generator_version"] = buildstudio.ShapeGeneratorVersion
 	}
-	inventoryJSON, err := json.Marshal(inventory)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "failed to snapshot brick inventory")
-		return
+	var recipeJSON []byte
+	if recipe != nil {
+		recipeJSON = mustBuildJSON(recipe)
 	}
 
 	session, err := qtx.CreateBuildSession(r.Context(), db.CreateBuildSessionParams{
 		WorkspaceID: workspaceID, CreatorUserID: userID, ChildProfileID: childProfileID,
 		ClientRequestID: clientRequestID, Prompt: req.Prompt,
-		Status: status, Question: nil, Answers: []byte(`{}`), InventorySnapshot: inventoryJSON,
+		Status: status, Question: nil, Answers: []byte(`{}`), InventorySnapshot: []byte(`{}`), Recipe: recipeJSON, DirectCompile: req.Design != nil,
 	})
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to start build")
@@ -415,7 +454,7 @@ func toBuildSessionResponse(row db.BuildSession) buildSessionResponse {
 		// responses expose only a stable product code and never raw LLM/upstream
 		// text, URLs, credentials, or stack details.
 		switch row.Error.String {
-		case buildstudio.BuildErrorInsufficientInventory, buildstudio.BuildErrorCountUnsupported, buildstudio.BuildErrorStructureInvalid, buildstudio.BuildErrorUnsupported, buildstudio.BuildErrorRequirements, "BUILD_CANCELLED":
+		case buildstudio.BuildErrorSearchLimit, buildstudio.BuildErrorInsufficientInventory, buildstudio.BuildErrorCountUnsupported, buildstudio.BuildErrorStructureInvalid, buildstudio.BuildErrorUnsupported, buildstudio.BuildErrorRequirements, "BUILD_CANCELLED":
 			response.Error = row.Error.String
 		default:
 			response.Error = "BUILD_GENERATION_FAILED"
@@ -473,7 +512,7 @@ func toBuildCreationResponse(row db.BuildCreation) (buildCreationResponse, error
 	if response.BuildPlan.Validation.UsedParts == nil {
 		response.BuildPlan.Validation.UsedParts = map[string]int{}
 	}
-	if response.BuildPlan.Inventory.Items == nil {
+	if response.BuildPlan.Inventory != nil && response.BuildPlan.Inventory.Items == nil {
 		response.BuildPlan.Inventory.Items = []buildstudio.InventoryItem{}
 	}
 	return response, nil

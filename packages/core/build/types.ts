@@ -179,6 +179,7 @@ export interface BuildValidationReport {
 }
 
 export interface BuildPlan {
+	 document?: BuildDocument;
   version: number;
   kit_id: string;
   catalog_version: string;
@@ -211,6 +212,7 @@ export interface BuildModuleInstance {
 }
 
 export interface BuildRecipe {
+	 design?: BuildDesignSpec;
   subject?: string;
   summary?: string;
   requirements?: string[];
@@ -223,6 +225,33 @@ export interface BuildRecipe {
   palette: number[];
   features: string[];
   metadata: Record<string, string>;
+}
+
+export interface BuildDesignVector { x: number; y: number; z: number }
+export interface BuildShapeNode {
+  id: string;
+  label: string;
+  kind: "box" | "ellipse" | "polygon";
+  operation: "add" | "subtract";
+  position: BuildDesignVector;
+  size: BuildDesignVector;
+  color: number;
+  points?: { x: number; z: number }[];
+  repeat?: { count: number; offset: BuildDesignVector };
+}
+export interface BuildDesignSpec { version: number; mode: "static"; shapes: BuildShapeNode[] }
+export interface BuildDocument {
+  version: number;
+  design: BuildDesignSpec;
+  design_hash: string;
+  parent_creation_id?: string;
+  parent_hash?: string;
+  solver: { status: string; visited: number; target_cells: number; matched_cells: number };
+}
+export interface BuildDesignInput {
+  design?: BuildDesignSpec;
+  source_creation_id?: string;
+  expected_content_hash?: string;
 }
 
 export interface BuildQuestion {

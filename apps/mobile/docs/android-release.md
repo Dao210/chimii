@@ -22,10 +22,12 @@ pnpm install --frozen-lockfile
 pnpm -C apps/mobile typecheck
 pnpm -C apps/mobile lint
 pnpm -C apps/mobile test
-ANDROID_VERSION_CODE=1 pnpm -C apps/mobile android:release
+ANDROID_VERSION_CODE=2 pnpm -C apps/mobile android:release
 ```
 
-The script regenerates Android configuration, bundles JavaScript into a Release APK, checks its signature, and writes the APK and SHA-256 to `apps/mobile/artifacts/`. It refuses to build without release credentials. `ANDROID_ARCHITECTURES` can override the default `arm64-v8a` for a different device.
+Metro transformation caches include the app environment and public service URLs. The release script invalidates generated autolinking metadata so changing app IDs cannot carry a previous environment into the next package.
+
+The script regenerates the local 3D renderer and versioned thumbnail assets, regenerates Android configuration, bundles JavaScript into a Release APK, checks its signature, and writes the APK and SHA-256 to `apps/mobile/artifacts/`. It refuses to build without release credentials. `ANDROID_ARCHITECTURES` can override the default `arm64-v8a` for a different device.
 
 ## Manual GitHub build
 
@@ -33,6 +35,18 @@ The `Android APK` workflow is manual (`.github/workflows/mobile-android.yml`). C
 
 ## Acceptance
 
-Check signature, package/version, embedded Hermes bundle and disabled debugging. Install with `adb install -r path/to.apk`, launch with Metro stopped, and verify login, workspace switching, tasks, chat, attachment download, Android Back, menu selection, keyboard, reconnect, and foreground resume. A local typecheck or JavaScript export does not establish native startup or authenticated production acceptance.
+Check signature, package/version, embedded Hermes bundle and disabled debugging. Install with `adb install -r path/to.apk`, launch with Metro stopped, and verify login, the Build/Circuit/Block/Creations tab order, inventory confirmation, revision conflicts, native creation details, 3D rotation, step saving, circuit result feedback, Android Back, keyboard, reconnect, and foreground resume. Collaboration remains available from the account entry. A local typecheck or JavaScript export does not establish native startup or authenticated production acceptance.
 
 The first Android build follows Chimii's current seven-status API and single active chat task. It does not request Multica-only status catalogs, subscription summaries or unsupported WebSocket events.
+
+
+## Maker experience (0.2.0)
+
+- Native Expo Router pages own navigation, forms, lists and guidance. The four tabs stay mounted so switching preserves input and scroll position; account and collaboration are secondary stack routes.
+- Mobile React Query owns server data. Detail reads use creation IDs independently of the recent summary lists (60 builds / 50 circuits). Inventory and progress writes use expected revisions and only advance after the canonical response. Conflicts keep local inventory edits for review.
+- Mobile Zustand owns scoped drafts. Short ideas and Build session/request pointers survive cold starts in SecureStore. Unsaved inventory edits and Circuit request signatures remain in memory. Saved inventory, creations and progress are re-fetched from the server. There is no offline write queue.
+- Circuit diagrams use native SVG. Zoomed diagrams scroll using native views, including large BOSON layouts. Physical test observations are explicit family feedback, separate from generated connection checks.
+- Build details lazily load a local WebView containing only the bundled Three renderer. Native authenticated requests provide versioned GLB bytes. No account token, page navigation or external network access is exposed to the renderer. Matching starter GLBs and thumbnails reuse the existing generated LDraw assets. Lists use images rather than live 3D contexts. Leaving the screen or backgrounding the app unmounts the renderer; unused model data expires after one minute.
+- Collaboration sockets and presence prefetch start when the account/collaboration area is first visited, keeping maker startup lightweight.
+
+For repeatable UI acceptance, a separate `APP_ENV` can point at a local fixture service. Non-production packages allow HTTP for local development. Production uses HTTPS and disables cleartext traffic. Fixture acceptance checks native behavior and data contracts; it does not verify a production account or physically test a construction.

@@ -18,6 +18,9 @@ export ANDROID_VERSION_CODE="${ANDROID_VERSION_CODE:-2}"
 [[ "$ANDROID_VERSION_CODE" =~ ^[1-9][0-9]*$ ]] || { echo 'ANDROID_VERSION_CODE must be positive' >&2; exit 1; }
 # Explicit dotenv prevents a developer's local Expo environment entering a release.
 pnpm exec dotenv -o -e ".env.$APP_ENV" -- expo prebuild --platform android --no-install
+# React Native caches the application package in autolinking output. Invalidate
+# these generated files when switching between local, staging and production.
+rm -rf android/build/generated/autolinking android/app/build/generated/autolinking
 pnpm exec dotenv -o -e ".env.$APP_ENV" -- bash -c 'cd android && ./gradlew --no-daemon --max-workers=4 assembleRelease -PreactNativeArchitectures="${ANDROID_ARCHITECTURES:-arm64-v8a}"'
 mkdir -p artifacts
 apk="artifacts/chimii-${APP_ENV}-${ANDROID_VERSION_CODE}.apk"

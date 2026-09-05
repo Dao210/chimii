@@ -1,6 +1,7 @@
 package build
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -19,6 +20,9 @@ func Compile(recipe AssemblyRecipe, inventory InventorySnapshot, now time.Time) 
 // CompileWithCatalog tries only explicitly permitted layout alternatives, within
 // a fixed budget. It never changes required colors, part counts, or module kinds.
 func CompileWithCatalog(recipe AssemblyRecipe, inventory InventorySnapshot, catalogVersion string, catalog PartCatalog, now time.Time) (CompileResult, error) {
+	if recipe.Design != nil {
+		return CompileDesign(context.Background(), recipe, inventory, catalogVersion, catalog, now)
+	}
 	result, err := compileCandidate(recipe, inventory, catalogVersion, catalog, now)
 	if code, ok := BuildErrorCode(err); !ok || code != BuildErrorStructureInvalid {
 		return result, err
@@ -66,6 +70,31 @@ func compileCandidate(recipe AssemblyRecipe, inventory InventorySnapshot, catalo
 	if err != nil {
 		return CompileResult{Recipe: recipe}, err
 	}
+	return compilePlacements(recipe, placements, inventory, catalogVersion, catalog, now)
+}
+
+func compilePlacements(recipe AssemblyRecipe, placements []Placement, inventory InventorySnapshot, catalogVersion string, catalog PartCatalog, now time.Time) (CompileResult, error) {
+	if recipe.Modules == nil {
+		recipe.Modules = []ModuleInstance{}
+	}
+	if recipe.Palette == nil {
+		recipe.Palette = []int{}
+	}
+	if recipe.Features == nil {
+		recipe.Features = []string{}
+	}
+	if recipe.Requirements == nil {
+		recipe.Requirements = []string{}
+	}
+	if recipe.Metadata == nil {
+		recipe.Metadata = map[string]string{}
+	}
+	if catalogVersion == "" {
+		catalogVersion = inventory.CatalogVersion
+	}
+	if catalogVersion == "" {
+		catalogVersion = CatalogVersion
+	}
 	connections := deriveExactConnections(placements, catalog)
 	report := validateWithConnections(placements, connections, inventory, catalog)
 	plan := BuildPlan{
@@ -76,7 +105,7 @@ func compileCandidate(recipe AssemblyRecipe, inventory InventorySnapshot, catalo
 		ValidatorVersion: ValidatorVersion, Title: recipe.Title, Prompt: recipe.Prompt,
 		Archetype: recipe.Archetype, Placements: placements, Connections: connections,
 		Steps: deriveSteps(placements, report.StepCount), Parts: usedCatalogParts(placements, catalog),
-		Validation: report, Inventory: inventory, GeneratedAt: now.UTC(),
+		Validation: report, GeneratedAt: now.UTC(),
 	}
 	plan.ContentHash = physicalContentHash(plan)
 	if !report.Buildable {

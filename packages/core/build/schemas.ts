@@ -171,7 +171,22 @@ export const BuildValidationSchema = z.looseObject({
   used_parts: z.record(z.string(), z.number().int().nonnegative()),
 });
 
+const DesignVectorSchema = z.object({ x: z.number().int(), y: z.number().int(), z: z.number().int() });
+export const BuildShapeNodeSchema = z.object({
+  id: z.string().min(1).max(48), label: z.string().max(80), kind: z.enum(["box", "ellipse", "polygon"]), operation: z.enum(["add", "subtract"]),
+  position: DesignVectorSchema,
+  size: z.object({ x: z.number().int().min(1).max(32), y: z.number().int().min(1).max(48), z: z.number().int().min(1).max(32) }),
+  color: z.number().int(), points: z.array(z.object({ x: z.number().int(), z: z.number().int() })).max(32).optional(),
+  repeat: z.object({ count: z.number().int().min(1).max(24), offset: DesignVectorSchema }).optional(),
+});
+export const BuildDesignSpecSchema = z.object({ version: z.literal(1), mode: z.literal("static"), shapes: z.array(BuildShapeNodeSchema).min(1).max(48) });
+const BuildDocumentSchema = z.looseObject({
+  version: z.number().int().positive(), design: BuildDesignSpecSchema, design_hash: z.string().min(1),
+  parent_creation_id: z.string().optional(), parent_hash: z.string().optional(),
+  solver: z.looseObject({ status: z.string(), visited: z.number().int().nonnegative(), target_cells: z.number().int().nonnegative(), matched_cells: z.number().int().nonnegative() }),
+});
 const BuildPlanSchema = z.looseObject({
+  document: BuildDocumentSchema.optional().catch(undefined),
   version: z.number().int().positive(),
   kit_id: z.string(),
   catalog_version: z.string(),
@@ -209,6 +224,7 @@ const BuildPlanSchema = z.looseObject({
 });
 
 const BuildRecipeSchema = z.looseObject({
+  design: BuildDesignSpecSchema.optional().catch(undefined),
   subject: z.string().optional(), summary: z.string().optional(), requirements: z.array(z.string()).optional(),
   constraints: z.looseObject({ exact_colors: z.boolean(), no_wheels: z.boolean(), part_count: z.number().int().nonnegative(), required_modules: z.array(z.string()).nullable().transform((v) => v ?? []).optional() }).optional(),
   modules: z.array(z.looseObject({ id: z.string(), kind: z.string(), parent: z.string().optional(), port: z.string().optional(), color: z.number().int(), alternative_ports: z.array(z.string()).optional() })).optional(),

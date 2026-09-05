@@ -9,8 +9,8 @@ export function useCreateBuildSession() {
   const workspaceId = useWorkspaceId();
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ prompt, clientRequestId = generateUUID() }: { prompt: string; clientRequestId?: string }) =>
-      api.createBuildSession(prompt, clientRequestId),
+    mutationFn: ({ prompt, clientRequestId = generateUUID(), designInput }: { prompt: string; clientRequestId?: string; designInput?: import("./types").BuildDesignInput }) =>
+      api.createBuildSession(prompt, clientRequestId, designInput),
     onSuccess: (session) => queryClient.setQueryData(buildKeys.session(workspaceId, session.id), session),
   });
 }

@@ -53,9 +53,9 @@ test("build planning clarification, free text, cancellation and saved result", a
     await page.screenshot({ path: testInfo.outputPath("build-progress-mobile.png"), fullPage: true });
 
     await page.goto(`/${workspace.slug}/build`, { waitUntil: "domcontentloaded" });
-    await idea.fill("做一座城堡");
+    await idea.fill("做一个能真的飞起来的飞机");
     await page.getByRole("button", { name: "开始创造" }).click();
-    await expect(page.getByText("当前模块还不能表达城堡，请换一个想法。", { exact: true })).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByText("当前还不能制作真正飞起来的机构。", { exact: true })).toBeVisible({ timeout: 30_000 });
     expect(errors).toEqual([]);
   } finally { await api.deleteWorkspace(); await api.cleanup(); }
 });

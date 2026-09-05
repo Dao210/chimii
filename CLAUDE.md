@@ -10,7 +10,7 @@ The former `apps/docs/content/docs/developers/conventions*.mdx` links are absent
 
 ## Project Shape
 
-Chimii is an AI invention and building product for children and families. Brick and circuit creation build on the existing workspace, agent execution, and multi-platform foundation. Build planning and compilation are constrained by supported modules and saved inventory; generated checks do not establish physical verification.
+Chimii is an AI invention and building product for children and families. Brick and circuit creation build on the existing workspace, agent execution, and multi-platform foundation. Build planning uses generic target shapes or reviewed modules, with catalog-backed compilation. Parts are reusable: generation never freezes, reserves or consumes inventory; current configured quantities constrain one simultaneous model. Generated checks do not establish physical verification.
 
 - `server/`: Go backend, Chi router, sqlc, gorilla/websocket.
 - `apps/web/`: Next.js App Router.
@@ -233,7 +233,7 @@ Do not claim verification passed unless you ran it. If you skip checks because t
 
 ## Domain Reminders
 
-- Build creations keep recipe, plan and inventory snapshots immutable. Only `current_step`, `completed_at`, `progress_revision` and the update timestamp change during building. Preview navigation never writes progress.
+- Build creations keep recipe and plan immutable. Edits save a new creation with source lineage and fresh progress. New generation does not save inventory snapshots; historical snapshots remain readable. Only `current_step`, `completed_at`, `progress_revision` and the update timestamp change during building. Preview navigation never writes progress.
 - New creation lists use `GET /api/build/creations?view=summary` (latest 60); installed clients retain the full-list contract. Progress writes return only progress, use an expected revision and the existing workspace/member write locks.
 - README status distinguishes code, executed tests, deployed version and physical verification. A test file, local green check or family report does not establish the other levels.
 

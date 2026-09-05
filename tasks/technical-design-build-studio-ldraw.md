@@ -1,5 +1,7 @@
 # 技术方案：Build Studio × LDraw 可搭建积木生成架构
 
+> 2026-09-05 更新：通用静态造型编译、结构化修订与可复用零件策略以 [通用造型生成与结构化修订](technical-design-freeform-build.md) 为准。新生成不冻结、不预占、不扣减库存；本文中的库存快照描述保留为历史设计背景。
+
 > 状态：MVP 纵向切片与官方 LDraw Catalog 已实现 0.3  
 > 日期：2026-08-03  
 > 关联产品方案：[prd-build-studio.md](./prd-build-studio.md)  

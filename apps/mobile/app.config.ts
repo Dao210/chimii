@@ -95,6 +95,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       [
         "expo-build-properties",
         {
+          android: { usesCleartextTraffic: !isProd },
           ios: {
             buildReactNativeFromSource: true,
           },

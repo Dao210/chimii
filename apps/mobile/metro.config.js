@@ -12,6 +12,14 @@ const projectRoot = __dirname;
 const monorepoRoot = path.resolve(projectRoot, "../..");
 
 const config = getDefaultConfig(projectRoot);
+// Expo inlines public environment variables into each transformed module.
+// dotenv-driven release variants must not reuse another environment's transforms.
+config.cacheVersion = [
+  config.cacheVersion,
+  process.env.APP_ENV ?? "development",
+  process.env.EXPO_PUBLIC_API_URL ?? "",
+  process.env.EXPO_PUBLIC_WEB_URL ?? "",
+].join("|");
 
 config.watchFolders = [monorepoRoot];
 config.resolver.nodeModulesPaths = [

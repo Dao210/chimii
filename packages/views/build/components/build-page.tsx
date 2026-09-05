@@ -47,7 +47,8 @@ export function BuildPage() {
   const ideaStarters = [t($ => $.starter_car), t($ => $.starter_dragon), t($ => $.starter_robot)];
   const statusCopy = session?.status === "generating"
     ? (session.phase === "planning" ? t($ => $.understanding) : t($ => $.generating)) : t($ => $.queued);
-	const failedDescription = session?.error === "BUILD_UNSUPPORTED" ? t($ => $.failed_unsupported)
+	const failedDescription = session?.error === "BUILD_SEARCH_LIMIT" ? t($ => $.failed_search_limit)
+    : session?.error === "BUILD_UNSUPPORTED" ? t($ => $.failed_unsupported)
     : session?.error === "BUILD_REQUIREMENTS_UNMET" ? t($ => $.failed_requirements)
     : session?.error === "BUILD_CANCELLED" ? t($ => $.cancelled)
     : session?.error === "BUILD_INSUFFICIENT_INVENTORY"

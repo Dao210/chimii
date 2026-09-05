@@ -11,6 +11,7 @@ import { useWorkspaceId } from "@chimii/core/hooks";
 import { useQuery } from "@tanstack/react-query";
 import { BuildModelViewer } from "./build-model-viewer";
 import { useT } from "../../i18n";
+import { BuildDesignEditor } from "./build-design-editor";
 
 export function BuildResult({ creation, onAgain }: { creation: BuildCreation; onAgain?: () => void }) {
   const { t } = useT("build");
@@ -19,6 +20,7 @@ export function BuildResult({ creation, onAgain }: { creation: BuildCreation; on
   const save = useSaveBuildProgress(wsId, creation.id);
   const progress = progressQuery.data;
   const [building, setBuilding] = useState(false);
+  const [editing, setEditing] = useState(false);
   const [previewStep, setPreviewStep] = useState(creation.validation.step_count);
   const step = building ? Math.max(1, progress?.current_step ?? 1) : previewStep;
   const busy = save.isPending || progressQuery.isFetching;
@@ -163,6 +165,7 @@ export function BuildResult({ creation, onAgain }: { creation: BuildCreation; on
         </div>
 
         <div className="mt-auto grid gap-2">
+          {creation.build_plan.document?.design?.shapes?.length ? <Button variant="outline" disabled={building} onClick={() => setEditing(true)}>{t($ => $.editor_title)}</Button> : null}
           <Button onClick={() => void downloadMPD()} className="h-12 rounded-xl bg-[#1d241f] font-bold text-white hover:bg-[#333d36]">
             <Download className="size-4" /> {t($ => $.result_download)}
           </Button>
@@ -176,6 +179,7 @@ export function BuildResult({ creation, onAgain }: { creation: BuildCreation; on
           </p>
         </div>
       </aside>
+      {editing && creation.build_plan.document?.design?.shapes?.length ? <BuildDesignEditor key={creation.id} creation={creation} onClose={() => setEditing(false)} /> : null}
     </div>
   );
 }

@@ -62,7 +62,7 @@ export function useWSClient(): WSClient | null {
   return use(RealtimeContext);
 }
 
-export function RealtimeProvider({ children }: { children: React.ReactNode }) {
+export function RealtimeProvider({ children, enabled = true }: { children: React.ReactNode; enabled?: boolean }) {
   const userId = useAuthStore((s) => s.user?.id ?? null);
   const wsSlug = useWorkspaceStore((s) => s.currentWorkspaceSlug);
   const [client, setClient] = useState<WSClient | null>(null);
@@ -73,7 +73,7 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
   const lastConnectedRef = useRef<boolean | null>(null);
 
   useEffect(() => {
-    if (!userId || !wsSlug) {
+    if (!enabled || !userId || !wsSlug) {
       setClient(null);
       return;
     }
@@ -138,7 +138,7 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
       ws?.disconnect();
       setClient(null);
     };
-  }, [userId, wsSlug]);
+  }, [userId, wsSlug, enabled]);
 
   return (
     <RealtimeContext.Provider value={client}>

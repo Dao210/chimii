@@ -38,10 +38,13 @@ func TestCompileStarterArchetypesAreBuildableAndDeterministic(t *testing.T) {
 		if err != nil {
 			t.Fatalf("marshal %q plan: %v", prompt, err)
 		}
-		for _, required := range []string{`"issues":[]`, `"items":[]`} {
+		for _, required := range []string{`"issues":[]`} {
 			if !strings.Contains(string(wire), required) {
 				t.Fatalf("%q plan JSON lacks stable empty array %s: %s", prompt, required, wire)
 			}
+		}
+		if strings.Contains(string(wire), `"inventory":`) {
+			t.Fatal("new creations must not freeze reusable inventory")
 		}
 		if first.MPD != second.MPD {
 			t.Fatalf("%q export is not deterministic", prompt)

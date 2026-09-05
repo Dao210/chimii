@@ -15,6 +15,21 @@ const recipe = {
   ],
 };
 
+const shape = (id, label, kind, x, y, z, sx, sy, sz, color) => ({ id, label, kind, operation: "add", position: { x, y, z }, size: { x: sx, y: sy, z: sz }, color });
+const clockRecipe = {
+  ...recipe, version: 3, subject: "clock", title: "积木时钟", summary: "用圆形钟面、静态指针和刻度组成的桌面造型", modules: [],
+  constraints: { exact_colors: true, no_wheels: true, part_count: 0, required_modules: [] },
+  design: { version: 1, mode: "static", shapes: [
+    shape("dial", "钟面", "ellipse", -5, 0, -5, 10, 6, 10, 15),
+    shape("minute", "分针", "box", -1, 6, -3, 1, 3, 4, 1),
+    shape("hour", "时针", "box", 0, 6, 0, 3, 3, 1, 4),
+    shape("north", "上方刻度", "box", 0, 6, -4, 1, 3, 1, 14),
+    shape("south", "下方刻度", "box", 0, 6, 3, 1, 3, 1, 14),
+    shape("west", "左侧刻度", "box", -4, 6, 0, 1, 3, 1, 14),
+    shape("east", "右侧刻度", "box", 3, 6, 0, 1, 3, 1, 14),
+  ] },
+};
+
 http.createServer(async (req, res) => {
   try {
     let raw = "";
@@ -25,8 +40,17 @@ http.createServer(async (req, res) => {
     const body = JSON.parse(raw);
     const input = JSON.parse(body.messages[0].content[0].text);
     let decision;
-    if (input.idea.includes("城堡")) {
-      decision = { outcome: "unsupported", message: "当前模块还不能表达城堡，请换一个想法。" };
+    if (input.idea.includes("真的飞起来")) {
+      decision = { outcome: "unsupported", message: "当前还不能制作真正飞起来的机构。" };
+    } else if (input.idea.includes("换一个颜色") && Object.keys(input.history).length === 0) {
+      const next = structuredClone(input.draft);
+      delete next.design;
+      decision = { outcome: "clarify", recipe: next, question: { prompt: "钟面想换成什么颜色？", choices: [{ id: "red", label: "红色" }], allow_free_text: true } };
+    } else if (input.idea.includes("钟") || input.draft?.design) {
+      if (input.idea.includes("换一个颜色") && !input.draft?.design) throw new Error("Edit clarification lost the source design");
+      const next = structuredClone(input.draft?.design ? input.draft : clockRecipe);
+      if (input.idea.includes("红色") || Object.values(input.history).includes("红色") || Object.values(input.history).includes("red")) next.design.shapes[0].color = 4;
+      decision = { outcome: "ready", recipe: next };
     } else if (input.idea.includes("朋友") && Object.keys(input.history).length === 0) {
       decision = {
         outcome: "clarify",

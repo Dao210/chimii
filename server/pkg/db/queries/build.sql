@@ -7,10 +7,11 @@ SELECT pg_advisory_xact_lock(hashtextextended(@actor_key::text, 0));
 -- name: CreateBuildSession :one
 INSERT INTO build_session (
     workspace_id, creator_user_id, child_profile_id, client_request_id, prompt, status, question, answers,
-    inventory_snapshot
+    inventory_snapshot, recipe, phase
 ) VALUES (
     @workspace_id, @creator_user_id, sqlc.narg(child_profile_id), @client_request_id, @prompt, @status,
-    sqlc.narg(question), COALESCE(sqlc.narg(answers), '{}'::jsonb), @inventory_snapshot
+    sqlc.narg(question), COALESCE(sqlc.narg(answers), '{}'::jsonb), @inventory_snapshot,
+    sqlc.narg(recipe), CASE WHEN @direct_compile::boolean THEN 'compiling' ELSE 'planning' END
 )
 ON CONFLICT (
     workspace_id,

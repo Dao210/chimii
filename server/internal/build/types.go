@@ -77,7 +77,8 @@ type InventoryItem struct {
 	Quantity int    `json:"quantity"`
 }
 
-// InventorySnapshot freezes the physical inventory semantics for one build.
+// InventorySnapshot is a read-only availability input for a single compilation.
+// Parts are reusable; this value never reserves or deducts workspace inventory.
 // Configured=false deliberately means every catalog part/color is available
 // without a quantity limit.
 type InventorySnapshot struct {
@@ -131,6 +132,7 @@ type AssemblyRecipe struct {
 	Requirements []string          `json:"requirements,omitempty"`
 	Constraints  RecipeConstraints `json:"constraints"`
 	Modules      []ModuleInstance  `json:"modules"`
+	Design       *DesignSpec       `json:"design,omitempty"`
 }
 
 type ValidationIssue struct {
@@ -167,9 +169,10 @@ type BuildPlan struct {
 	Steps                  []BuildStep         `json:"steps"`
 	Parts                  map[string]PartSpec `json:"parts"`
 	Validation             ValidationReport    `json:"validation"`
-	Inventory              InventorySnapshot   `json:"inventory"`
+	Inventory              *InventorySnapshot  `json:"inventory,omitempty"`
 	ContentHash            string              `json:"content_hash"`
 	GeneratedAt            time.Time           `json:"generated_at"`
+	Document               *BuildDocument      `json:"document,omitempty"`
 }
 
 type ClarifyingQuestion struct {

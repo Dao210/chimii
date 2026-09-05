@@ -3199,10 +3199,10 @@ export class ApiClient {
     });
   }
 
-  async createBuildSession(prompt: string, clientRequestId: string): Promise<BuildSession> {
+  async createBuildSession(prompt: string, clientRequestId: string, designInput?: import("../build/types").BuildDesignInput): Promise<BuildSession> {
     const raw = await this.fetch<unknown>("/api/build/sessions", {
       method: "POST",
-      body: JSON.stringify({ prompt, client_request_id: clientRequestId }),
+      body: JSON.stringify({ prompt, client_request_id: clientRequestId, ...designInput }),
     });
     return parseWithFallback(raw, BuildSessionSchema, EMPTY_BUILD_SESSION, {
       endpoint: "POST /api/build/sessions",

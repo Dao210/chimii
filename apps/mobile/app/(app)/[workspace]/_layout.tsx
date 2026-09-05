@@ -1,6 +1,6 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import type { ComponentProps } from "react";
-import { Redirect, Stack, useLocalSearchParams } from "expo-router";
+import { Redirect, Stack, useLocalSearchParams, usePathname } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { workspaceListOptions } from "@/data/queries/workspaces";
 import { useWorkspaceStore } from "@/data/workspace-store";
@@ -100,6 +100,11 @@ function RealtimeSubscriptions() {
  * membership, deep links to wrong slugs, etc.).
  */
 export default function WorkspaceLayout() {
+  const pathname = usePathname();
+  const [collaborationOpened, setCollaborationOpened] = useState(false);
+  useEffect(() => {
+    if (/\/(account|inbox|chat|my-issues|issue|project|more)(\/|$)/.test(pathname)) setCollaborationOpened(true);
+  }, [pathname]);
   const { workspace: slug } = useLocalSearchParams<{ workspace: string }>();
   const { data: workspaces, isLoading } = useQuery(workspaceListOptions());
   const currentId = useWorkspaceStore((s) => s.currentWorkspaceId);
@@ -134,8 +139,9 @@ export default function WorkspaceLayout() {
   // Tabs hide their own header; pushed screens (issue/[id]) get a native
   // iOS Stack header with the standard back button + swipe-to-dismiss.
   return (
-    <RealtimeProvider>
-      <RealtimeSubscriptions />
+    <RealtimeProvider enabled={collaborationOpened}>
+      {/* Maker startup needs no agent/presence queries. Start these on the first collaboration visit. */}
+      {collaborationOpened && <RealtimeSubscriptions />}
       <Stack>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="account" options={{ title: "家庭与账户" }} />

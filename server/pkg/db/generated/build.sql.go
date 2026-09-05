@@ -226,10 +226,11 @@ func (q *Queries) CreateBuildCreation(ctx context.Context, arg CreateBuildCreati
 const createBuildSession = `-- name: CreateBuildSession :one
 INSERT INTO build_session (
     workspace_id, creator_user_id, child_profile_id, client_request_id, prompt, status, question, answers,
-    inventory_snapshot
+    inventory_snapshot, recipe, phase
 ) VALUES (
     $1, $2, $3, $4, $5, $6,
-    $7, COALESCE($8, '{}'::jsonb), $9
+    $7, COALESCE($8, '{}'::jsonb), $9,
+    $10, CASE WHEN $11::boolean THEN 'compiling' ELSE 'planning' END
 )
 ON CONFLICT (
     workspace_id,
@@ -251,6 +252,8 @@ type CreateBuildSessionParams struct {
 	Question          []byte      `json:"question"`
 	Answers           interface{} `json:"answers"`
 	InventorySnapshot []byte      `json:"inventory_snapshot"`
+	Recipe            []byte      `json:"recipe"`
+	DirectCompile     bool        `json:"direct_compile"`
 }
 
 func (q *Queries) CreateBuildSession(ctx context.Context, arg CreateBuildSessionParams) (BuildSession, error) {
@@ -264,6 +267,8 @@ func (q *Queries) CreateBuildSession(ctx context.Context, arg CreateBuildSession
 		arg.Question,
 		arg.Answers,
 		arg.InventorySnapshot,
+		arg.Recipe,
+		arg.DirectCompile,
 	)
 	var i BuildSession
 	err := row.Scan(
