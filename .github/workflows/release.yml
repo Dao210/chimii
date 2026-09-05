@@ -9,7 +9,11 @@ on:
       - "!v*-dirty*"
 
 permissions:
-  contents: write
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   verify:
@@ -20,6 +24,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
+          ref: ${{ github.sha }}
           fetch-depth: 0
 
       - name: Validate tag name
@@ -58,18 +63,68 @@ jobs:
       - name: Verify sh deployment safeguards
         run: bash scripts/deploy-sh.test.sh
 
+      - name: Verify release recovery safeguards
+        run: bash scripts/prepare-release.test.sh
+
       - name: Run tests
         run: bash scripts/test-go.sh --race
 
-  release:
+  prepare-release:
     needs: verify
+    if: github.repository == 'Dao210/chimii'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+      actions: read
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+
+      - name: Inspect existing release and publisher state
+        id: recovery
+        run: bash scripts/prepare-release.sh inspect
+
+      - name: Download every original release asset
+        if: steps.recovery.outputs.replace == 'true'
+        run: gh release download "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --dir "$RUNNER_TEMP/release-recovery/assets"
+
+      - name: Verify original asset sizes and SHA-256 digests
+        if: steps.recovery.outputs.replace == 'true'
+        run: bash scripts/prepare-release.sh verify-backup
+
+      - name: Retain original release and assets before replacement
+        if: steps.recovery.outputs.replace == 'true'
+        id: backup
+        uses: actions/upload-artifact@v4
+        with:
+          name: v0.3.0-original-release-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/release-recovery/
+          compression-level: 0
+          retention-days: 30
+          if-no-files-found: error
+
+      - name: Remove only the approved and backed-up old release
+        if: steps.recovery.outputs.replace == 'true'
+        env:
+          RECOVERY_ARTIFACT_ID: ${{ steps.backup.outputs.artifact-id }}
+        run: bash scripts/prepare-release.sh delete
+
+  release:
+    needs: prepare-release
     # Only publish from the repository that backs chimii.com/download.
     if: github.repository == 'Dao210/chimii'
+    permissions:
+      contents: write
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
+          ref: ${{ github.sha }}
           fetch-depth: 0
 
       - name: Setup Go
@@ -92,6 +147,8 @@ jobs:
   # download page labels that limitation explicitly.
   desktop:
     needs: release
+    permissions:
+      contents: write
     strategy:
       fail-fast: false
       matrix:
@@ -107,6 +164,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
+          ref: ${{ github.sha }}
           fetch-depth: 0
 
       - name: Install rpmbuild (Linux)

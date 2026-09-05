@@ -31,6 +31,18 @@ Updating `package.json` in a new commit does not update an existing tag. If a
 tag has already been pushed, do not silently move it or replace its assets:
 publish a new version, or obtain explicit approval for a same-version rebuild.
 
+Git pushes use the repository's configured SSH remote; local `gh` authentication
+is not needed to trigger publication. Actions uses its own `GITHUB_TOKEN`.
+Release runs are serialized per tag, and existing releases fail closed. The only
+approved replacement exception is the original `v0.3.0` release ID `383132584`
+from run `33944152071` / commit `fc2f6538502d9f651118493731f4fd22d2da2a22`.
+Recovery requires the old publisher to have stopped and no competing run to be
+active. It downloads every original asset, verifies size and SHA-256, retains the
+backup as an Actions artifact for 30 days, rechecks the release identity, and only
+then deletes that old release (not its tag) before normal publication. It never
+overwrites a subsequently rebuilt release or any other version. Rerunning a
+completed release is not a general-purpose overwrite command.
+
 ## Deployment operations
 
 | Command | Behavior |
