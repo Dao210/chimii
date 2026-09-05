@@ -61,3 +61,12 @@ describe("BuildSessionSchema planning protocol", () => {
     expect(parsed.status).toBe("failed");
   });
 });
+
+describe("build progress boundary", () => {
+  it("rejects malformed or out-of-range progress instead of claiming completion", async () => {
+    const { BuildProgressSchema, BuildSummaryListSchema } = await import("./schemas");
+    expect(BuildProgressSchema.safeParse({ id: "c", current_step: 9, step_count: 3, revision: 1, completed_at: null }).success).toBe(false);
+    expect(BuildProgressSchema.safeParse({ id: "c", current_step: 1, step_count: 3, revision: "1", completed_at: null }).success).toBe(false);
+    expect(BuildSummaryListSchema.safeParse({ creations: null }).success).toBe(false);
+  });
+});

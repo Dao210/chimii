@@ -13,9 +13,9 @@
 import { View } from "react-native";
 import type {
   InboxItem,
-  InboxItemType,
   IssuePriority,
 } from "@chimii/core/types";
+
 import { formatDateOnly } from "@chimii/core/issues/date";
 import { Text } from "@/components/ui/text";
 import { StatusIcon } from "@/components/ui/status-icon";
@@ -34,7 +34,7 @@ const PRIORITY_LABEL: Record<IssuePriority, string> = {
 };
 
 // Mirrors useTypeLabels in packages/views/inbox/components/inbox-detail-label.tsx
-const TYPE_LABEL: Record<InboxItemType, string> = {
+const TYPE_LABEL: Record<string, string> = {
   issue_assigned: "Assigned",
   issue_subscribed: "Subscribed",
   unassigned: "Unassigned",
@@ -114,7 +114,7 @@ export function InboxDetailLabel({
 
   // Single-string cases.
   const text = (() => {
-    switch (item.type) {
+    switch (String(item.type)) {
       case "issue_assigned":
       case "assignee_changed":
         if (details.new_assignee_id) {

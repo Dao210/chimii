@@ -170,5 +170,15 @@
   "session_fetch_error": "進捗を取得できませんでした。もう一度お試しください。",
   "failed_unsupported": "現在のモジュールではこのアイデアを表現できません。内容を変更してください。",
   "failed_requirements": "この組み合わせではすべての条件を満たせません。内容を変更してください。",
-  "cancelled": "制作を停止しました。アイデアは残っています。"
+  "cancelled": "制作を停止しました。アイデアは残っています。",
+  "progress_start": "組み立てを開始",
+  "progress_continue": "組み立てを続ける",
+  "progress_preview": "完成モデルを見る",
+  "progress_complete": "組み立て完了",
+  "progress_completed": "組み立て完了",
+  "progress_saved": "ステップ {{step}} で保存済み",
+  "progress_not_started": "未開始",
+  "progress_loading": "進行状況を読み込み・保存中…",
+  "progress_error": "保存できないか別の端末で変更されました。保存済みの手順を再読み込みしてください。",
+  "creations_recent": "最近のブロック作品60件。"
 }

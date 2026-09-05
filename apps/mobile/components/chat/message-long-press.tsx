@@ -1,10 +1,11 @@
+import { useActionMenu } from "@/components/ui/action-menu";
 /**
  * Long-press handler for a chat message bubble. Exposes `onLongPress`
  * (drives a native iOS ActionSheetIOS) and `isPressed` (drives the
  * caller's highlight ring while the sheet is on screen).
  *
  * iOS-native first per apps/mobile/CLAUDE.md §UI components → waterfall
- * step 1: `ActionSheetIOS.showActionSheetWithOptions`. Zero custom
+ * step 1: `showActionMenu`. Zero custom
  * layout, zero animation, zero overflow math, zero new deps.
  *
  * Item set (v1, conditional):
@@ -16,15 +17,16 @@
  * native alternative" threshold in apps/mobile/CLAUDE.md.
  */
 import { useCallback, useState } from "react";
-import { ActionSheetIOS } from "react-native";
 import * as Clipboard from "expo-clipboard";
 import * as Haptics from "expo-haptics";
 import type { ChatMessage } from "@chimii/core/types";
+
 import { useChatSelectStore } from "@/data/chat-select-store";
 
 export function useChatMessageLongPress(
   message: ChatMessage,
 ): { onLongPress: () => void; isPressed: boolean } {
+  const showActionMenu = useActionMenu();
   const [isPressed, setIsPressed] = useState(false);
 
   const onLongPress = useCallback(() => {
@@ -53,7 +55,7 @@ export function useChatMessageLongPress(
 
     const cancelButtonIndex = options.length - 1;
 
-    ActionSheetIOS.showActionSheetWithOptions(
+    showActionMenu(
       { options, cancelButtonIndex },
       (i) => {
         setIsPressed(false);
@@ -75,7 +77,7 @@ export function useChatMessageLongPress(
         }
       },
     );
-  }, [message]);
+  }, [message, showActionMenu]);
 
   return { onLongPress, isPressed };
 }

@@ -38,6 +38,7 @@ import type {
   User,
   Workspace,
 } from "@chimii/core/types";
+
 import { IssueSchema } from "@chimii/core/api/schemas";
 
 /** Upload response. Only fields mobile actually consumes — `url` to put
@@ -322,7 +323,7 @@ export const ChatPendingTaskSchema: z.ZodType<ChatPendingTask> = z.object({
 
 export const EMPTY_CHAT_PENDING_TASK: ChatPendingTask = {};
 
-export const SendChatMessageResponseSchema: z.ZodType<SendChatMessageResponse> = z.object({
+export const SendChatMessageResponseSchema = z.object({
   message_id: z.string(),
   task_id: z.string(),
   supports_queue: z.boolean().optional(),
@@ -378,6 +379,7 @@ export const SearchIssuesResponseSchema = z.object({
 }).loose();
 
 export const EMPTY_SEARCH_ISSUES_RESPONSE: SearchIssuesResponse = {
+  total: 0,
   issues: [],
 };
 
@@ -391,6 +393,7 @@ export const SearchProjectsResponseSchema = z.object({
 }).loose();
 
 export const EMPTY_SEARCH_PROJECTS_RESPONSE: SearchProjectsResponse = {
+  total: 0,
   projects: [],
 };
 
@@ -441,7 +444,7 @@ export const AgentTaskSchema: z.ZodType<AgentTask> = z.object({
     .string()
     .optional()
     .catch(undefined)
-    .transform((v) => (v === "" ? undefined : v)),
+    .transform((v) => (v === "" ? undefined : v)) as z.ZodType<AgentTask["failure_reason"]>,
   created_at: z.string().default(""),
   chat_session_id: z.string().optional(),
   autopilot_run_id: z.string().optional(),
@@ -493,6 +496,11 @@ export const UserSchema: z.ZodType<User> = z.object({
   timezone: z.string().nullable().default(null),
   created_at: z.string().default(""),
   updated_at: z.string().default(""),
+}).loose();
+
+export const LoginResponseSchema = z.object({
+  token: z.string().min(1),
+  user: UserSchema.refine((user) => user.id.trim().length > 0),
 }).loose();
 
 // `id: ""` is the sentinel for "drifted / unauthenticated"; downstream code
@@ -614,7 +622,7 @@ const AgentInvocationTargetSchema: z.ZodType<AgentInvocationTarget> = z
 // where new modes/visibilities/statuses get added most often. We need only id,
 // name, avatar_url, and a couple of flags for the assignee picker + chat
 // header; everything else is informational and safe to default.
-export const AgentSchema: z.ZodType<Agent> = z.object({
+export const AgentSchema = z.object({
   id: z.string(),
   workspace_id: z.string().default(""),
   runtime_id: z.string().default(""),

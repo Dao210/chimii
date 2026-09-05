@@ -45,6 +45,7 @@ import type {
   ChatMessage,
   ChatPendingTask,
 } from "@chimii/core/types";
+
 import {
   enqueuePendingChatTask,
   hideQueuedChatMessages,
@@ -373,8 +374,7 @@ export default function ChatTab() {
           message_id: result.message_id,
           content,
           optimistic_task_id: optimisticTaskId,
-          supports_queue: result.supports_queue,
-          queued: result.queued,
+
         });
         qc.invalidateQueries({ queryKey: chatKeys.messages(sessionId) });
         if (options.clearDraft !== false) {
@@ -522,10 +522,6 @@ export default function ChatTab() {
           hasSessions={sessions.length > 0}
           agent={currentAgent}
           onPickPrompt={(text) => setDraft(draftKey, text)}
-          onQuickAction={(action) =>
-            handleSend(action.prompt, [], { clearDraft: false })
-          }
-          quickActionsDisabled={sending || disabled}
           pendingTask={pendingTask}
           liveTaskMessages={liveTaskMessages}
           availability={presenceAvailability}

@@ -186,7 +186,8 @@ export function taskMessagesOptions(taskId: string) {
 /**
  * Merge task-message batches into one seq-ordered, seq-deduplicated list for
  * the shared `["task-messages", taskId]` cache. Existing entries win on
- * conflict, and the original array reference is preserved when nothing new
+ * live-event conflicts; authoritative fetches can fill persisted corrections.
+ * The original array reference is preserved when nothing new
  * arrives so React Query observers don't re-render on duplicate events.
  *
  * Both the realtime `task:message` handler (a single payload) and the
@@ -200,7 +201,16 @@ export function mergeTaskMessagesBySeq(
   incoming: readonly TaskMessagePayload[],
   authoritative = false,
 ): TaskMessagePayload[] {
+  if (incoming === existing) return existing as TaskMessagePayload[];
   if (incoming.length === 0) return existing as TaskMessagePayload[];
+  const last = existing.at(-1);
+  if (incoming.length === 1 && last && incoming[0]!.seq > last.seq) return [...existing, incoming[0]!];
+  // QueryClient also runs structuralSharing after a live append. Reuse that
+  // already merged array instead of allocating a Map and sorting it again.
+  if (last && incoming.length === existing.length + 1 && incoming.at(-1)!.seq > last.seq
+    && existing.every((message, index) => message === incoming[index])) {
+    return incoming as TaskMessagePayload[];
+  }
   const bySeq = new Map(existing.map((message) => [message.seq, message]));
   let changed = false;
   for (const message of incoming) {

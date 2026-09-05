@@ -1,3 +1,4 @@
+import { useActionMenu } from "@/components/ui/action-menu";
 /**
  * Profile edit subscreen — name + avatar.
  *
@@ -12,7 +13,6 @@
  */
 import { useEffect, useState } from "react";
 import {
-  ActionSheetIOS,
   Alert,
   ActivityIndicator,
   Pressable,
@@ -43,6 +43,7 @@ function initialsOf(name: string | undefined): string {
 }
 
 export default function ProfileSettingsScreen() {
+  const showActionMenu = useActionMenu();
   const user = useAuthStore((s) => s.user);
   const setUser = useAuthStore((s) => s.setUser);
 
@@ -59,39 +60,16 @@ export default function ProfileSettingsScreen() {
   const dirty = name.trim() !== (user?.name ?? "") && name.trim().length > 0;
 
   const handleAvatarPick = () => {
-    const options = ["Take Photo", "Choose from Library", "Remove Photo", "Cancel"];
-    const removeIndex = user?.avatar_url ? 2 : -1;
-    const cancelIndex = user?.avatar_url ? 3 : 2;
-    const visibleOptions = user?.avatar_url ? options : options.filter((_, i) => i !== 2);
-
-    ActionSheetIOS.showActionSheetWithOptions(
-      {
-        options: visibleOptions,
-        cancelButtonIndex: cancelIndex,
-        destructiveButtonIndex: removeIndex >= 0 ? removeIndex : undefined,
-      },
-      async (index) => {
-        if (index === cancelIndex) return;
-        if (index === 0) await pickFromCamera();
-        else if (index === 1) await pickFromLibrary();
-        else if (index === removeIndex) await removeAvatar();
-      },
-    );
-  };
-
-  const pickFromCamera = async () => {
-    const perm = await ImagePicker.requestCameraPermissionsAsync();
-    if (!perm.granted) {
-      Alert.alert("Permission needed", "Camera access is required to take a photo.");
-      return;
-    }
-    const result = await ImagePicker.launchCameraAsync({
-      mediaTypes: ["images"],
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.8,
+    const options = user?.avatar_url
+      ? ["Choose from Library", "Remove Photo", "Cancel"]
+      : ["Choose from Library", "Cancel"];
+    showActionMenu({
+      options, cancelButtonIndex: options.length - 1,
+      destructiveButtonIndex: user?.avatar_url ? 1 : undefined,
+    }, async (index) => {
+      if (index === 0) await pickFromLibrary();
+      else if (user?.avatar_url && index === 1) await removeAvatar();
     });
-    if (!result.canceled) await uploadAvatar(result.assets[0]);
   };
 
   const pickFromLibrary = async () => {

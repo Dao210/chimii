@@ -65,8 +65,15 @@ test("builds and resumes a radio from real saved circuit data", async ({
     );
     const parentCreationID = new URL(page.url()).pathname.split("/").at(-1)!;
     await expect(page.getByText("STEP 1 / 23")).toBeVisible();
+    let progressListReads = 0;
+    page.on("request", request => {
+      if (request.method() === "GET" && new URL(request.url()).pathname === "/api/circuit/creations") progressListReads++;
+    });
+
     await page.getByRole("button", { name: "Done, next step" }).click();
     await expect(page.getByText("Saved at step 2")).toBeVisible();
+    expect(progressListReads).toBe(0);
+
     await page.reload();
     await expect(page.getByText("STEP 2 / 23")).toBeVisible();
     await page.getByRole("button", { name: "Complete layout" }).click();

@@ -1,3 +1,4 @@
+import { api as mobileApi } from "@/data/api";
 /**
  * App-level lightbox provider for tap-to-zoom image viewing.
  *
@@ -47,7 +48,7 @@ export function useLightbox(): LightboxApi {
 }
 
 interface Viewing {
-  images: { uri: string }[];
+  images: { uri: string; headers?: Record<string, string> }[];
   index: number;
 }
 
@@ -67,7 +68,7 @@ export function LightboxProvider({ children }: { children: ReactNode }) {
         const images = found >= 0 ? uris : [uri];
         const index = found >= 0 ? found : 0;
         setCurrentIndex(index);
-        setViewing({ images: images.map((u) => ({ uri: u })), index });
+        setViewing({ images: images.map((u) => ({ uri: u, headers: mobileApi.attachmentHeaders(u) })), index });
       },
     }),
     [],

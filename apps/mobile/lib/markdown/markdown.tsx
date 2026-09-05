@@ -1,3 +1,5 @@
+import { matchAttachmentByURL } from "@chimii/core/attachments/image-sequence";
+import { openAttachment } from "@/lib/open-attachment";
 /**
  * Public Markdown component for the mobile app. Hybrid renderer:
  *
@@ -38,7 +40,7 @@
  * default elsewhere.
  */
 import { useCallback, useMemo } from "react";
-import { Linking, View } from "react-native";
+import { Alert, Linking, View } from "react-native";
 import { router } from "expo-router";
 import { EnrichedMarkdownText } from "react-native-enriched-markdown";
 import type { Attachment } from "@chimii/core/types";
@@ -163,6 +165,12 @@ export function Markdown({
         }
         return;
       }
+      const attachment = matchAttachmentByURL(url, attachments);
+      if (attachment) {
+        void openAttachment(attachment.download_url || attachment.url, attachment.filename)
+          .catch((error: unknown) => Alert.alert("Unable to open attachment", error instanceof Error ? error.message : "Please retry."));
+        return;
+      }
       // Everything else — http(s), mailto, tel, app-scheme deep links —
       // hand off to the system. Linking.openURL throws if no app handles
       // the URL; the catch keeps a stray tap from crashing the screen.
@@ -170,7 +178,7 @@ export function Markdown({
         // Silent: failing loudly is worse than a no-op tap.
       });
     },
-    [wsSlug],
+    [wsSlug, attachments],
   );
 
   if (segments.length === 0) return null;

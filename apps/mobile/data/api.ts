@@ -1,3 +1,8 @@
+import { attachmentHeaders } from "@/lib/attachment-auth";
+import { Platform } from "react-native";
+import Constants from "expo-constants";
+import { BuildSummaryListSchema, type BuildSummary } from "@chimii/core/build/schemas";
+import { CircuitListSchema, type CircuitList } from "@chimii/core/circuit/schemas";
 /**
  * Mobile-owned fetch wrapper. Mirrors the surface area of
  * packages/core/api/client.ts that mobile actually uses, but lives in
@@ -45,7 +50,6 @@ import type {
   RuntimeDevice,
   SearchIssuesResponse,
   SearchProjectsResponse,
-  ListIssueStatusesResponse,
   SendChatMessageResponse,
   Squad,
   NotificationPreferenceResponse,
@@ -57,19 +61,16 @@ import type {
   UpdateProjectRequest,
   User,
   Workspace,
-  WorkspaceSubscriptionSummary,
 } from "@chimii/core/types";
+
 import {
   AppConfigSchema,
   EMPTY_APP_CONFIG,
-  EMPTY_LIST_ISSUE_STATUSES_RESPONSE,
   EMPTY_LIST_ISSUES_RESPONSE,
   EMPTY_TIMELINE_ENTRIES,
   IssueSchema,
   ListIssuesResponseSchema,
-  ListIssueStatusesResponseSchema,
   TimelineEntriesSchema,
-  WorkspaceSubscriptionSummarySchema,
 } from "@chimii/core/api/schemas";
 import type { AppConfigResponse } from "@chimii/core/api/schemas";
 import {
@@ -123,6 +124,7 @@ import {
   TaskMessageListSchema,
   EMPTY_TASK_MESSAGE_LIST,
   UserSchema,
+  LoginResponseSchema,
   WorkspaceListSchema,
 } from "./schemas";
 import type { ZodType } from "zod";
@@ -190,6 +192,26 @@ class ApiClient {
   private token: string | null = null;
   private options: ApiClientOptions = {};
 
+  async listBuildSummaries(opts?: { signal?: AbortSignal }) {
+    const result = await this.fetchValidated<{ creations: BuildSummary[] } | null>(
+      "/api/build/creations?view=summary", BuildSummaryListSchema, null, opts,
+    );
+    if (!result) throw new Error("Could not read creations");
+    return result;
+  }
+
+  async listCircuitCreations(opts?: { signal?: AbortSignal }) {
+    const result = await this.fetchValidated<CircuitList | null>(
+      "/api/circuit/creations", CircuitListSchema, null, opts,
+    );
+    if (!result) throw new Error("Could not read circuits");
+    return result;
+  }
+
+  attachmentHeaders(uri: string) {
+    return attachmentHeaders(uri, API_URL ?? "", this.token, getCurrentSlug());
+  }
+
   setToken(token: string | null) {
     this.token = token;
   }
@@ -209,8 +231,8 @@ class ApiClient {
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
       "X-Client-Platform": "mobile",
-      "X-Client-OS": "ios",
-      "X-Client-Version": "0.1.0",
+      "X-Client-OS": Platform.OS,
+      "X-Client-Version": Constants.expoConfig?.version ?? "0.1.0",
       "X-Request-ID": rid,
       ...((init.headers as Record<string, string>) ?? {}),
     };
@@ -379,19 +401,22 @@ class ApiClient {
   }
 
   async verifyCode(email: string, code: string): Promise<LoginResponse> {
-    return this.fetch<LoginResponse>("/auth/verify-code", {
+    const raw = await this.fetch<unknown>("/auth/verify-code", {
       method: "POST",
       body: JSON.stringify({ email, code }),
     });
+    return LoginResponseSchema.parse(raw);
   }
 
   async getMe(opts?: { signal?: AbortSignal }): Promise<User> {
-    return this.fetchValidated(
+    const user = await this.fetchValidated(
       "/api/me",
       UserSchema,
       EMPTY_USER,
       { ...opts, endpoint: "getMe" },
     );
+    if (!user.id) throw new ApiError("Account response invalid", 0);
+    return user;
   }
 
   async getConfig(opts?: { signal?: AbortSignal }): Promise<AppConfigResponse> {
@@ -403,16 +428,6 @@ class ApiClient {
     );
   }
 
-  async getWorkspaceSubscriptionSummary(opts?: {
-    signal?: AbortSignal;
-  }): Promise<WorkspaceSubscriptionSummary | null> {
-    return this.fetchValidated<WorkspaceSubscriptionSummary | null>(
-      "/api/cloud-subscriptions/summary",
-      WorkspaceSubscriptionSummarySchema,
-      null,
-      { ...opts, endpoint: "getWorkspaceSubscriptionSummary" },
-    );
-  }
 
   // PATCH /api/me — name, avatar_url, language. Server returns the updated
   // user; we parse so a partial drift doesn't bleed into the auth store.
@@ -747,7 +762,6 @@ class ApiClient {
     commentId: string,
     content: string,
     attachmentIds?: string[],
-    contentBase?: string,
   ): Promise<Comment> {
     return this.fetchValidatedWith(
       `/api/comments/${commentId}`,
@@ -756,7 +770,7 @@ class ApiClient {
       {
         method: "PUT",
         body: JSON.stringify(
-          buildCommentUpdateBody(content, attachmentIds, contentBase),
+          buildCommentUpdateBody(content, attachmentIds),
         ),
       },
       { endpoint: "updateComment" },
@@ -892,32 +906,6 @@ class ApiClient {
     return this.fetch<IssueLabelsResponse>(
       `/api/issues/${issueId}/labels/${labelId}`,
       { method: "DELETE" },
-    );
-  }
-
-  // --- Issue status catalog (MUL-6243) ---
-  /**
-   * The workspace's issue statuses — the 7 built-ins plus any custom ones an
-   * admin defined. Reads are open to every workspace member; the catalog
-   * mutations are owner/admin only and live on web's settings screen, which is
-   * why mobile ships the read alone.
-   *
-   * `include_archived` is on by design. Archiving retires a status from FUTURE
-   * assignment but leaves the issues already on it, and those issues must keep
-   * their real name, colour and category — dropping archived rows here would
-   * degrade them to a raw key with a guessed category. Pickers filter them out
-   * via `IssueStatusCatalog.activeStatuses` instead.
-   */
-  async listIssueStatuses(
-    includeArchived = false,
-    opts?: { signal?: AbortSignal },
-  ): Promise<ListIssueStatusesResponse> {
-    const query = includeArchived ? "?include_archived=true" : "";
-    return this.fetchValidated(
-      `/api/issue-statuses${query}`,
-      ListIssueStatusesResponseSchema,
-      EMPTY_LIST_ISSUE_STATUSES_RESPONSE,
-      { ...opts, endpoint: "GET /api/issue-statuses" },
     );
   }
 
@@ -1257,8 +1245,8 @@ class ApiClient {
     const headers: Record<string, string> = {
       // No Content-Type — let fetch set the multipart boundary.
       "X-Client-Platform": "mobile",
-      "X-Client-OS": "ios",
-      "X-Client-Version": "0.1.0",
+      "X-Client-OS": Platform.OS,
+      "X-Client-Version": Constants.expoConfig?.version ?? "0.1.0",
       "X-Request-ID": rid,
     };
     if (this.token) headers["Authorization"] = `Bearer ${this.token}`;
@@ -1277,11 +1265,16 @@ class ApiClient {
 
     console.log(`[api] → POST ${path}`, { rid, filename: asset.name });
 
-    const res = await fetch(`${API_URL}${path}`, {
-      method: "POST",
-      headers,
-      body: formData,
-    });
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 120_000);
+    let res: Response;
+    try {
+      res = await fetch(`${API_URL}${path}`, {
+        method: "POST", headers, body: formData, signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timeout);
+    }
     const duration = Date.now() - start;
 
     if (!res.ok) {

@@ -32,3 +32,6 @@ data/**/.DS_Store
 
 expo-env.d.ts
 # @end expo-cli
+# Local release credentials and generated artifacts
+.signing/
+artifacts/

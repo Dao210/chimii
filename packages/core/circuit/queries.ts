@@ -110,12 +110,17 @@ export function useCircuitProgress(wsId: string, id: string) {
   return useMutation({
     mutationFn: (input: CircuitProgressInput) =>
       api.updateCircuitProgress(id, input),
-    onSuccess: (v) => {
+    onSuccess: async (v) => {
+      await Promise.all([
+        client.cancelQueries({ queryKey: circuitKeys.creation(wsId, id), exact: true }),
+        client.cancelQueries({ queryKey: circuitKeys.creations(wsId), exact: true }),
+      ]);
       client.setQueryData(circuitKeys.creation(wsId, id), v);
-      void client.invalidateQueries({
-        queryKey: circuitKeys.creations(wsId),
-        exact: true,
-      });
+      client.setQueryData<import("./schemas").CircuitList>(circuitKeys.creations(wsId), old => old && ({
+        ...old, creations: old.creations.map(item => item.id === id ? {
+          ...item, current_step: v.current_step, observation: v.observation,
+        } : item),
+      }));
     },
     onError: () => {
       void client.invalidateQueries({

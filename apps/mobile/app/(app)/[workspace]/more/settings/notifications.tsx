@@ -13,6 +13,7 @@ import type {
   NotificationGroupKey,
   NotificationPreferences,
 } from "@chimii/core/types";
+
 import { Text } from "@/components/ui/text";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
@@ -39,11 +40,6 @@ const INBOX_GROUPS: Array<{
     key: "comments",
     label: "Comments",
     description: "New comments on issues you're subscribed to.",
-  },
-  {
-    key: "mentions",
-    label: "Mentions",
-    description: "When someone @mentions you, including @all and @squad.",
   },
   {
     key: "updates",

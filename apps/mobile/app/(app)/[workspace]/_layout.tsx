@@ -102,13 +102,17 @@ function RealtimeSubscriptions() {
 export default function WorkspaceLayout() {
   const { workspace: slug } = useLocalSearchParams<{ workspace: string }>();
   const { data: workspaces, isLoading } = useQuery(workspaceListOptions());
+  const currentId = useWorkspaceStore((s) => s.currentWorkspaceId);
+  const currentSlug = useWorkspaceStore((s) => s.currentWorkspaceSlug);
   const setCurrentWorkspace = useWorkspaceStore((s) => s.setCurrentWorkspace);
 
   const matched = workspaces?.find((w) => w.slug === slug);
 
   useEffect(() => {
     if (matched) {
-      setCurrentWorkspace(matched.id, matched.slug);
+      void setCurrentWorkspace(matched.id, matched.slug).catch(() => {
+        // In-memory context is already synchronized; persistence can retry next launch.
+      });
     }
   }, [matched, setCurrentWorkspace]);
 
@@ -124,6 +128,8 @@ export default function WorkspaceLayout() {
   if (isLoading) return null;
 
   if (!matched) return <Redirect href="/select-workspace" />;
+  // Mount queries and the socket only after headers match the route.
+  if (currentId !== matched.id || currentSlug !== matched.slug) return null;
 
   // Tabs hide their own header; pushed screens (issue/[id]) get a native
   // iOS Stack header with the standard back button + swipe-to-dismiss.
@@ -293,6 +299,14 @@ export default function WorkspaceLayout() {
         <Stack.Screen
           name="more/issues"
           options={{ title: "Issues", headerBackTitle: "Back" }}
+        />
+        <Stack.Screen
+          name="more/creations"
+          options={{ title: "Creations", headerBackTitle: "Back" }}
+        />
+        <Stack.Screen
+          name="creation/[kind]/[id]"
+          options={{ title: "Creation", headerBackTitle: "Creations" }}
         />
         <Stack.Screen
           name="more/projects"

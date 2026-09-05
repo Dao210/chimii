@@ -3,7 +3,7 @@
 import { upsertChatMessageToCaches } from "@chimii/core/chat/message-cache";
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useInfiniteQuery, useQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "motion/react";
 import { Minus, Maximize2, Minimize2, ChevronDown, Plus, Check, Archive, Pencil, Loader2, Square } from "lucide-react";
 import { Button } from "@chimii/ui/components/ui/button";
@@ -64,44 +64,13 @@ import {
 } from "./use-chat-controller";
 import { useChatProjectContextSupport } from "./use-chat-project-context-support";
 import { createLogger } from "@chimii/core/logger";
-import type { Agent, Attachment, ChatMessage, ChatMessagesPage, ChatPendingTask, ChatSession, PendingChatTasksResponse } from "@chimii/core/types";
+import type { Agent, Attachment, ChatMessage, ChatPendingTask, ChatSession, PendingChatTasksResponse } from "@chimii/core/types";
 import { useT } from "../../i18n";
 
 const uiLogger = createLogger("chat.ui");
 const apiLogger = createLogger("chat.api");
 const CHAT_VIRTUOSO_INITIAL_FIRST_ITEM_INDEX = 1_000_000;
 
-function appendChatMessageToLatestPageCache(
-  qc: ReturnType<typeof useQueryClient>,
-  sessionId: string,
-  message: ChatMessage,
-) {
-  qc.setQueryData<InfiniteData<ChatMessagesPage>>(
-    chatKeys.messagesPage(sessionId),
-    (old) => {
-      if (!old) {
-        return {
-          pages: [{
-            messages: [message],
-            limit: 50,
-            has_more: false,
-            next_cursor: null,
-          }],
-          pageParams: [null],
-        };
-      }
-      if (old.pages.some((page) => page.messages.some((m) => m.id === message.id))) {
-        return old;
-      }
-      return {
-        ...old,
-        pages: old.pages.map((page, index) =>
-          index === 0 ? { ...page, messages: [...page.messages, message] } : page,
-        ),
-      };
-    },
-  );
-}
 
 export function ChatWindow() {
   const { t } = useT("chat");

@@ -1,31 +1,29 @@
+import { ActivityIndicator, View } from "react-native";
+import { Button } from "@/components/ui/button";
+import { Text } from "@/components/ui/text";
 import "../global.css";
+import { ActionMenuProvider } from "@/components/ui/action-menu";
 
 import { useEffect, useRef } from "react";
-import { Stack, router } from "expo-router";
+import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { KeyboardProvider } from "react-native-keyboard-controller";
-import { QueryClientProvider, useQueryClient } from "@tanstack/react-query";
+import { QueryClientProvider } from "@tanstack/react-query";
 import { ThemeProvider } from "@react-navigation/native";
 import { PortalHost } from "@rn-primitives/portal";
 import { api } from "@/data/api";
 import { queryClient } from "@/data/query-client";
 import { useAuthStore } from "@/data/auth-store";
-import { useWorkspaceStore } from "@/data/workspace-store";
-import { LightboxProvider, prewarmHighlighter } from "@/lib/markdown";
+import { LightboxProvider } from "@/lib/markdown";
 import { NAV_THEME } from "@/lib/theme";
 import { useColorScheme } from "@/lib/use-color-scheme";
 
-// Kick off Shiki highlighter init at module load — fires once per process,
-// finishes before the user navigates to any screen with a code block. If
-// init fails (engine unavailable) the highlighter falls back to plain
-// text; nothing here is allowed to throw.
-prewarmHighlighter();
-
 function AuthInitializer({ children }: { children: React.ReactNode }) {
   const initialize = useAuthStore((s) => s.initialize);
-  const qc = useQueryClient();
+  const isLoading = useAuthStore((s) => s.isLoading);
+  const error = useAuthStore((s) => s.initializationError);
   // Idempotent guard: 401 on multiple in-flight requests would otherwise
   // logout/navigate repeatedly during the same session-expire moment.
   const signingOutRef = useRef(false);
@@ -39,10 +37,8 @@ function AuthInitializer({ children }: { children: React.ReactNode }) {
         if (signingOutRef.current) return;
         signingOutRef.current = true;
         void (async () => {
-          await useAuthStore.getState().logout();
-          await useWorkspaceStore.getState().clear();
-          qc.clear();
-          router.replace("/login");
+          try { await useAuthStore.getState().logout(); }
+          catch { /* Auth/cache are already cleared even if storage fails. */ }
           // Reset on next tick so a fresh session can hit 401 again later
           // without being silently swallowed.
           setTimeout(() => {
@@ -52,13 +48,22 @@ function AuthInitializer({ children }: { children: React.ReactNode }) {
       },
     });
     initialize();
-  }, [initialize, qc]);
+  }, [initialize]);
 
+  if (isLoading || error) return (
+    <View className="flex-1 items-center justify-center gap-4 bg-background px-6">
+      {isLoading ? <ActivityIndicator /> : <>
+        <Text className="text-center text-foreground">{error}</Text>
+        <Button onPress={() => void initialize()}><Text>Retry</Text></Button>
+      </>}
+    </View>
+  );
   return <>{children}</>;
 }
 
 export default function RootLayout() {
   const { colorScheme, isDarkColorScheme } = useColorScheme();
+  const userId = useAuthStore((s) => s.user?.id ?? "signed-out");
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
@@ -66,7 +71,8 @@ export default function RootLayout() {
           <QueryClientProvider client={queryClient}>
             <ThemeProvider value={NAV_THEME[colorScheme]}>
               <AuthInitializer>
-                <LightboxProvider>
+                <LightboxProvider key={userId}>
+                  <ActionMenuProvider>
                   <StatusBar style={isDarkColorScheme ? "light" : "dark"} />
                   <Stack screenOptions={{ headerShown: false }}>
                     <Stack.Screen name="index" />
@@ -74,6 +80,7 @@ export default function RootLayout() {
                     <Stack.Screen name="(app)" />
                   </Stack>
                   <PortalHost />
+                </ActionMenuProvider>
                 </LightboxProvider>
               </AuthInitializer>
             </ThemeProvider>

@@ -27,7 +27,7 @@ export function CreationDetailPage({ creationId }: { creationId: string }) {
             <p className="mt-2 text-[#687068]">{t($ => $.detail_error_description)}</p>
             <Button onClick={() => void refetch()} className="mt-6 rounded-xl bg-[#1d241f] font-black">{t($ => $.retry_fetch)}</Button>
           </div>
-        ) : <BuildResult creation={data} />}
+        ) : <BuildResult key={data.id} creation={data} />}
       </div>
     </main>
   );

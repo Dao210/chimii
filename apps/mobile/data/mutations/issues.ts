@@ -19,27 +19,19 @@ import type {
   CreateIssueRequest,
   Issue,
   IssueReaction,
-  IssueStatus,
   Label,
   Reaction,
   TimelineEntry,
   UpdateIssueRequest,
 } from "@chimii/core/types";
+
 import { api } from "@/data/api";
-import { isIssueStatusCategory } from "@/lib/issue-status";
 import { issueKeys } from "@/data/queries/issues";
 import { inboxKeys } from "@/data/queries/inbox";
 import { useAuthStore } from "@/data/auth-store";
 import { useWorkspaceStore } from "@/data/workspace-store";
 import { useFailedCommentsStore } from "@/data/stores/failed-comments-store";
 import {
-  commentContentFromTimeline,
-  shouldAcceptServerRevision,
-} from "@/data/revision";
-import {
-  advanceCommentRevision,
-  onIssueAuxiliaryRevision,
-  reconcileIssueFullSnapshotRevision,
   commentToTimelineEntry,
   patchIssueLabels,
   replaceCommentTimelineEntry,
@@ -130,10 +122,7 @@ export function useCreateComment(issueId: string) {
     // to keep its optimistic entry so the inline retry UI has something to
     // render against. The success refetch replaces the synthetic id with
     // the server-issued one (same ASC bottom position).
-    onSuccess: (comment) => {
-      if (wsId) {
-        onIssueAuxiliaryRevision(qc, wsId, issueId, comment.issue_revision);
-      }
+    onSuccess: () => {
       qc.invalidateQueries({
         queryKey: issueKeys.timeline(wsId, issueId),
       });
@@ -225,17 +214,6 @@ export function useToggleCommentReaction(issueId: string) {
         qc.setQueryData(ctx.key, ctx.prev);
       }
     },
-    onSuccess: (reaction, vars) => {
-      if (reaction && wsId) {
-        advanceCommentRevision(
-          qc,
-          wsId,
-          issueId,
-          vars.commentId,
-          reaction.comment_revision,
-        );
-      }
-    },
     onSettled: () => {
       qc.invalidateQueries({ queryKey: issueKeys.timeline(wsId, issueId) });
     },
@@ -264,14 +242,10 @@ export function useEditComment(issueId: string) {
       content: string;
       attachmentIds?: string[];
     }) => {
-      const timeline = qc.getQueryData<TimelineEntry[]>(
-        issueKeys.timeline(wsId, issueId),
-      );
       return api.updateComment(
         commentId,
         content,
         attachmentIds,
-        commentContentFromTimeline(timeline, commentId),
       );
     },
     onMutate: async ({ commentId, content }) => {
@@ -460,47 +434,18 @@ export function useToggleIssueReaction(issueId: string) {
         qc.setQueryData(ctx.key, ctx.prev);
       }
     },
-    onSuccess: (reaction) => {
-      if (reaction && wsId) {
-        onIssueAuxiliaryRevision(
-          qc,
-          wsId,
-          issueId,
-          reaction.issue_revision,
-          "issue_reactions",
-        );
-      }
-    },
     onSettled: () => {
       qc.invalidateQueries({ queryKey: issueKeys.detail(wsId, issueId) });
     },
   });
 }
 
-/**
- * Keeps `status_category` consistent with an optimistic `status` write
- * (MUL-6243).
- *
- * A cached issue looks like `{status: "todo", status_category: "todo"}` while a
- * patch carries only `{status: "human_review"}`, so a bare spread would leave
- * the STALE category on an issue that no longer behaves that way — and category
- * is what every list groups on. A custom key this response cannot resolve gets
- * `undefined` rather than the inherited value: unresolvable is honest, stale is
- * not, and `issueColumnCategory` falls back from there. The server's full
- * response lands moments later and settles it either way.
- */
-function statusCategoryPatch(status: IssueStatus | undefined): Partial<Issue> {
-  if (status === undefined) return {};
-  return {
-    status_category: isIssueStatusCategory(status) ? status : undefined,
-  };
-}
 
 /**
  * Update an issue's editable fields (status / priority / assignee / due_date /
  * project_id / etc). Predictable fields merge optimistically into the detail
  * cache; description stays authoritative because the server resolves it
- * against description_base and hidden channel-media markers. Settle invalidates
+ * as the canonical saved value. Settle invalidates
  * the my-issues list so a status change re-buckets the SectionList in
  * (tabs)/my-issues.tsx automatically.
  *
@@ -522,15 +467,11 @@ export function useUpdateIssue(issueId: string) {
       if (prev) {
         const {
           description: _description,
-          description_base: _descriptionBase,
-          title_base: _titleBase,
-          expected_revision: _expectedRevision,
           ...optimisticPatch
         } = patch;
         qc.setQueryData<Issue>(key, {
           ...prev,
           ...optimisticPatch,
-          ...statusCategoryPatch(optimisticPatch.status),
         });
       }
       return { prev, key };
@@ -541,19 +482,7 @@ export function useUpdateIssue(issueId: string) {
       }
     },
     onSuccess: (server) => {
-      qc.setQueryData<Issue>(issueKeys.detail(wsId, issueId), (current) =>
-        !current || shouldAcceptServerRevision(current.revision, server.revision)
-          ? server
-          : current,
-      );
-      if (wsId) {
-        reconcileIssueFullSnapshotRevision(
-          qc,
-          wsId,
-          issueId,
-          server.revision,
-        );
-      }
+      qc.setQueryData<Issue>(issueKeys.detail(wsId, issueId), server);
     },
     onSettled: () => {
       qc.invalidateQueries({ queryKey: issueKeys.detail(wsId, issueId) });
@@ -601,7 +530,7 @@ export function useAttachLabel(issueId: string) {
     },
     onSuccess: (server) => {
       if (wsId) {
-        patchIssueLabels(qc, wsId, issueId, server.labels, server.issue_revision);
+        patchIssueLabels(qc, wsId, issueId, server.labels);
       }
     },
     onSettled: () => {
@@ -639,7 +568,7 @@ export function useDetachLabel(issueId: string) {
     },
     onSuccess: (server) => {
       if (wsId) {
-        patchIssueLabels(qc, wsId, issueId, server.labels, server.issue_revision);
+        patchIssueLabels(qc, wsId, issueId, server.labels);
       }
     },
     onSettled: () => {

@@ -170,5 +170,15 @@
   "session_fetch_error": "创作进度暂时没有取到，请再取一次。",
   "failed_unsupported": "当前模块还不能表达这个想法。请修改需求后再试。",
   "failed_requirements": "当前组合无法同时满足这些要求，请修改想法后再试。",
-  "cancelled": "这次创作已停止，原来的想法还在。"
+  "cancelled": "这次创作已停止，原来的想法还在。",
+  "progress_start": "开始搭建",
+  "progress_continue": "继续搭建",
+  "progress_preview": "查看成品",
+  "progress_complete": "我搭建完成了",
+  "progress_completed": "已完成搭建",
+  "progress_saved": "已保存到第 {{step}} 步",
+  "progress_not_started": "尚未开始搭建",
+  "progress_loading": "正在读取或保存进度…",
+  "progress_error": "进度未保存，或已在另一台设备修改。请重新读取已保存步骤后重试。",
+  "creations_recent": "最近的 60 个积木作品。"
 }

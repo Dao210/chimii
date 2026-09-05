@@ -16,11 +16,12 @@
  * key-by-key swap.
  */
 import { View } from "react-native";
-import type { Agent, AgentConversationStarter } from "@chimii/core/types";
+import type { Agent } from "@chimii/core/types";
+
 import { Text } from "@/components/ui/text";
 import { Button } from "@/components/ui/button";
 
-const FALLBACK_CONVERSATION_STARTERS: AgentConversationStarter[] = [
+const FALLBACK_CONVERSATION_STARTERS: { label: string; prompt: string }[] = [
   {
     label: "What can you help with?",
     prompt: "What are you best at helping with? Give me a concise overview.",
@@ -44,10 +45,7 @@ interface Props {
 
 export function ChatEmptyState({ hasSessions, agent, onPickPrompt }: Props) {
   const title = agent ? `Hi, I'm ${agent.name}` : "Chat with your agents";
-  const configured = (agent?.conversation_starters ?? []).filter(
-    (item) => item.label.trim() && item.prompt.trim(),
-  );
-  const starters = configured.length > 0 ? configured : FALLBACK_CONVERSATION_STARTERS;
+  const starters = FALLBACK_CONVERSATION_STARTERS;
   return (
     <View className="flex-1 items-center justify-center px-6 py-8 gap-5">
       <View className="items-center gap-1">

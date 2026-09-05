@@ -1,6 +1,6 @@
+import { useActionMenu } from "@/components/ui/action-menu";
 import { useMemo } from "react";
 import {
-  ActionSheetIOS,
   Alert,
   FlatList,
   View,
@@ -9,6 +9,7 @@ import { useQuery } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import type { InboxItem } from "@chimii/core/types";
+
 import { Text } from "@/components/ui/text";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -34,6 +35,7 @@ import {
 } from "@/lib/inbox-display";
 
 export default function Inbox() {
+  const showActionMenu = useActionMenu();
   const wsId = useWorkspaceStore((s) => s.currentWorkspaceId);
   const wsSlug = useWorkspaceStore((s) => s.currentWorkspaceSlug);
   const { colorScheme } = useColorScheme();
@@ -77,7 +79,7 @@ export default function Inbox() {
       "Archive completed",
       "Archive all",
     ];
-    ActionSheetIOS.showActionSheetWithOptions(
+    showActionMenu(
       {
         options,
         cancelButtonIndex: 0,

@@ -7,7 +7,7 @@ import type { ExpoConfig, ConfigContext } from "expo/config";
  * APP_ENV is set by package.json scripts:
  *   - dev          → APP_ENV unset (treated as "development")
  *   - dev:staging  → APP_ENV=staging
- *   - dev:prod     → APP_ENV=production (rare; usually only for EAS build)
+ *   - dev:prod / android:release → APP_ENV=production
  */
 export default ({ config }: ConfigContext): ExpoConfig => {
   const env = process.env.APP_ENV ?? "development";
@@ -30,6 +30,17 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     // (apps/desktop/build/icon.png). Expo prebuild generates every required
     // iOS icon size from this single PNG.
     icon: "./assets/icon.png",
+    android: {
+      package: isProd
+        ? "ai.chimii.mobile"
+        : isStaging
+          ? "ai.chimii.mobile.staging"
+          : "ai.chimii.mobile.dev",
+      versionCode: Number(process.env.ANDROID_VERSION_CODE ?? "1"),
+      softwareKeyboardLayoutMode: "resize",
+      // The release app does not use the development overlay window.
+      blockedPermissions: isProd ? ["android.permission.SYSTEM_ALERT_WINDOW"] : [],
+    },
     ios: {
       // Expo keeps the top-level portrait policy for iPhone while adding all
       // iPad orientations required for multitasking when tablet support is on.
@@ -61,8 +72,11 @@ export default ({ config }: ConfigContext): ExpoConfig => {
           : (process.env.EXPO_BUNDLE_IDENTIFIER_DEV ?? "ai.chimii.mobile.dev"),
     },
     plugins: [
+      "./plugins/with-android-signing.cjs",
       "expo-router",
       "expo-secure-store",
+      "expo-sharing",
+      "expo-image",
       "@react-native-community/datetimepicker",
       "react-native-enriched-markdown",
       [

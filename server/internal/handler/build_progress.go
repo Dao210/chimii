@@ -20,10 +20,8 @@ type buildProgressResponse struct {
 	StepCount   int     `json:"step_count"`
 }
 
-func buildProgress(id pgtype.UUID, step, revision int32, completed pgtype.Timestamptz, validation []byte) buildProgressResponse {
-	var v buildstudio.ValidationReport
-	_ = json.Unmarshal(validation, &v)
-	return buildProgressResponse{uuidToString(id), step, timestampToPtr(completed), revision, v.StepCount}
+func buildProgress(id pgtype.UUID, step, revision int32, completed pgtype.Timestamptz, stepCount int) buildProgressResponse {
+	return buildProgressResponse{uuidToString(id), step, timestampToPtr(completed), revision, stepCount}
 }
 
 func (h *Handler) GetBuildProgress(w http.ResponseWriter, r *http.Request) {
@@ -44,7 +42,12 @@ func (h *Handler) GetBuildProgress(w http.ResponseWriter, r *http.Request) {
 		writeError(w, 500, "could not read progress")
 		return
 	}
-	writeJSON(w, 200, buildProgress(v.ID, v.CurrentStep, v.ProgressRevision, v.CompletedAt, v.Validation))
+	var validation buildstudio.ValidationReport
+	if err := json.Unmarshal(v.Validation, &validation); err != nil || validation.StepCount < 1 {
+		writeError(w, 500, "invalid creation progress")
+		return
+	}
+	writeJSON(w, 200, buildProgress(v.ID, v.CurrentStep, v.ProgressRevision, v.CompletedAt, validation.StepCount))
 }
 
 func (h *Handler) UpdateBuildProgress(w http.ResponseWriter, r *http.Request) {
@@ -85,8 +88,12 @@ func (h *Handler) UpdateBuildProgress(w http.ResponseWriter, r *http.Request) {
 		writeError(w, 500, "could not read progress")
 		return
 	}
-	current := buildProgress(existing.ID, existing.CurrentStep, existing.ProgressRevision, existing.CompletedAt, existing.Validation)
-	if int(req.CurrentStep) > current.StepCount || (req.Completed && int(req.CurrentStep) != current.StepCount) {
+	var validation buildstudio.ValidationReport
+	if err := json.Unmarshal(existing.Validation, &validation); err != nil || validation.StepCount < 1 {
+		writeError(w, 500, "invalid creation progress")
+		return
+	}
+	if int(req.CurrentStep) > validation.StepCount || (req.Completed && int(req.CurrentStep) != validation.StepCount) {
 		writeError(w, 400, "step is outside the build plan")
 		return
 	}
@@ -103,7 +110,7 @@ func (h *Handler) UpdateBuildProgress(w http.ResponseWriter, r *http.Request) {
 		writeError(w, 500, "could not save progress")
 		return
 	}
-	writeJSON(w, 200, buildProgress(v.ID, v.CurrentStep, v.ProgressRevision, v.CompletedAt, v.Validation))
+	writeJSON(w, 200, buildProgress(v.ID, v.CurrentStep, v.ProgressRevision, v.CompletedAt, validation.StepCount))
 }
 
 func (h *Handler) ListBuildCreationSummaries(w http.ResponseWriter, r *http.Request) {
@@ -129,11 +136,11 @@ func (h *Handler) ListBuildCreationSummaries(w http.ResponseWriter, r *http.Requ
 	items := make([]summary, 0, len(rows))
 	for _, row := range rows {
 		var v buildstudio.ValidationReport
-		if err := json.Unmarshal(row.Validation, &v); err != nil {
+		if err := json.Unmarshal(row.Validation, &v); err != nil || v.StepCount < 1 {
 			writeError(w, 500, "invalid creation summary")
 			return
 		}
-		items = append(items, summary{uuidToString(row.ID), row.Title, row.Prompt, row.Archetype, v.PartCount, v.StepCount, buildProgress(row.ID, row.CurrentStep, row.ProgressRevision, row.CompletedAt, row.Validation), timestampToString(row.CreatedAt)})
+		items = append(items, summary{uuidToString(row.ID), row.Title, row.Prompt, row.Archetype, v.PartCount, v.StepCount, buildProgress(row.ID, row.CurrentStep, row.ProgressRevision, row.CompletedAt, v.StepCount), timestampToString(row.CreatedAt)})
 	}
 	writeJSON(w, 200, map[string]any{"creations": items})
 }

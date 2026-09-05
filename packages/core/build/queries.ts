@@ -9,6 +9,8 @@ export const buildKeys = {
   catalogSync: (workspaceId: string) => [...buildKeys.catalog(workspaceId), "sync"] as const,
   inventory: (workspaceId: string) => [...buildKeys.all(workspaceId), "inventory"] as const,
   session: (workspaceId: string, id: string) => [...buildKeys.all(workspaceId), "session", id] as const,
+  summaries: (workspaceId: string) => [...buildKeys.all(workspaceId), "summaries"] as const,
+  progress: (workspaceId: string, id: string) => [...buildKeys.all(workspaceId), "progress", id] as const,
   creations: (workspaceId: string) => [...buildKeys.all(workspaceId), "creations"] as const,
   creation: (workspaceId: string, id: string) => [...buildKeys.all(workspaceId), "creation", id] as const,
 };
@@ -82,4 +84,11 @@ export function buildCreationOptions(workspaceId: string, id: string) {
     queryFn: () => api.getBuildCreation(id),
     enabled: id.length > 0,
   });
+}
+
+export function buildSummariesOptions(wsId: string) {
+  return queryOptions({ queryKey: buildKeys.summaries(wsId), queryFn: () => api.listBuildSummaries(), enabled: !!wsId });
+}
+export function buildProgressOptions(wsId: string, id: string) {
+  return queryOptions({ queryKey: buildKeys.progress(wsId, id), queryFn: () => api.getBuildProgress(id), enabled: !!wsId && !!id });
 }

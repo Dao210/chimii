@@ -12,6 +12,9 @@ build
 bin
 docs/*
 !docs/runtime-execution-types.md
+!docs/plans/
+docs/plans/*
+!docs/plans/2026-09-05-reliability-acceptance.md
 dist-electron
 *.tsbuildinfo
 # Build Studio uses `build` as a product-domain source directory. Keep these

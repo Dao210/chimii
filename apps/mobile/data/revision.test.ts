@@ -4,11 +4,10 @@ import { describe, expect, it } from "vitest";
 import {
   buildCommentUpdateBody,
   commentContentFromTimeline,
-  shouldAcceptServerRevision,
 } from "./revision";
 
-describe("mobile revision requests", () => {
-  it("reads the edited comment content and serializes it as the field baseline", () => {
+describe("mobile comment requests", () => {
+  it("reads existing content and sends only fields supported by Chimii", () => {
     const timeline = [
       {
         type: "comment",
@@ -18,17 +17,10 @@ describe("mobile revision requests", () => {
     ];
 
     expect(commentContentFromTimeline(timeline, "comment-1")).toBe("Original");
-    expect(buildCommentUpdateBody("Latest", ["attachment-1"], "Original")).toEqual({
+    expect(buildCommentUpdateBody("Latest", ["attachment-1"])).toEqual({
       content: "Latest",
       attachment_ids: ["attachment-1"],
-      content_base: "Original",
     });
   });
 
-  it("does not let an older HTTP response overwrite a newer cache revision", () => {
-    expect(shouldAcceptServerRevision(5, 4)).toBe(false);
-    expect(shouldAcceptServerRevision(5, 5)).toBe(false);
-    expect(shouldAcceptServerRevision(5, 6)).toBe(true);
-    expect(shouldAcceptServerRevision(undefined, undefined)).toBe(true);
-  });
 });

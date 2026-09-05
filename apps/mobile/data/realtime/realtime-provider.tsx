@@ -1,3 +1,4 @@
+import Constants from "expo-constants";
 /**
  * Realtime provider — Layer 2 of the realtime stack.
  *
@@ -34,7 +35,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { AppState, type AppStateStatus } from "react-native";
+import { AppState, Platform, type AppStateStatus } from "react-native";
 import NetInfo from "@react-native-community/netinfo";
 import { useAuthStore } from "@/data/auth-store";
 import { useWorkspaceStore } from "@/data/workspace-store";
@@ -87,10 +88,11 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
       if (cancelled || !token) return;
 
       ws = new WSClient({
+        clientOS: Platform.OS,
         url: WS_URL,
         token,
         workspaceSlug: wsSlug,
-        clientVersion: "0.1.0",
+        clientVersion: Constants.expoConfig?.version ?? "0.1.0",
         logger: console,
       });
       ws.connect();

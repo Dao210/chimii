@@ -200,7 +200,7 @@ func TestBuildWorkerDBExpiredLeaseCannotFailOrFinishNewJob(t *testing.T) {
 	}
 }
 func TestBuildWorkerDBSavedRecipeSkipsLLMOnResume(t *testing.T) {
-	h, _, s := buildTestDB(t)
+	h, pool, s := buildTestDB(t)
 	ctx := context.Background()
 	var calls atomic.Int32
 	h.LLM = buildFakeLLM(func() buildPlanningDecision { calls.Add(1); return validBuildDecision() })
@@ -217,6 +217,10 @@ func TestBuildWorkerDBSavedRecipeSkipsLLMOnResume(t *testing.T) {
 		t.Fatal(err)
 	}
 	if _, err = h.Queries.RetryBuildJob(ctx, db.RetryBuildJobParams{ID: job.ID, LeaseToken: job.LeaseToken, AvailableAt: pgtype.Timestamptz{Time: time.Now(), Valid: true}}); err != nil {
+		t.Fatal(err)
+	}
+	// Use the database clock: Docker's clock may lag the host clock.
+	if _, err = pool.Exec(ctx, "UPDATE build_job SET available_at = now() WHERE id=$1", job.ID); err != nil {
 		t.Fatal(err)
 	}
 	if _, err = h.BuildWorker.ProcessNext(ctx); err != nil {

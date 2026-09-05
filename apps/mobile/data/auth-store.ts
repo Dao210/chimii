@@ -1,3 +1,4 @@
+import { resetSessionState } from "./session-state";
 /**
  * Mobile auth store — Zustand. Logic mirrors packages/core/auth/store.ts:
  *   - Token written ONLY on successful verifyCode
@@ -9,8 +10,10 @@
  * Storage backend is expo-secure-store (mobile only); web uses HttpOnly
  * cookies, desktop uses localStorage via StorageAdapter.
  */
+import { queryClient } from "./query-client";
 import { create } from "zustand";
 import type { User } from "@chimii/core/types";
+
 import { api, ApiError } from "./api";
 import { clearToken, getToken, setToken } from "./secure-storage";
 import { useWorkspaceStore } from "./workspace-store";
@@ -18,6 +21,7 @@ import { useWorkspaceStore } from "./workspace-store";
 interface AuthState {
   user: User | null;
   isLoading: boolean;
+  initializationError: string | null;
   initialize: () => Promise<void>;
   sendCode: (email: string) => Promise<void>;
   verifyCode: (email: string, code: string) => Promise<User>;
@@ -30,30 +34,28 @@ interface AuthState {
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   isLoading: true,
+  initializationError: null,
 
   initialize: async () => {
-    // Restore the persisted workspace slug alongside the auth token so the
-    // entry redirect (app/index.tsx) can route directly to the last-used
-    // workspace without flashing /select-workspace.
-    await useWorkspaceStore.getState().restoreSlug();
-
-    const token = await getToken();
-    if (!token) {
-      set({ isLoading: false });
-      return;
-    }
-    api.setToken(token);
+    set({ isLoading: true, initializationError: null });
     try {
+      await useWorkspaceStore.getState().restoreSlug();
+      const token = await getToken();
+      api.setToken(token);
+      if (!token) { set({ user: null }); return; }
       const user = await api.getMe();
-      set({ user, isLoading: false });
+      if (!user.id) throw new Error("Account response invalid");
+      set({ user });
     } catch (err) {
-      // Only clear token on a genuine 401. Network blips / 5xx keep the
-      // token so the next launch (or a manual refresh) can retry.
       if (err instanceof ApiError && err.status === 401) {
-        await clearToken();
-        api.setToken(null);
+        await useAuthStore.getState().logout();
+      } else {
+        // Preserve the saved session on a network/storage failure. A retry
+        // screen keeps deep links in place and avoids an incorrect login redirect.
+        set({ initializationError: "Unable to restore your session. Check your connection and retry." });
       }
-      set({ user: null, isLoading: false });
+    } finally {
+      set({ isLoading: false });
     }
   },
 
@@ -70,9 +72,12 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   logout: async () => {
-    await clearToken();
     api.setToken(null);
-    set({ user: null });
+    set({ user: null, initializationError: null, isLoading: false });
+    await queryClient.cancelQueries();
+    queryClient.clear();
+    resetSessionState();
+    await Promise.all([clearToken(), useWorkspaceStore.getState().clear()]);
   },
 
   setUser: (user) => set({ user }),

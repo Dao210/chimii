@@ -74,7 +74,8 @@ func childBuildCapabilityAllowed(method, path string) bool {
 	case "creations":
 		return (len(segments) == 1 && method == http.MethodGet) ||
 			(len(segments) == 2 && segments[1] != "" && method == http.MethodGet) ||
-			(len(segments) == 3 && segments[1] != "" && segments[2] == "export.mpd" && method == http.MethodGet)
+			(len(segments) == 3 && segments[1] != "" && segments[2] == "export.mpd" && method == http.MethodGet) ||
+			(len(segments) == 3 && segments[1] != "" && segments[2] == "progress" && (method == http.MethodGet || method == http.MethodPut))
 	default:
 		return false
 	}

@@ -19,7 +19,7 @@
  */
 import * as React from "react";
 import Svg, { Circle, G, Line, Path } from "react-native-svg";
-import type { IssueStatus, IssueStatusCategory } from "@chimii/core/types";
+import type { IssueStatusCategory } from "@/lib/issue-status";
 import { statusCategoryOfKey } from "@/lib/issue-status";
 
 const CX = 7;
@@ -142,7 +142,7 @@ export function StatusIcon({
   color: colorProp,
   size = 16,
 }: {
-  status: IssueStatus;
+  status: string;
   /**
    * Resolved category, for callers that hold the workspace catalog. Without it
    * the key resolves on its own — exact for the 7 built-ins, `todo` for a

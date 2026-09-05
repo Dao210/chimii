@@ -5,16 +5,17 @@ import { AlertCircle, ArrowLeft, Blocks, Plus, Sparkles } from "lucide-react";
 import { Button } from "@chimii/ui/components/ui/button";
 import { useWorkspaceId } from "@chimii/core/hooks";
 import { useWorkspacePaths } from "@chimii/core/paths";
-import { buildCreationsOptions } from "@chimii/core/build";
+import { buildSummariesOptions } from "@chimii/core/build";
 import { AppLink } from "../../navigation";
-import { BuildModelViewer } from "./build-model-viewer";
 import { useT } from "../../i18n";
 
 export function CreationsPage() {
   const { t } = useT("build");
   const workspaceId = useWorkspaceId();
   const workspacePaths = useWorkspacePaths();
-  const { data: creations = [], isLoading, isError, refetch } = useQuery(buildCreationsOptions(workspaceId));
+  const { data, isLoading, isError, refetch } = useQuery(buildSummariesOptions(workspaceId));
+
+  const creations = data?.creations ?? [];
 
   return (
     <main className="h-full overflow-y-auto bg-[#f4ead5] text-[#1d241f]">
@@ -23,7 +24,7 @@ export function CreationsPage() {
           <div>
             <AppLink href={workspacePaths.build()} className="mb-4 inline-flex items-center gap-2 text-sm font-black text-[#39715a] hover:underline"><ArrowLeft className="size-4" /> {t($ => $.creations_back)}</AppLink>
             <h1 className="text-4xl font-black tracking-tight md:text-5xl">{t($ => $.creations_title)}</h1>
-            <p className="mt-2 font-medium text-[#687068]">{t($ => $.creations_description)}</p>
+            <p className="mt-2 font-medium text-[#687068]">{t($ => $.creations_recent)}</p>
           </div>
           <Button nativeButton={false} className="h-12 rounded-xl border-2 border-[#1d241f] bg-[#ef5c4f] font-black text-white shadow-[4px_5px_0_#1d241f]" render={<AppLink href={workspacePaths.build()} />}>
             <Plus className="size-4" /> {t($ => $.creations_new)}
@@ -54,10 +55,11 @@ export function CreationsPage() {
                 href={workspacePaths.creationDetail(creation.id)}
                 className="group overflow-hidden rounded-[2rem] border-2 border-[#1d241f] bg-[#fffdf7] shadow-[5px_6px_0_#1d241f] transition hover:-translate-y-1 hover:shadow-[8px_10px_0_#1d241f]"
               >
-                <BuildModelViewer placements={creation.build_plan.placements} parts={creation.build_plan.parts} renderMode="projection" className="m-3 h-56 rounded-[1.3rem] border" />
+                <div className="m-3 flex h-28 items-center justify-center rounded-[1.3rem] bg-muted text-muted-foreground"><Blocks className="size-10" aria-hidden="true" /></div>
                 <div className="px-5 pb-5 pt-2">
-                  <p className="text-xs font-black uppercase tracking-[.14em] text-[#39715a]">{t($ => $.creations_stats, { parts: creation.validation.part_count, steps: creation.validation.step_count })}</p>
+                  <p className="text-xs font-black uppercase tracking-[.14em] text-[#39715a]">{t($ => $.creations_stats, { parts: creation.part_count, steps: creation.step_count })}</p>
                   <h2 className="mt-1 text-xl font-black group-hover:text-[#3767bb]">{creation.title}</h2>
+                  <p className="mt-2 text-xs font-semibold text-foreground">{creation.progress.completed_at ? t($ => $.progress_completed) : creation.progress.current_step > 0 ? t($ => $.progress_saved, { step: creation.progress.current_step }) : t($ => $.progress_not_started)}</p>
                   <p className="mt-2 line-clamp-2 text-sm font-medium text-[#74736d]">{creation.prompt}</p>
                 </div>
               </AppLink>

@@ -30,7 +30,6 @@ import { useWSSubscriptions } from "@/lib/use-ws-subscriptions";
 import {
   appendTaskMessage,
   applyChatDoneToCache,
-  applyChatQuickActionsToCache,
   invalidatePendingTask,
   promotePendingTaskToRunning,
   seedPendingTaskFromQueued,
@@ -66,13 +65,6 @@ export function useChatSessionRealtime(
         ws.on("chat:done", (payload) => {
           if (!isMine(payload)) return;
           applyChatDoneToCache(qc, payload);
-        }),
-        // The daemon's background suggestion pass lands here, after chat:done
-        // already refetched an actions-less message list. Patch the actions in
-        // directly — staleTime is Infinity, so nothing would refetch them.
-        ws.on("chat:quick_actions", (payload) => {
-          if (!isMine(payload)) return;
-          void applyChatQuickActionsToCache(qc, payload);
         }),
         ws.on("task:queued", (payload) => {
           if (!isMine(payload)) return;

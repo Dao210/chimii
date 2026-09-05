@@ -35,7 +35,24 @@ test("build planning clarification, free text, cancellation and saved result", a
     await page.getByRole("button", { name: "继续创造" }).click();
     await expect(page.getByText("搭建验证通过", { exact: true })).toBeVisible({ timeout: 30_000 });
     await page.screenshot({ path: testInfo.outputPath("saved-build.png"), fullPage: true });
-    await page.getByRole("button", { name: "再创造一个" }).click();
+    let fullListRequests = 0;
+    page.on("request", r => { if (new URL(r.url()).pathname === "/api/build/creations" && !r.url().includes("view=summary")) fullListRequests++; });
+    await page.getByRole("button", { name: "开始搭建", exact: true }).click();
+    await expect(page.getByText("已保存到第 1 步", { exact: true })).toBeVisible();
+    await page.getByRole("button", { name: "下一步", exact: true }).click();
+    await expect(page.getByText("已保存到第 2 步", { exact: true })).toBeVisible();
+    await page.goto(`/${workspace.slug}/creations`, { waitUntil: "domcontentloaded" });
+    await page.getByRole("link", { name: /积木机器人/ }).click();
+    await expect(page).toHaveURL(new RegExp(`/${workspace.slug}/creations/[^/]+$`));
+    await page.reload();
+    await expect(page.getByText("已保存到第 2 步", { exact: true })).toBeVisible();
+    await page.getByRole("button", { name: "继续搭建", exact: true }).click();
+    await expect(page.getByText("已保存到第 2 步", { exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "下一步", exact: true })).toBeEnabled();
+    expect(fullListRequests).toBe(0);
+    await page.screenshot({ path: testInfo.outputPath("build-progress-mobile.png"), fullPage: true });
+
+    await page.goto(`/${workspace.slug}/build`, { waitUntil: "domcontentloaded" });
     await idea.fill("做一座城堡");
     await page.getByRole("button", { name: "开始创造" }).click();
     await expect(page.getByText("当前模块还不能表达城堡，请换一个想法。", { exact: true })).toBeVisible({ timeout: 30_000 });

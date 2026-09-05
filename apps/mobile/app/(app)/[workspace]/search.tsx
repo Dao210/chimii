@@ -27,12 +27,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useQueries } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import type {
-  Issue,
-  IssueStatusCategory,
-  SearchIssueResult,
-  SearchProjectResult,
-} from "@chimii/core/types";
+import type { Issue, SearchIssueResult, SearchProjectResult } from "@chimii/core/types";
+import type { IssueStatusCategory } from "@/lib/issue-status";
 import { Text } from "@/components/ui/text";
 import { StatusIcon } from "@/components/ui/status-icon";
 import { PriorityIcon } from "@/components/ui/priority-icon";

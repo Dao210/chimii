@@ -1,3 +1,4 @@
+import { api } from "@/data/api";
 /**
  * Block-level image with real aspect ratio + tap-to-lightbox.
  *
@@ -28,6 +29,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Image as RNImage, Pressable, View } from "react-native";
 import { Image as ExpoImage } from "expo-image";
 import type { Attachment } from "@chimii/core/types";
+
 import { matchAttachmentByURL } from "@chimii/core/attachments/image-sequence";
 import { resolveAttachmentUrl } from "@/lib/attachment-url";
 import { useLightbox } from "./lightbox-provider";
@@ -68,8 +70,9 @@ export function MarkdownImage({ uri, attachments }: Props) {
 
   useEffect(() => {
     let cancelled = false;
-    RNImage.getSize(
+    RNImage.getSizeWithHeaders(
       resolvedUri,
+      api.attachmentHeaders(resolvedUri),
       (w, h) => {
         if (cancelled || !w || !h) return;
         setAspect(w / h);
@@ -90,7 +93,7 @@ export function MarkdownImage({ uri, attachments }: Props) {
     <Pressable onPress={() => open(resolvedUri, sequence)}>
       <View className="rounded-lg overflow-hidden bg-muted">
         <ExpoImage
-          source={{ uri: resolvedUri }}
+          source={{ uri: resolvedUri, headers: api.attachmentHeaders(resolvedUri) }}
           style={{ width: "100%", aspectRatio: aspect ?? 16 / 9 }}
           contentFit="contain"
           transition={150}

@@ -111,3 +111,17 @@ Edit `EXPO_PUBLIC_API_URL` in `.env.staging`, `.env.production`, or `.env.develo
 - For an installed **Release build**: re-run the `ios:mobile:device:staging:release` command — the value is baked into the embedded bundle at build time.
 
 For local backend testing, use your Mac's LAN IP (`ipconfig getifaddr en0`), not `localhost`.
+
+## Recent creations
+
+More → Creations shows the latest 60 brick or 50 circuit creations using the
+server's existing visibility and ordering. Summary detail is native; Open on the
+web uses `EXPO_PUBLIC_WEB_URL` and the existing web sign-in flow. No auth token is
+placed in the URL. Configure the web origin separately from `EXPO_PUBLIC_API_URL`
+(for local development this is normally the frontend's port).
+
+This entry does not add native 3D rendering, offline synchronization, or a new
+child-session flow. Circuit steps are stored zero-based and displayed one-based;
+brick progress and completion follow the shared API contract. See the root
+README's acceptance record before treating a bundle check as an installed-app
+or hardware acceptance result.

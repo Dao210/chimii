@@ -1,3 +1,4 @@
+import { useActionMenu } from "@/components/ui/action-menu";
 /**
  * Project detail screen. Single column, scrolling:
  *
@@ -15,7 +16,6 @@
  */
 import { useCallback } from "react";
 import {
-  ActionSheetIOS,
   ActivityIndicator,
   Alert,
   Linking,
@@ -46,6 +46,7 @@ import { useProjectRealtime } from "@/data/realtime/use-project-realtime";
 import { useWorkspaceStore } from "@/data/workspace-store";
 
 export default function ProjectDetail() {
+  const showActionMenu = useActionMenu();
   const { id } = useLocalSearchParams<{ id: string }>();
   const wsId = useWorkspaceStore((s) => s.currentWorkspaceId);
   const wsSlug = useWorkspaceStore((s) => s.currentWorkspaceSlug);
@@ -95,7 +96,7 @@ export default function ProjectDetail() {
       "Delete",
     ];
     const destructiveIndex = options.length - 1;
-    ActionSheetIOS.showActionSheetWithOptions(
+    showActionMenu(
       {
         options,
         cancelButtonIndex: 0,

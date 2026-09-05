@@ -1,6 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
 import type { Issue } from "@chimii/core/types";
+
 import { groupIssuesByCategory } from "./group-issues-by-category";
 
 function issue(id: string, status: string, statusCategory?: string): Issue {
@@ -11,8 +12,8 @@ function issue(id: string, status: string, statusCategory?: string): Issue {
     identifier: `MUL-${id}`,
     title: id,
     description: null,
-    status,
-    ...(statusCategory ? { status_category: statusCategory as Issue["status_category"] } : {}),
+    status: status as Issue["status"],
+    ...(statusCategory ? { status_category: statusCategory } : {}),
     priority: "none",
     assignee_type: null,
     assignee_id: null,

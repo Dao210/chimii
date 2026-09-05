@@ -33,12 +33,12 @@ import type {
   TaskMessagePayload,
   TaskQueuedPayload,
 } from "@chimii/core/types";
+
 import { issueKeys } from "@/data/queries/issue-keys";
 import { useWSSubscriptions } from "@/lib/use-ws-subscriptions";
 import {
   addCommentReaction,
   addIssueReaction,
-  onIssueAuxiliaryRevision,
   appendTimelineEntry,
   clearIssueDetail,
   commentToTimelineEntry,
@@ -116,26 +116,19 @@ export function useIssueRealtime(
         }),
         ws.on("issue_labels:changed", (payload) => {
           if (payload.issue_id !== issueId) return;
-          patchIssueLabels(qc, wsId, issueId, payload.labels, payload.issue_revision);
-        }),
-        ws.on("issue_attachments:changed", (payload) => {
-          if (payload.issue_id !== issueId) return;
-          onIssueAuxiliaryRevision(qc, wsId, issueId, payload.issue_revision);
-          qc.invalidateQueries({
-            queryKey: issueKeys.attachments(wsId, issueId),
-          });
+          patchIssueLabels(qc, wsId, issueId, payload.labels);
         }),
 
         // ----- Comments / activity -----
         ws.on("comment:created", (payload) => {
           if (payload.comment.issue_id !== issueId) return;
+          qc.invalidateQueries({ queryKey: issueKeys.attachments(wsId, issueId) });
           appendTimelineEntry(
             qc,
             wsId,
             issueId,
             commentToTimelineEntry(payload.comment),
           );
-          onIssueAuxiliaryRevision(qc, wsId, issueId, payload.issue_revision);
         }),
         ws.on("comment:updated", (payload) => {
           if (payload.comment.issue_id !== issueId) return;
@@ -180,7 +173,7 @@ export function useIssueRealtime(
             issueId,
             payload.reaction.comment_id,
             payload.reaction,
-            payload.comment_revision,
+
           );
         }),
         ws.on("reaction:removed", (payload) => {
@@ -192,14 +185,14 @@ export function useIssueRealtime(
             payload.comment_id,
             payload.emoji,
             payload.actor_id,
-            payload.comment_revision,
+
           );
         }),
 
         // ----- Issue-level reactions -----
         ws.on("issue_reaction:added", (payload) => {
           if (payload.issue_id !== issueId) return;
-          addIssueReaction(qc, wsId, issueId, payload.reaction, payload.issue_revision);
+          addIssueReaction(qc, wsId, issueId, payload.reaction);
         }),
         ws.on("issue_reaction:removed", (payload) => {
           if (payload.issue_id !== issueId) return;
@@ -209,7 +202,7 @@ export function useIssueRealtime(
             issueId,
             payload.emoji,
             payload.actor_id,
-            payload.issue_revision,
+
           );
         }),
 

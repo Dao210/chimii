@@ -22,12 +22,13 @@
  * + size hint, opening the canonical download URL on tap.
  */
 import { useMemo } from "react";
-import { Linking, Pressable, View } from "react-native";
+import { Alert, Pressable, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import type { Attachment } from "@chimii/core/types";
+
 import { standaloneAttachments } from "@/lib/attachment-dedup";
 import { MarkdownImage } from "@/lib/markdown/markdown-image";
-import { resolveAttachmentUrl } from "@/lib/attachment-url";
+import { openAttachment } from "@/lib/open-attachment";
 import { useColorScheme } from "@/lib/use-color-scheme";
 import { THEME } from "@/lib/theme";
 import { Text } from "@/components/ui/text";
@@ -94,20 +95,8 @@ function FileCard({
   return (
     <Pressable
       onPress={() => {
-        // download_url is the canonical link — opening it hands off to
-        // Safari which handles auth-token-free download + previewing for
-        // common types (PDF, txt). Mirrors what the markdown link renderer
-        // does for `[name](url)`.
-        //
-        // The backend may return a server-relative URL like
-        // `/api/attachments/{id}/download` when no CloudFront signer is
-        // configured (MUL-2976). RN's `Linking.openURL` requires an
-        // absolute http(s) URL — it returns "Cannot open URL" otherwise —
-        // so resolve against `EXPO_PUBLIC_API_URL` first.
-        const target = resolveAttachmentUrl(attachment.download_url);
-        if (target) {
-          void Linking.openURL(target);
-        }
+        void openAttachment(attachment.download_url || attachment.url, attachment.filename)
+          .catch((error: unknown) => Alert.alert("Unable to open attachment", error instanceof Error ? error.message : "Please retry."));
       }}
       accessibilityRole="button"
       accessibilityLabel={`Open ${attachment.filename}`}

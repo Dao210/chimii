@@ -24,11 +24,8 @@ import { useQuery } from "@tanstack/react-query";
 import { useIsFocused } from "@react-navigation/native";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import type {
-  IssuePriority,
-  IssueStatus,
-  IssueStatusCategory,
-} from "@chimii/core/types";
+import type { IssuePriority, IssueStatus } from "@chimii/core/types";
+import type { IssueStatusCategory } from "@/lib/issue-status";
 import { Text } from "@/components/ui/text";
 import { Button } from "@/components/ui/button";
 import { Header } from "@/components/ui/header";

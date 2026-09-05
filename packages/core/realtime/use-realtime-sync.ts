@@ -1113,8 +1113,13 @@ export function useRealtimeSync(
     };
 
     const unsubChatMessage = ws.on("chat:message", (p) => {
-      const payload = p as { chat_session_id: string; message?: ChatMessage };
-      if (payload.message) upsertChatMessageToCaches(qc, payload.chat_session_id, payload.message);
+      const payload = p as { chat_session_id: string; message_id?: string; role?: ChatMessage["role"]; content?: string; task_id?: string; created_at?: string };
+      if (payload.message_id && payload.role && payload.content !== undefined && payload.created_at) {
+        upsertChatMessageToCaches(qc, payload.chat_session_id, {
+          id: payload.message_id, chat_session_id: payload.chat_session_id, role: payload.role,
+          content: payload.content, task_id: payload.task_id ?? null, created_at: payload.created_at,
+        });
+      }
       chatWsLogger.info("chat:message (global)", { chat_session_id: payload.chat_session_id });
       invalidateChatMessageQueries(qc, payload.chat_session_id);
       qc.invalidateQueries({ queryKey: chatKeys.pendingTask(payload.chat_session_id) });
@@ -1312,8 +1317,13 @@ export function useRealtimeSync(
     });
 
     const unsubChatSessionRead = ws.on("chat:session_read", (p) => {
-      const payload = p as { chat_session_id: string; message?: ChatMessage };
-      if (payload.message) upsertChatMessageToCaches(qc, payload.chat_session_id, payload.message);
+      const payload = p as { chat_session_id: string; message_id?: string; role?: ChatMessage["role"]; content?: string; task_id?: string; created_at?: string };
+      if (payload.message_id && payload.role && payload.content !== undefined && payload.created_at) {
+        upsertChatMessageToCaches(qc, payload.chat_session_id, {
+          id: payload.message_id, chat_session_id: payload.chat_session_id, role: payload.role,
+          content: payload.content, task_id: payload.task_id ?? null, created_at: payload.created_at,
+        });
+      }
       chatWsLogger.info("chat:session_read (global)", payload);
       invalidateSessionLists();
     });
@@ -1336,8 +1346,13 @@ export function useRealtimeSync(
     // session pointer so a deleted session doesn't keep the chat window
     // pointed at vanished messages.
     const unsubChatSessionDeleted = ws.on("chat:session_deleted", (p) => {
-      const payload = p as { chat_session_id: string; message?: ChatMessage };
-      if (payload.message) upsertChatMessageToCaches(qc, payload.chat_session_id, payload.message);
+      const payload = p as { chat_session_id: string; message_id?: string; role?: ChatMessage["role"]; content?: string; task_id?: string; created_at?: string };
+      if (payload.message_id && payload.role && payload.content !== undefined && payload.created_at) {
+        upsertChatMessageToCaches(qc, payload.chat_session_id, {
+          id: payload.message_id, chat_session_id: payload.chat_session_id, role: payload.role,
+          content: payload.content, task_id: payload.task_id ?? null, created_at: payload.created_at,
+        });
+      }
       chatWsLogger.info("chat:session_deleted (global)", payload);
       const id = getCurrentWsId();
       if (id) {

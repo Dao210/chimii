@@ -66,3 +66,21 @@ export function useStartLDrawCatalogSync() {
     onError: () => queryClient.invalidateQueries({ queryKey: buildKeys.catalogSync(workspaceId) }),
   });
 }
+
+export function useSaveBuildProgress(wsId: string, id: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (input: import("./schemas").BuildProgressInput) => api.updateBuildProgress(id, input),
+    onSuccess: async (progress) => {
+      await Promise.all([
+        client.cancelQueries({ queryKey: buildKeys.progress(wsId, id), exact: true }),
+        client.cancelQueries({ queryKey: buildKeys.summaries(wsId), exact: true }),
+      ]);
+      client.setQueryData(buildKeys.progress(wsId, id), progress);
+      client.setQueryData<{ creations: import("./schemas").BuildSummary[] }>(buildKeys.summaries(wsId), old => old && ({
+        ...old, creations: old.creations.map(item => item.id === id ? { ...item, progress } : item),
+      }));
+    },
+    onError: () => { void client.invalidateQueries({ queryKey: buildKeys.progress(wsId, id) }); },
+  });
+}

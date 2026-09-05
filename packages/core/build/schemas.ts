@@ -315,3 +315,18 @@ export const EMPTY_BRICK_INVENTORY: BrickInventory = {
   revision: 0,
   items: [],
 };
+
+export const BuildProgressSchema = z.object({
+  id: z.string().min(1), current_step: z.number().int().nonnegative(),
+  completed_at: z.string().nullable(), revision: z.number().int().nonnegative(),
+  step_count: z.number().int().positive(),
+}).refine(v => v.current_step <= v.step_count, "Invalid progress step");
+export const BuildSummarySchema = z.object({
+  id: z.string().min(1), title: z.string(), prompt: z.string(), archetype: z.string(),
+  part_count: z.number().int().nonnegative(), step_count: z.number().int().positive(),
+  created_at: z.string(), progress: BuildProgressSchema,
+});
+export const BuildSummaryListSchema = z.object({ creations: z.array(BuildSummarySchema) });
+export type BuildProgress = z.infer<typeof BuildProgressSchema>;
+export type BuildSummary = z.infer<typeof BuildSummarySchema>;
+export interface BuildProgressInput { current_step: number; expected_revision: number; completed?: boolean }

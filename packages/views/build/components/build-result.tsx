@@ -6,13 +6,29 @@ import { Button } from "@chimii/ui/components/ui/button";
 import { Slider } from "@chimii/ui/components/ui/slider";
 import { toast } from "sonner";
 import { api } from "@chimii/core/api";
-import type { BuildCreation } from "@chimii/core/build";
+import { buildProgressOptions, useSaveBuildProgress, type BuildCreation } from "@chimii/core/build";
+import { useWorkspaceId } from "@chimii/core/hooks";
+import { useQuery } from "@tanstack/react-query";
 import { BuildModelViewer } from "./build-model-viewer";
 import { useT } from "../../i18n";
 
 export function BuildResult({ creation, onAgain }: { creation: BuildCreation; onAgain?: () => void }) {
   const { t } = useT("build");
-  const [step, setStep] = useState(creation.validation.step_count);
+  const wsId = useWorkspaceId();
+  const progressQuery = useQuery(buildProgressOptions(wsId, creation.id));
+  const save = useSaveBuildProgress(wsId, creation.id);
+  const progress = progressQuery.data;
+  const [building, setBuilding] = useState(false);
+  const [previewStep, setPreviewStep] = useState(creation.validation.step_count);
+  const step = building ? Math.max(1, progress?.current_step ?? 1) : previewStep;
+  const busy = save.isPending || progressQuery.isFetching;
+  const persist = async (currentStep: number, completed = false) => {
+    if (!progress || busy) return;
+    try {
+      await save.mutateAsync({ current_step: currentStep, completed, expected_revision: progress.revision });
+      setBuilding(true);
+    } catch { /* The inline error remains visible until the user retries. */ }
+  };
   const lastStep = Math.max(1, creation.validation.step_count);
   const currentStep = useMemo(
     () => creation.build_plan.steps.find((item) => item.number === step),
@@ -40,11 +56,13 @@ export function BuildResult({ creation, onAgain }: { creation: BuildCreation; on
   };
 
   const goToPrevStep = () => {
-    setStep((current) => Math.max(1, current - 1));
+    if (building) void persist(Math.max(1, step - 1));
+    else setPreviewStep(Math.max(1, step - 1));
   };
 
   const goToNextStep = () => {
-    setStep((current) => Math.min(lastStep, current + 1));
+    if (building) void persist(Math.min(lastStep, step + 1));
+    else setPreviewStep(Math.min(lastStep, step + 1));
   };
 
   return (
@@ -67,7 +85,7 @@ export function BuildResult({ creation, onAgain }: { creation: BuildCreation; on
             <button
               type="button"
               onClick={goToPrevStep}
-              disabled={step <= 1}
+              disabled={step <= 1 || (building && busy)}
               aria-label={t($ => $.result_prev_step)}
               className="inline-flex h-10 min-w-10 items-center justify-center rounded-xl border-2 border-[#1d241f] bg-white px-2 text-sm font-black text-[#1d241f] transition hover:bg-[#1d241f] hover:text-white disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:bg-white disabled:hover:text-[#1d241f]"
             >
@@ -75,18 +93,19 @@ export function BuildResult({ creation, onAgain }: { creation: BuildCreation; on
             </button>
             <div className="flex-1">
               <Slider
+                disabled={building}
                 min={1}
                 max={lastStep}
                 step={1}
                 value={[step]}
-                onValueChange={(value) => setStep((Array.isArray(value) ? value[0] : value) ?? 1)}
+                onValueChange={(value) => setPreviewStep((Array.isArray(value) ? value[0] : value) ?? 1)}
                 aria-label={t($ => $.result_step, { step, total: creation.validation.step_count })}
               />
             </div>
             <button
               type="button"
               onClick={goToNextStep}
-              disabled={step >= lastStep}
+              disabled={step >= lastStep || (building && busy)}
               aria-label={t($ => $.result_next_step)}
               className="inline-flex h-10 min-w-10 items-center justify-center rounded-xl border-2 border-[#1d241f] bg-white px-2 text-sm font-black text-[#1d241f] transition hover:bg-[#1d241f] hover:text-white disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:bg-white disabled:hover:text-[#1d241f]"
             >
@@ -121,6 +140,26 @@ export function BuildResult({ creation, onAgain }: { creation: BuildCreation; on
         <div className="mb-6 flex items-start gap-2 rounded-2xl border border-[#9bc7ae] bg-[#e9f7ed] p-3 text-sm font-semibold text-[#285a43]">
           <CheckCircle2 className="mt-0.5 size-4 shrink-0" />
           {t($ => $.result_validation_hint)}
+        </div>
+
+        <div className="mb-5 grid gap-2">
+          {progress?.completed_at && <p role="status" className="text-sm font-semibold text-foreground">{t($ => $.progress_completed)}</p>}
+          {progress && <p className="text-xs text-muted-foreground">{progress.current_step > 0 ? t($ => $.progress_saved, { step: progress.current_step }) : t($ => $.progress_not_started)}</p>}
+          {!building ? (
+            <Button disabled={!progress || busy} onClick={() => { if (progress?.current_step) setBuilding(true); else void persist(1); }}>
+              {t($ => progress?.current_step ? $.progress_continue : $.progress_start)}
+            </Button>
+          ) : (
+            <>
+              <Button variant="outline" disabled={busy} onClick={() => { setPreviewStep(lastStep); setBuilding(false); }}>{t($ => $.progress_preview)}</Button>
+              {step === lastStep && !progress?.completed_at && <Button disabled={busy} onClick={() => void persist(lastStep, true)}>{t($ => $.progress_complete)}</Button>}
+            </>
+          )}
+          {busy && <p role="status" className="text-xs text-muted-foreground">{t($ => $.progress_loading)}</p>}
+          {(save.isError || progressQuery.isError) && <div role="alert" className="text-sm text-destructive">
+            <p>{t($ => $.progress_error)}</p>
+            <Button variant="outline" size="sm" onClick={() => { save.reset(); void progressQuery.refetch(); }}>{t($ => $.retry_fetch)}</Button>
+          </div>}
         </div>
 
         <div className="mt-auto grid gap-2">

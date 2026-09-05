@@ -4,16 +4,13 @@ Guidance for Claude Code when working in this repository. Keep this file short a
 
 ## Conventions
 
-The source of truth for code naming, i18n glossary, and Chinese product voice is:
+Follow the existing domain names and API field conventions. Files use kebab-case, Go/SQL names use snake_case, and shared routes come from `packages/core/paths/`. Keep `packages/views/locales/en/`, `zh-Hans/`, `ja/`, and `ko/` aligned when adding shared product copy. Chinese copy should describe the child's concrete action in short, plain language; distinguish generated validation from physical testing.
 
-- `apps/docs/content/docs/developers/conventions.mdx`
-- `apps/docs/content/docs/developers/conventions.zh.mdx`
-
-Read it before editing translations in `packages/views/locales/`, naming routes/packages/files/DB columns/types, or writing Chinese UI/docs copy. Do not rely on `packages/views/locales/glossary.md`; it is only a redirect stub.
+The former `apps/docs/content/docs/developers/conventions*.mdx` links are absent from this checkout. This file's package, routing and migration rules remain authoritative; `packages/views/locales/glossary.md` is a legacy redirect.
 
 ## Project Shape
 
-Chimii is an AI-native task management platform for small teams, with agents as first-class assignees that can own issues, comment, and change status.
+Chimii is an AI invention and building product for children and families. Brick and circuit creation build on the existing workspace, agent execution, and multi-platform foundation. Build planning and compilation are constrained by supported modules and saved inventory; generated checks do not establish physical verification.
 
 - `server/`: Go backend, Chi router, sqlc, gorilla/websocket.
 - `apps/web/`: Next.js App Router.
@@ -235,6 +232,10 @@ Do not claim verification passed unless you ran it. If you skip checks because t
 - Bump patch by default for formal releases unless the user specifies a version.
 
 ## Domain Reminders
+
+- Build creations keep recipe, plan and inventory snapshots immutable. Only `current_step`, `completed_at`, `progress_revision` and the update timestamp change during building. Preview navigation never writes progress.
+- New creation lists use `GET /api/build/creations?view=summary` (latest 60); installed clients retain the full-list contract. Progress writes return only progress, use an expected revision and the existing workspace/member write locks.
+- README status distinguishes code, executed tests, deployed version and physical verification. A test file, local green check or family report does not establish the other levels.
 
 - All queries filter by `workspace_id`; membership gates access; `X-Workspace-ID` selects the workspace.
 - Issue assignees are polymorphic: `assignee_type` plus `assignee_id` can reference a member or an agent.

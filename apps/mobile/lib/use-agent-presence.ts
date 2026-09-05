@@ -28,8 +28,8 @@ import { useQuery } from "@tanstack/react-query";
 import {
   buildPresenceMap,
   deriveAgentPresenceDetail,
-  type AgentPresenceDetail,
-} from "@chimii/core/agents";
+} from "@chimii/core/agents/derive-presence";
+import type { AgentPresenceDetail } from "@chimii/core/agents";
 import { agentListOptions } from "@/data/queries/agents";
 import { runtimeListOptions } from "@/data/queries/runtimes";
 import { agentTaskSnapshotOptions } from "@/data/queries/agent-task-snapshot";

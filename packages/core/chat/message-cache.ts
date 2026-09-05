@@ -2,7 +2,6 @@ import type { InfiniteData, QueryClient } from "@tanstack/react-query";
 import { chatKeys } from "./queries";
 import type { ChatMessage, ChatMessagesPage } from "../types";
 
-
 function mergeChatMessage(existing: ChatMessage, incoming: ChatMessage): ChatMessage {
   const fills: Partial<ChatMessage> = {};
   let filled = false;
@@ -64,7 +63,7 @@ function seedPage(message: ChatMessage): InfiniteData<ChatMessagesPage> {
 }
 
 export interface UpsertChatMessageOptions {
-    seedIfMissing?: boolean;
+  seedIfMissing?: boolean;
 }
 
 export function upsertChatMessageToCaches(

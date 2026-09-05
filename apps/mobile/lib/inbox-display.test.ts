@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { InboxItem } from "@chimii/core/types";
+
 import {
   deduplicateInboxItems,
   getAutopilotQuotaBody,
@@ -7,7 +8,7 @@ import {
   getInboxNavigationTarget,
 } from "./inbox-display";
 
-function item(overrides: Partial<InboxItem>): InboxItem {
+function item(overrides: Partial<Omit<InboxItem, "type"> & {type: string}>): InboxItem {
   return {
     id: "inbox-1",
     workspace_id: "workspace-1",
@@ -26,7 +27,7 @@ function item(overrides: Partial<InboxItem>): InboxItem {
     created_at: "2026-06-15T08:00:00Z",
     details: null,
     ...overrides,
-  };
+  } as InboxItem;
 }
 
 describe("deduplicateInboxItems", () => {

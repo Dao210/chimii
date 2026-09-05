@@ -135,7 +135,7 @@ export function BuildPage() {
             <p className="mt-4 max-w-xl font-medium leading-7 text-[#687068]">{t($ => $.config_description)}</p>
           </section>
         ) : creationQuery.data?.id ? (
-          <BuildResult creation={creationQuery.data} onAgain={reset} />
+          <BuildResult key={creationQuery.data.id} creation={creationQuery.data} onAgain={reset} />
         ) : session?.status === "completed" && creationId ? (
           <section className="mx-auto flex min-h-[560px] max-w-2xl flex-col items-center justify-center text-center" aria-live="polite">
             {creationIsUnavailable ? (

@@ -131,8 +131,11 @@ describe("applyChatDoneToCache", () => {
 
     expect(qc.getQueryData<ChatMessage[]>(messagesKey)).toEqual([
       userMessage(),
-      assistant,
+      { ...assistant, message_kind: "message" },
     ]);
+    const replayed = qc.getQueryData(messagesKey);
+    applyChatDoneToCache(qc, donePayload());
+    expect(qc.getQueryData(messagesKey)).toBe(replayed);
     expect(qc.getQueryData<ChatPendingTask>(pendingKey)).toEqual({});
   });
 

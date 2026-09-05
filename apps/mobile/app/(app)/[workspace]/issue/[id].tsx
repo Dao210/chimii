@@ -1,3 +1,4 @@
+import { useActionMenu } from "@/components/ui/action-menu";
 /**
  * Issue detail screen.
  *
@@ -12,7 +13,6 @@
  */
 import { useCallback, useEffect } from "react";
 import {
-  ActionSheetIOS,
   ActivityIndicator,
   Alert,
   Linking,
@@ -22,6 +22,7 @@ import { Stack, router, useLocalSearchParams } from "expo-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Clipboard from "expo-clipboard";
 import type { Issue } from "@chimii/core/types";
+
 import { Text } from "@/components/ui/text";
 import { Button } from "@/components/ui/button";
 import { IconButton } from "@/components/ui/icon-button";
@@ -48,6 +49,7 @@ export default function IssueDetail() {
   // [workspace]/(tabs)/inbox.tsx). `highlight` is the target comment id;
   // `h` is a per-tap nonce so re-tapping the same row re-fires the
   // scroll-and-flash effect.
+  const showActionMenu = useActionMenu();
   const { id, workspace: wsSlug, highlight, h } = useLocalSearchParams<{
     id: string;
     workspace: string;
@@ -123,7 +125,7 @@ export default function IssueDetail() {
     if (issueLink) options.push("Open on web");
     options.push("Delete issue");
     const destructiveIndex = options.length - 1;
-    ActionSheetIOS.showActionSheetWithOptions(
+    showActionMenu(
       {
         options,
         cancelButtonIndex: 0,
@@ -151,7 +153,7 @@ export default function IssueDetail() {
         }
       },
     );
-  }, [issue, wsSlug, deleteIssue, isPinned, createPin, deletePin]);
+  }, [showActionMenu, issue, wsSlug, deleteIssue, isPinned, createPin, deletePin]);
 
   return (
     <View className="flex-1 bg-background">

@@ -45,7 +45,7 @@ func (h *Handler) GetChildMode(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, childModeResponse{
 		Mode:         "child",
 		Profile:      &childProfileResponse{ID: r.Header.Get("X-Child-Profile-ID"), DisplayName: r.Header.Get("X-Child-Display-Name")},
-		Capabilities: []string{"build:create", "creations:read", "creations:export", "inventory:read", "inventory:write", "circuit:create", "circuit:read", "circuit:progress", "circuit:inventory:read", "circuit:trials"},
+		Capabilities: []string{"build:create", "creations:read", "creations:export", "creations:progress", "inventory:read", "inventory:write", "circuit:create", "circuit:read", "circuit:progress", "circuit:inventory:read", "circuit:trials"},
 	})
 }
 
@@ -178,7 +178,7 @@ func (h *Handler) EnterChildMode(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
 		"token": token,
-		"mode":  childModeResponse{Mode: "child", Profile: ptrChildProfile(childProfileToResponse(profile)), Capabilities: []string{"build:create", "creations:read", "creations:export", "inventory:read", "inventory:write", "circuit:create", "circuit:read", "circuit:progress", "circuit:inventory:read", "circuit:trials"}},
+		"mode":  childModeResponse{Mode: "child", Profile: ptrChildProfile(childProfileToResponse(profile)), Capabilities: []string{"build:create", "creations:read", "creations:export", "creations:progress", "inventory:read", "inventory:write", "circuit:create", "circuit:read", "circuit:progress", "circuit:inventory:read", "circuit:trials"}},
 	})
 }
 

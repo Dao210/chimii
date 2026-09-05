@@ -1,0 +1,62 @@
+name: Android APK
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_code:
+        description: Increasing Android version code
+        required: true
+        type: string
+      environment:
+        description: Backend environment
+        type: choice
+        default: production
+        options: [production, staging]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-apk-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: android-actions/setup-android@v3
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm -C apps/mobile typecheck && pnpm -C apps/mobile lint && pnpm -C apps/mobile test
+      - name: Build signed standalone APK
+        env:
+          APP_ENV: ${{ inputs.environment }}
+          ANDROID_VERSION_CODE: ${{ inputs.version_code }}
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PATH: ${{ runner.temp }}/chimii-release.keystore
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          test -n "$ANDROID_KEYSTORE_BASE64"
+          umask 077
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$ANDROID_KEYSTORE_PATH"
+          trap 'rm -f "$ANDROID_KEYSTORE_PATH"' EXIT
+          sdkmanager 'platforms;android-36' 'build-tools;36.0.0' 'ndk;27.1.12297006' 'cmake;3.22.1'
+          pnpm -C apps/mobile android:release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: chimii-android-${{ inputs.environment }}-${{ inputs.version_code }}
+          path: apps/mobile/artifacts/*
+          if-no-files-found: error
+          retention-days: 14

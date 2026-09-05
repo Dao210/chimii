@@ -32,3 +32,22 @@ Run `go test ./internal/build` and the scoped core/views tests. Handler tests ha
 `e2e/build.spec.ts` uses real HTTP, queue, database and UI with a deterministic local model fixture. Run `node scripts/build-e2e-llm-fixture.mjs` (loopback port 55441), point a disposable backend's `CHIMII_LLM_BASE_URL` to it, and run Playwright with `CHIMII_BUILD_E2E_STUB=1`. Use only a disposable database and test accounts. This verifies flow, not real-provider model quality.
 
 Local microbenchmarks on Apple M4 measured approximately 22 microseconds for a six-part model compilation and 7 microseconds for the initial registry capability filter. These exclude model latency, queueing, network and browser rendering; they are not end-to-end latency guarantees.
+
+## Building progress and list payloads
+
+Migration 289 adds `current_step` (0 means not started), `completed_at`, and
+`progress_revision` to the creation row. Recipe, plan, validation and inventory
+snapshots remain unchanged. The existing workspace/member locking protocol
+protects progress writes from concurrent workspace deletion.
+
+- `GET /api/build/creations?view=summary`: latest 60 summaries, without recipe,
+  placements or MPD. The original full list remains available for installed clients.
+- `GET /api/build/creations/{id}/progress`: a small progress response.
+- `PUT /api/build/creations/{id}/progress`: `current_step` (1-based),
+  `expected_revision`, optional `completed`. Stale revisions return 409;
+  completion requires the final step and an explicit user action.
+
+The UI separates preview from building. Preview controls never save; a saved
+step is restored from the creation detail page. A completed creation can be
+reviewed without clearing its completion timestamp. Parent and child access
+follow the existing creation visibility rules.

@@ -170,5 +170,15 @@
   "session_fetch_error": "Could not load the build progress. Please try again.",
   "failed_unsupported": "The current modules cannot represent this idea yet. Please edit your request.",
   "failed_requirements": "This combination cannot satisfy all your requirements. Please edit your idea.",
-  "cancelled": "This build has stopped. Your idea is still here."
+  "cancelled": "This build has stopped. Your idea is still here.",
+  "progress_start": "Start building",
+  "progress_continue": "Continue building",
+  "progress_preview": "View finished model",
+  "progress_complete": "I finished building",
+  "progress_completed": "Completed",
+  "progress_saved": "Saved at step {{step}}",
+  "progress_not_started": "Not started",
+  "progress_loading": "Loading or saving progress…",
+  "progress_error": "Progress could not be saved or changed on another device. Reload the saved step and try again.",
+  "creations_recent": "Your 60 most recent brick creations."
 }

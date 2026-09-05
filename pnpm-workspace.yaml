@@ -2,6 +2,13 @@ packages:
   - "apps/*"
   - "packages/*"
 
+# datetimepicker's Expo plugin imports this undeclared dependency during Gradle
+# configuration; declare it explicitly so isolated pnpm installs also work.
+packageExtensions:
+  "@react-native-community/datetimepicker@8.6.0":
+    dependencies:
+      "@expo/config-plugins": "~55.0.11"
+
 catalog:
   # Core React
   react: "19.2.3"

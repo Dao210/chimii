@@ -22,6 +22,7 @@
 import { View } from "react-native";
 import Svg, { Line, Rect } from "react-native-svg";
 import type { IssuePriority, TimelineEntry } from "@chimii/core/types";
+
 import { Text } from "@/components/ui/text";
 import { StatusIcon } from "@/components/ui/status-icon";
 import { PriorityIcon } from "@/components/ui/priority-icon";
@@ -110,8 +111,8 @@ function LeadIcon({
     <ActorAvatar
       type={entry.actor_type as "member" | "agent"}
       id={entry.actor_id}
-      name={entry.actor_name}
-      avatarUrl={entry.actor_avatar_url}
+
+
       size={16}
     />
   );
@@ -127,8 +128,7 @@ export function ActivityRow({ entry }: { entry: TimelineEntry }) {
     id: string | null | undefined,
   ): string =>
     getName(type as "member" | "agent" | null | undefined, id);
-  const actorName =
-    entry.actor_name || resolveName(entry.actor_type, entry.actor_id);
+  const actorName = resolveName(entry.actor_type, entry.actor_id);
   const verb = formatActivity(entry, resolveName, catalog.labelOf);
   const showCoalesceBadge =
     (entry.coalesced_count ?? 1) > 1 &&

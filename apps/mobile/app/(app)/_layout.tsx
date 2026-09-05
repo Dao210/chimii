@@ -10,6 +10,8 @@ import { useAuthStore } from "@/data/auth-store";
  */
 export default function AppLayout() {
   const user = useAuthStore((s) => s.user);
+  const isLoading = useAuthStore((s) => s.isLoading);
+  if (isLoading) return null;
   if (!user) return <Redirect href="/login" />;
   return <Stack screenOptions={{ headerShown: false }} />;
 }

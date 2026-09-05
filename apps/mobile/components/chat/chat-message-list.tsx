@@ -40,7 +40,7 @@
  * `startRenderingFromBottom` (initial paint at bottom, no setTimeout
  * hacks). Cell recycling also keeps scroll-up smooth.
  */
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { ActivityIndicator, Pressable, View } from "react-native";
 import { FlashList } from "@shopify/flash-list";
 import { Ionicons } from "@expo/vector-icons";
@@ -49,9 +49,9 @@ import type {
   Agent,
   ChatMessage,
   ChatPendingTask,
-  ChatQuickAction,
   TaskMessagePayload,
 } from "@chimii/core/types";
+
 import type { AgentAvailability } from "@chimii/core/agents";
 import { taskMessagesOptions } from "@/data/queries/chat";
 import { Text } from "@/components/ui/text";
@@ -87,8 +87,6 @@ interface Props {
    *  about send vs. preview. */
   onPickPrompt: (text: string) => void;
   /** Send a persisted assistant follow-up without first copying it into draft. */
-  onQuickAction?: (action: ChatQuickAction) => void | Promise<unknown>;
-  quickActionsDisabled?: boolean;
   /** Server-authoritative pending-task snapshot for the active session.
    *  Used to render the live timeline + status line as the last item in
    *  the message stream, mirroring web's
@@ -108,8 +106,6 @@ export function ChatMessageList({
   hasSessions,
   agent,
   onPickPrompt,
-  onQuickAction,
-  quickActionsDisabled = false,
   pendingTask,
   liveTaskMessages,
   availability,
@@ -204,8 +200,7 @@ export function ChatMessageList({
       renderItem={({ item }) => (
         <MessageRow
           message={item}
-          onQuickAction={onQuickAction}
-          quickActionsDisabled={quickActionsDisabled}
+
         />
       )}
       ItemSeparatorComponent={MessageSeparator}
@@ -264,12 +259,8 @@ function MessageSeparator() {
 
 function MessageRow({
   message,
-  onQuickAction,
-  quickActionsDisabled,
 }: {
   message: ChatMessage;
-  onQuickAction?: (action: ChatQuickAction) => void | Promise<unknown>;
-  quickActionsDisabled: boolean;
 }) {
   const isUser = message.role === "user";
   const isFailure = !!message.failure_reason;
@@ -338,8 +329,7 @@ function MessageRow({
       message={message}
       isSelecting={isSelecting}
       longPress={longPress}
-      onQuickAction={onQuickAction}
-      quickActionsDisabled={quickActionsDisabled}
+
     />
   );
 }
@@ -362,14 +352,10 @@ function AssistantRow({
   message,
   isSelecting,
   longPress,
-  onQuickAction,
-  quickActionsDisabled,
 }: {
   message: ChatMessage;
   isSelecting: boolean;
   longPress: ReturnType<typeof useChatMessageLongPress>;
-  onQuickAction?: (action: ChatQuickAction) => void | Promise<unknown>;
-  quickActionsDisabled: boolean;
 }) {
   // Read the cached timeline if any. `enabled` (in taskMessagesOptions) is
   // gated on isTaskMessageTaskId — optimistic id prefixes never fetch, so
@@ -421,82 +407,7 @@ function AssistantRow({
       {body}
     </Pressable>
   );
-  if (!onQuickAction || (message.quick_actions?.length ?? 0) === 0) {
-    return messageBody;
-  }
-  return (
-    <View className="gap-2">
-      {messageBody}
-      <QuickActions
-        actions={message.quick_actions ?? []}
-        disabled={quickActionsDisabled}
-        onSelect={onQuickAction}
-      />
-    </View>
-  );
-}
-
-function QuickActions({
-  actions,
-  disabled,
-  onSelect,
-}: {
-  actions: ChatQuickAction[];
-  disabled: boolean;
-  onSelect: (action: ChatQuickAction) => void | Promise<unknown>;
-}) {
-  const [submitting, setSubmitting] = useState(false);
-  const blocked = disabled || submitting;
-
-  const handleSelect = async (action: ChatQuickAction) => {
-    if (blocked) return;
-    setSubmitting(true);
-    try {
-      await onSelect(action);
-    } catch {
-      // The send path rolls back its optimistic message. Keep the action usable
-      // so a transient request failure can be retried.
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  return (
-    <View
-      className="flex-row flex-wrap gap-2 pt-0.5"
-      accessibilityLabel="Suggested follow-ups"
-    >
-      {actions.slice(0, 3).map((action, index) => (
-        <Pressable
-          key={`${action.label}-${index}`}
-          accessibilityRole="button"
-          accessibilityState={{ disabled: blocked }}
-          disabled={blocked}
-          onPress={() => void handleSelect(action)}
-          className={cn(
-            "min-h-10 max-w-full flex-row items-center gap-1 rounded-full border px-3 active:opacity-70",
-            action.primary
-              ? "border-primary/30 bg-primary/10"
-              : "border-border bg-background",
-            blocked && "opacity-50",
-          )}
-        >
-          <Text
-            numberOfLines={1}
-            className={cn(
-              "shrink text-sm font-medium",
-              action.primary ? "text-primary" : "text-foreground",
-            )}
-          >
-            {action.label}
-          </Text>
-          {action.primary ? (
-            <Text className="text-sm font-medium text-primary">↗</Text>
-          ) : null}
-        </Pressable>
-      ))}
-    </View>
-  );
+  return messageBody;
 }
 
 // Persistent caption rendered under the assistant bubble / failure bubble

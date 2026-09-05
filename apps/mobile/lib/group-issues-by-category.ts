@@ -17,7 +17,8 @@
  * it. Intersecting the section order with the filter keys directly would be
  * wrong now that the two live in different spaces.
  */
-import type { Issue, IssueStatusCategory } from "@chimii/core/types";
+import type { Issue } from "@chimii/core/types";
+import type { IssueStatusCategory } from "@/lib/issue-status";
 import { BOARD_CATEGORIES, issueColumnCategory } from "./issue-status";
 
 export interface IssueSection {

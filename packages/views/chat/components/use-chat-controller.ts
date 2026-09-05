@@ -7,7 +7,6 @@ import {
   useInfiniteQuery,
   useQuery,
   useQueryClient,
-  type InfiniteData,
 } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useWorkspaceId } from "@chimii/core/hooks";
@@ -40,7 +39,6 @@ import type {
   Agent,
   Attachment,
   ChatMessage,
-  ChatMessagesPage,
   ChatPendingTask,
 } from "@chimii/core/types";
 import { useT } from "../../i18n";
@@ -150,37 +148,6 @@ export function hasInFlightPendingTask(
 }
 const CHAT_VIRTUOSO_INITIAL_FIRST_ITEM_INDEX = 1_000_000;
 
-function appendChatMessageToLatestPageCache(
-  qc: ReturnType<typeof useQueryClient>,
-  sessionId: string,
-  message: ChatMessage,
-) {
-  qc.setQueryData<InfiniteData<ChatMessagesPage>>(
-    chatKeys.messagesPage(sessionId),
-    (old) => {
-      if (!old) {
-        return {
-          pages: [{
-            messages: [message],
-            limit: 50,
-            has_more: false,
-            next_cursor: null,
-          }],
-          pageParams: [null],
-        };
-      }
-      if (old.pages.some((page) => page.messages.some((m) => m.id === message.id))) {
-        return old;
-      }
-      return {
-        ...old,
-        pages: old.pages.map((page, index) =>
-          index === 0 ? { ...page, messages: [...page.messages, message] } : page,
-        ),
-      };
-    },
-  );
-}
 
 /**
  * Layout-agnostic chat controller. Holds every piece of chat conversation

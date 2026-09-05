@@ -7,6 +7,8 @@
  * web for the same item. When the web version changes, sync this file.
  */
 import type { InboxItem } from "@chimii/core/types";
+type InboxNotice = Omit<InboxItem, "type"> & { type: string };
+
 
 function formatResetAt(value: string | undefined): string {
   if (!value) return "";
@@ -18,7 +20,7 @@ function formatResetAt(value: string | undefined): string {
   }).format(date);
 }
 
-export function getAutopilotQuotaBody(item: InboxItem): string | null {
+export function getAutopilotQuotaBody(item: InboxNotice): string | null {
   if (item.type !== "autopilot_quota_exceeded") return item.body;
   const details = item.details ?? {};
   const resetAt = formatResetAt(details.reset_at);
@@ -54,7 +56,7 @@ export function stripQuickCreatePrefix(
   return normalized.replace(/^Created\s+[A-Z][A-Z0-9]*-\d+:\s*/i, "").trim();
 }
 
-export function getInboxDisplayTitle(item: InboxItem): string {
+export function getInboxDisplayTitle(item: InboxNotice): string {
   const details = item.details ?? {};
   // Mobile is English-only today. Mirror web's localized system-notice titles
   // rather than exposing backend fallback copy that can include raw counts.
@@ -79,7 +81,7 @@ export function getInboxDisplayTitle(item: InboxItem): string {
 }
 
 export function getInboxNavigationTarget(
-  item: InboxItem,
+  item: InboxNotice,
   workspace: string | null,
   historyToken: string,
 ) {

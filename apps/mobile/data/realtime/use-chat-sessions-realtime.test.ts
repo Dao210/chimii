@@ -33,7 +33,7 @@ describe("useChatSessionsRealtime", () => {
     subscriptionSetups.length = 0;
   });
 
-  it("invalidates the workspace session list for channel-created chats", () => {
+  it("invalidates the workspace session list when a turn completes", () => {
     useChatSessionsRealtime();
     expect(subscriptionSetups).toHaveLength(1);
 
@@ -47,7 +47,7 @@ describe("useChatSessionsRealtime", () => {
     };
 
     subscriptionSetups[0](ws, "workspace-1");
-    handlers.get("chat:session_created")?.({
+    handlers.get("chat:done")?.({
       workspace_id: "workspace-1",
       chat_session_id: "channel-session-1",
     });
@@ -56,11 +56,5 @@ describe("useChatSessionsRealtime", () => {
       queryKey: chatKeys.sessions("workspace-1"),
     });
 
-    invalidateQueries.mockClear();
-    handlers.get("chat:session_created")?.({
-      workspace_id: "workspace-2",
-      chat_session_id: "other-workspace-session",
-    });
-    expect(invalidateQueries).not.toHaveBeenCalled();
   });
 });

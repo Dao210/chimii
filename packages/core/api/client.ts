@@ -192,6 +192,8 @@ import {
   PARENT_MODE,
 } from "../child-mode/schemas";
 import {
+  BuildProgressSchema, BuildSummaryListSchema,
+  type BuildProgressInput, type BuildProgress, type BuildSummary,
   BuildCreationListSchema,
   BuildCreationSchema,
   BuildCatalogSchema,
@@ -3229,6 +3231,27 @@ export class ApiClient {
       method: "POST", body: JSON.stringify({ revision }),
     });
     return parseWithFallback(raw, BuildSessionSchema, EMPTY_BUILD_SESSION, { endpoint: "POST /api/build/sessions/{id}/cancel" });
+  }
+
+  async listBuildSummaries() {
+    const raw = await this.fetch<unknown>("/api/build/creations?view=summary");
+    const result = parseWithFallback<{ creations: BuildSummary[] } | null>(raw, BuildSummaryListSchema, null, { endpoint: "GET /api/build/creations?view=summary" });
+    if (!result) throw new Error("Could not read creation summaries");
+    return result;
+  }
+
+  async getBuildProgress(id: string) {
+    const raw = await this.fetch<unknown>(`/api/build/creations/${encodeURIComponent(id)}/progress`);
+    const result = parseWithFallback<BuildProgress | null>(raw, BuildProgressSchema, null, { endpoint: "GET /api/build/creations/{id}/progress" });
+    if (!result) throw new Error("Could not read build progress");
+    return result;
+  }
+
+  async updateBuildProgress(id: string, input: BuildProgressInput) {
+    const raw = await this.fetch<unknown>(`/api/build/creations/${encodeURIComponent(id)}/progress`, { method: "PUT", body: JSON.stringify(input) });
+    const result = parseWithFallback<BuildProgress | null>(raw, BuildProgressSchema, null, { endpoint: "PUT /api/build/creations/{id}/progress" });
+    if (!result) throw new Error("Could not read saved progress");
+    return result;
   }
 
   async listBuildCreations(): Promise<BuildCreationList> {

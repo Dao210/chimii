@@ -12,21 +12,9 @@ export function commentContentFromTimeline(
 export function buildCommentUpdateBody(
   content: string,
   attachmentIds: string[] | undefined,
-  contentBase: string | undefined,
 ) {
   return {
     content,
     ...(attachmentIds ? { attachment_ids: attachmentIds } : {}),
-    ...(contentBase !== undefined ? { content_base: contentBase } : {}),
   };
-}
-
-export function shouldAcceptServerRevision(
-  currentRevision: number | undefined,
-  incomingRevision: number | undefined,
-): boolean {
-  return (
-    currentRevision === undefined ||
-    (incomingRevision !== undefined && incomingRevision > currentRevision)
-  );
 }

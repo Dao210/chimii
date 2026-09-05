@@ -16,10 +16,8 @@
  *     degrades to plain monospace text — never crashes.
  *
  * Boot path:
- *   `prewarmHighlighter()` from app/_layout.tsx fires the init promise
- *   during app start, so by the time the user opens an issue with a code
- *   block, the highlighter is usually ready and there's no first-paint
- *   "plain → highlighted" flash.
+ *   Initialization is deferred until the first code block needs it, keeping
+ *   grammar compilation off the login/startup path.
  */
 import {
   createHighlighterCore,

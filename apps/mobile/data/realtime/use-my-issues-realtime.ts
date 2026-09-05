@@ -53,7 +53,6 @@ export function useMyIssuesRealtime() {
             wsId,
             payload.issue_id,
             payload.labels,
-            payload.issue_revision,
           );
         }),
         ws.onReconnect(invalidateMyAll),

@@ -42,6 +42,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { TriggerRef } from "@rn-primitives/dropdown-menu";
 import type { User, Workspace } from "@chimii/core/types";
+
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -74,6 +75,7 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
+  { label: "Creations", icon: "cube.box", path: "/more/creations" },
   { label: "Pinned", icon: "pin", path: "/more/pins" },
   { label: "Issues", icon: "list.bullet", path: "/more/issues" },
   { label: "Projects", icon: "square.stack", path: "/more/projects" },

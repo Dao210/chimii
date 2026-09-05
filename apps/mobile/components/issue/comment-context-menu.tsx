@@ -1,10 +1,11 @@
+import { useActionMenu } from "@/components/ui/action-menu";
 /**
  * Long-press handler for a comment bubble. Exposes `onLongPress` (drives a
  * native iOS ActionSheetIOS) and `isPressed` (drives the caller's highlight
  * ring while the sheet is on screen).
  *
  * iOS-native first per apps/mobile/CLAUDE.md §UI components → waterfall step
- * 1: `ActionSheetIOS.showActionSheetWithOptions`. Zero custom layout, zero
+ * 1: `showActionMenu`. Zero custom layout, zero
  * animation, zero overflow math, zero new deps.
  *
  * Item set (conditional, mirrors web's comment context menu):
@@ -18,11 +19,12 @@
  * first is still dismissing — the callback runs after dismissal completes.
  */
 import { useCallback, useState } from "react";
-import { ActionSheetIOS, Alert } from "react-native";
+import { Alert } from "react-native";
 import { router } from "expo-router";
 import * as Clipboard from "expo-clipboard";
 import * as Haptics from "expo-haptics";
 import type { Reaction, TimelineEntry } from "@chimii/core/types";
+
 import { useAuthStore } from "@/data/auth-store";
 import { useWorkspaceStore } from "@/data/workspace-store";
 import { useCommentSelectStore } from "@/data/comment-select-store";
@@ -42,6 +44,7 @@ export function useCommentLongPress(
   issueId: string,
   issueIdentifier: string | undefined,
 ): { onLongPress: () => void; isPressed: boolean } {
+  const showActionMenu = useActionMenu();
   const [isPressed, setIsPressed] = useState(false);
   const wsSlug = useWorkspaceStore((s) => s.currentWorkspaceSlug);
   const userId = useAuthStore((s) => s.user?.id);
@@ -99,7 +102,7 @@ export function useCommentLongPress(
       ? actions.findIndex((a) => a.kind === "delete")
       : undefined;
 
-    ActionSheetIOS.showActionSheetWithOptions(
+    showActionMenu(
       {
         options,
         cancelButtonIndex,
@@ -118,9 +121,7 @@ export function useCommentLongPress(
             // Set the reply target — the InlineCommentComposer subscribes
             // to this store, auto-expands, and threads the next submit
             // under entry.id via useCreateComment's `parentId`.
-            const actorName =
-              entry.actor_name ||
-              getName(
+            const actorName = getName(
                 entry.actor_type as "member" | "agent" | null | undefined,
                 entry.actor_id,
               );
@@ -134,7 +135,7 @@ export function useCommentLongPress(
           case "react":
             // Present the nested React sheet from inside this completion
             // callback — see file header for why.
-            presentReactSheet({
+            presentReactSheet(showActionMenu, {
               entry,
               reactions,
               userId,
@@ -201,12 +202,13 @@ export function useCommentLongPress(
     deleteComment,
     resolveComment,
     getName,
+    showActionMenu,
   ]);
 
   return { onLongPress, isPressed };
 }
 
-function presentReactSheet(args: {
+function presentReactSheet(showActionMenu: ReturnType<typeof useActionMenu>, args: {
   entry: TimelineEntry;
   reactions: Reaction[];
   userId: string | undefined;
@@ -219,7 +221,7 @@ function presentReactSheet(args: {
   const options = [...emojis, "More reactions…", "Cancel"];
   const cancelButtonIndex = options.length - 1;
 
-  ActionSheetIOS.showActionSheetWithOptions(
+  showActionMenu(
     { options, cancelButtonIndex },
     (i) => {
       if (i === cancelButtonIndex) return;

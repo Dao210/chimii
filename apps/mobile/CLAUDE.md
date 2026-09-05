@@ -80,8 +80,8 @@ This pattern repeats: timeline coalescing (`buildTimelineGroups`), inbox dedup, 
 Start minimal. Add to this list when actually adopted — do NOT pre-list libraries.
 
 - **Expo SDK 55**
-- **React Native 0.82**
-- **React 19.1** — whatever Expo SDK 55 ships. Pinned in `apps/mobile/package.json` directly, NOT via root `catalog:`.
+- **React Native 0.83.10**
+- **React 19.2.0** — whatever Expo SDK 55 ships. Pinned in `apps/mobile/package.json` directly, NOT via root `catalog:`.
 - **TypeScript** strict
 - **Expo Router 55** (file-based routing — version aligns with Expo SDK)
 - **NativeWind 4** + **Tailwind 3.4** — NativeWind 5 is unstable; stay on v4. (Note: web/desktop use Tailwind v4 — versions intentionally differ.)
@@ -118,7 +118,7 @@ Why: every "I'll just write a fresh one" produced one of the 21 legacy component
 1. **iOS / RN ships a native API?** Use it directly. Don't wrap a `Modal` to mimic it.
    - Text input prompt → `Alert.prompt`
    - Confirm / destructive prompt → `Alert.alert`
-   - Action sheet (one-of-N) → `ActionSheetIOS.showActionSheetWithOptions`
+   - Action sheet (one-of-N) → `useActionMenu` from `components/ui/action-menu.tsx`: native ActionSheetIOS on iOS; the existing RNR dropdown on Android
    - Date / time → `@react-native-community/datetimepicker` (already installed)
    - Image / camera → `expo-image-picker` (already installed)
    - Documents → `expo-document-picker` (already installed)
@@ -155,8 +155,9 @@ Never copy the visual shape of an existing hand-written `components/ui/` compone
 
 - **Main CI** (`.github/workflows/ci.yml`) excludes mobile via `--filter='!@chimii/mobile'`. Mobile failures do NOT block web/desktop PRs.
 - **Mobile verify** (`.github/workflows/mobile-verify.yml`): triggered on `apps/mobile/**` or `packages/core/types/**` changes — runs typecheck/lint/test only, no IPA build.
-- **Mobile release** (`.github/workflows/mobile-release.yml`): triggered by `mobile-v*.*.*` tag → `eas build` + `eas submit`.
-- **OTA** — EAS Update for JS-only fixes that don't change the runtime version. Manual / on-demand push to preview/production channels.
+- **Android APK** (`.github/workflows/mobile-android.yml`): manual signed Release APK via Expo prebuild + Gradle. Local equivalent: `pnpm android:release`; see `docs/android-release.md`.
+- **Signing**: reuse the same private keystore and increment Android versionCode for upgrades. Keys and build artifacts are gitignored.
+- Store submission and OTA are not configured.
 
 Mobile release cadence is decoupled from main `v*.*.*` tags (server / CLI / desktop).
 
