@@ -201,3 +201,29 @@ WHERE session_id = @session_id AND status IN ('queued', 'running');
 SELECT id FROM build_job
 WHERE id = @id AND lease_token = @lease_token AND status = 'running' AND leased_until > clock_timestamp()
 FOR UPDATE;
+
+-- name: ListBuildCreationSummaries :many
+SELECT id, title, prompt, archetype, validation, current_step, completed_at, progress_revision, created_at
+FROM build_creation
+WHERE workspace_id = @workspace_id AND creator_user_id = @creator_user_id
+  AND (sqlc.narg(child_profile_id)::uuid IS NULL OR child_profile_id = sqlc.narg(child_profile_id))
+ORDER BY created_at DESC, id DESC
+LIMIT @page_size;
+
+-- name: GetBuildProgress :one
+SELECT id, current_step, completed_at, progress_revision, validation
+FROM build_creation
+WHERE id = @id AND workspace_id = @workspace_id AND creator_user_id = @creator_user_id
+  AND (sqlc.narg(child_profile_id)::uuid IS NULL OR child_profile_id = sqlc.narg(child_profile_id));
+
+-- name: UpdateBuildProgress :one
+UPDATE build_creation
+SET current_step = @current_step,
+    completed_at = CASE WHEN @completed::boolean THEN COALESCE(completed_at, now()) ELSE completed_at END,
+    progress_revision = progress_revision + 1, updated_at = now()
+WHERE id = @id AND workspace_id = @workspace_id AND creator_user_id = @creator_user_id
+  AND (sqlc.narg(child_profile_id)::uuid IS NULL OR child_profile_id = sqlc.narg(child_profile_id))
+  AND progress_revision = @expected_revision
+  AND @current_step::integer BETWEEN 1 AND (validation->>'step_count')::integer
+  AND (NOT @completed::boolean OR @current_step::integer = (validation->>'step_count')::integer)
+RETURNING id, current_step, completed_at, progress_revision, validation;

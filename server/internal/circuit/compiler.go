@@ -302,6 +302,12 @@ func Compile(c Catalog, projectID, prompt, title, planner string, inventory map[
 		d.Version = 2
 		d.ConnectionSystem = c.ConnectionSystem
 	}
+	return SealDocument(d)
+}
+
+// SealDocument hashes and detaches a snapshot, including its inventory provenance.
+func SealDocument(d Document) (Document, error) {
+	d.ContentHash = ""
 	data, err := json.Marshal(d)
 	if err != nil {
 		return Document{}, err

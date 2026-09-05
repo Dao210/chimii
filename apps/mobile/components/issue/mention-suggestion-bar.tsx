@@ -26,7 +26,7 @@ import { useMemo } from "react";
 import { FlatList, Pressable, View } from "react-native";
 import { useQueries, useQuery } from "@tanstack/react-query";
 import type { Agent, Issue, MemberWithUser, Squad } from "@chimii/core/types";
-import { canAssignAgentToIssue } from "@chimii/core/permissions";
+import { canAssignAgentToIssue } from "@chimii/core/permissions/rules";
 import { Text } from "@/components/ui/text";
 import { ActorAvatar } from "@/components/ui/actor-avatar";
 import { StatusIcon } from "@/components/ui/status-icon";

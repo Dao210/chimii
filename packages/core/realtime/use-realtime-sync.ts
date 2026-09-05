@@ -49,6 +49,7 @@ import {
 } from "../platform/system-notification";
 import type { Workspace } from "../types/workspace";
 import { chatKeys, mergeTaskMessagesBySeq, sortChatSessions } from "../chat/queries";
+import { upsertChatMessageToCaches } from "../chat/message-cache";
 import { useChatStore } from "../chat";
 import { resolvePostAuthDestination, useHasOnboarded } from "../paths";
 import type {
@@ -149,19 +150,7 @@ export function applyChatDoneToCache(
       // "message" for older servers.
       message_kind: payload.message_kind ?? "message",
     };
-    qc.setQueryData<ChatMessage[] | undefined>(
-      chatKeys.messages(sessionId),
-      (old) => {
-        if (!old) return old; // first fetch will pick it up
-        // Idempotent against reconnect replay.
-        if (old.some((m) => m.id === messageId)) return old;
-        return [...old, assistant];
-      },
-    );
-    qc.setQueryData<InfiniteData<ChatMessagesPage> | undefined>(
-      chatKeys.messagesPage(sessionId),
-      (old) => patchLatestChatMessagePage(old, assistant),
-    );
+    upsertChatMessageToCaches(qc, sessionId, assistant);
   }
   // Replacement is in the messages list now; safe to drop pending.
   qc.setQueryData(chatKeys.pendingTask(sessionId), {});
@@ -169,25 +158,6 @@ export function applyChatDoneToCache(
   // that took the fallback branch above.
   invalidateChatMessageQueries(qc, sessionId);
   qc.invalidateQueries({ queryKey: chatKeys.pendingTask(sessionId) });
-}
-
-function patchLatestChatMessagePage(
-  old: InfiniteData<ChatMessagesPage> | undefined,
-  message: ChatMessage,
-): InfiniteData<ChatMessagesPage> | undefined {
-  if (!old?.pages.length) return old;
-  const seen = old.pages.some((page) => page.messages.some((m) => m.id === message.id));
-  if (seen) return old;
-  return {
-    ...old,
-    pages: old.pages.map((page, index) => {
-      if (index !== 0) return page;
-      return {
-        ...page,
-        messages: [...page.messages, message],
-      };
-    }),
-  };
 }
 
 type ChatSessionUpdatedPayload = {
@@ -1094,6 +1064,7 @@ export function useRealtimeSync(
 
     const unsubTaskMessage = ws.on("task:message", (p) => {
       const payload = p as TaskMessagePayload;
+      if (!qc.getQueryCache().find({ queryKey: chatKeys.taskMessages(payload.task_id), exact: true })) return;
       qc.setQueryData<TaskMessagePayload[]>(
         chatKeys.taskMessages(payload.task_id),
         (old = []) => mergeTaskMessagesBySeq(old, [payload]),
@@ -1142,7 +1113,8 @@ export function useRealtimeSync(
     };
 
     const unsubChatMessage = ws.on("chat:message", (p) => {
-      const payload = p as { chat_session_id: string };
+      const payload = p as { chat_session_id: string; message?: ChatMessage };
+      if (payload.message) upsertChatMessageToCaches(qc, payload.chat_session_id, payload.message);
       chatWsLogger.info("chat:message (global)", { chat_session_id: payload.chat_session_id });
       invalidateChatMessageQueries(qc, payload.chat_session_id);
       qc.invalidateQueries({ queryKey: chatKeys.pendingTask(payload.chat_session_id) });
@@ -1340,7 +1312,8 @@ export function useRealtimeSync(
     });
 
     const unsubChatSessionRead = ws.on("chat:session_read", (p) => {
-      const payload = p as { chat_session_id: string };
+      const payload = p as { chat_session_id: string; message?: ChatMessage };
+      if (payload.message) upsertChatMessageToCaches(qc, payload.chat_session_id, payload.message);
       chatWsLogger.info("chat:session_read (global)", payload);
       invalidateSessionLists();
     });
@@ -1363,7 +1336,8 @@ export function useRealtimeSync(
     // session pointer so a deleted session doesn't keep the chat window
     // pointed at vanished messages.
     const unsubChatSessionDeleted = ws.on("chat:session_deleted", (p) => {
-      const payload = p as { chat_session_id: string };
+      const payload = p as { chat_session_id: string; message?: ChatMessage };
+      if (payload.message) upsertChatMessageToCaches(qc, payload.chat_session_id, payload.message);
       chatWsLogger.info("chat:session_deleted (global)", payload);
       const id = getCurrentWsId();
       if (id) {

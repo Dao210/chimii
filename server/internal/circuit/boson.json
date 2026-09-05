@@ -484,7 +484,7 @@
     },
     {
       "id": "BOSON-CABLE-10CM",
-      "manufacturer_id": "BOSON-CABLE-10CM",
+      "manufacturer_id": "",
       "marking": "10 cm",
       "name": {
         "en": "BOSON 10 cm cable",
@@ -669,8 +669,8 @@
             "zh": "连接第 1 根线"
           },
           "instruction": {
-            "en": "With power OFF, connect input:OUT to power:IN using a 10 cm BOSON cable. Follow the printed socket arrows.",
-            "zh": "保持断电，用一根 10 厘米 BOSON 线连接 input:OUT 和 power:IN，核对实物插口箭头。"
+            "en": "With power OFF, connect i2r OUT to m2 IN using a 10 cm BOSON cable. Follow the printed socket arrows.",
+            "zh": "保持断电，用一根 10 厘米 BOSON 线连接 i2r OUT 和 m2 IN，核对实物插口箭头。"
           },
           "placement_ids": [
             "cable1"
@@ -683,8 +683,8 @@
             "zh": "连接第 2 根线"
           },
           "instruction": {
-            "en": "With power OFF, connect power:OUT to output:IN using a 10 cm BOSON cable. Follow the printed socket arrows.",
-            "zh": "保持断电，用一根 10 厘米 BOSON 线连接 power:OUT 和 output:IN，核对实物插口箭头。"
+            "en": "With power OFF, connect m2 OUT to o2r IN using a 10 cm BOSON cable. Follow the printed socket arrows.",
+            "zh": "保持断电，用一根 10 厘米 BOSON 线连接 m2 OUT 和 o2r IN，核对实物插口箭头。"
           },
           "placement_ids": [
             "cable2"
@@ -903,8 +903,8 @@
             "zh": "连接第 1 根线"
           },
           "instruction": {
-            "en": "With power OFF, connect input:OUT to power:IN using a 10 cm BOSON cable. Follow the printed socket arrows.",
-            "zh": "保持断电，用一根 10 厘米 BOSON 线连接 input:OUT 和 power:IN，核对实物插口箭头。"
+            "en": "With power OFF, connect i2r OUT to m2 IN using a 10 cm BOSON cable. Follow the printed socket arrows.",
+            "zh": "保持断电，用一根 10 厘米 BOSON 线连接 i2r OUT 和 m2 IN，核对实物插口箭头。"
           },
           "placement_ids": [
             "cable1"
@@ -917,8 +917,8 @@
             "zh": "连接第 2 根线"
           },
           "instruction": {
-            "en": "With power OFF, connect power:OUT to not:IN using a 10 cm BOSON cable. Follow the printed socket arrows.",
-            "zh": "保持断电，用一根 10 厘米 BOSON 线连接 power:OUT 和 not:IN，核对实物插口箭头。"
+            "en": "With power OFF, connect m2 OUT to f3 IN using a 10 cm BOSON cable. Follow the printed socket arrows.",
+            "zh": "保持断电，用一根 10 厘米 BOSON 线连接 m2 OUT 和 f3 IN，核对实物插口箭头。"
           },
           "placement_ids": [
             "cable2"
@@ -931,8 +931,8 @@
             "zh": "连接第 3 根线"
           },
           "instruction": {
-            "en": "With power OFF, connect not:OUT to output:IN using a 10 cm BOSON cable. Follow the printed socket arrows.",
-            "zh": "保持断电，用一根 10 厘米 BOSON 线连接 not:OUT 和 output:IN，核对实物插口箭头。"
+            "en": "With power OFF, connect f3 OUT to o2r IN using a 10 cm BOSON cable. Follow the printed socket arrows.",
+            "zh": "保持断电，用一根 10 厘米 BOSON 线连接 f3 OUT 和 o2r IN，核对实物插口箭头。"
           },
           "placement_ids": [
             "cable3"
@@ -1131,8 +1131,8 @@
             "zh": "连接第 1 根线"
           },
           "instruction": {
-            "en": "With power OFF, connect input:OUT to power:IN using a 10 cm BOSON cable. Follow the printed socket arrows.",
-            "zh": "保持断电，用一根 10 厘米 BOSON 线连接 input:OUT 和 power:IN，核对实物插口箭头。"
+            "en": "With power OFF, connect i1 OUT to m2 IN using a 10 cm BOSON cable. Follow the printed socket arrows.",
+            "zh": "保持断电，用一根 10 厘米 BOSON 线连接 i1 OUT 和 m2 IN，核对实物插口箭头。"
           },
           "placement_ids": [
             "cable1"
@@ -1145,8 +1145,8 @@
             "zh": "连接第 2 根线"
           },
           "instruction": {
-            "en": "With power OFF, connect power:OUT to output:IN using a 10 cm BOSON cable. Follow the printed socket arrows.",
-            "zh": "保持断电，用一根 10 厘米 BOSON 线连接 power:OUT 和 output:IN，核对实物插口箭头。"
+            "en": "With power OFF, connect m2 OUT to o2r IN using a 10 cm BOSON cable. Follow the printed socket arrows.",
+            "zh": "保持断电，用一根 10 厘米 BOSON 线连接 m2 OUT 和 o2r IN，核对实物插口箭头。"
           },
           "placement_ids": [
             "cable2"
@@ -1335,8 +1335,8 @@
             "zh": "连接第 1 根线"
           },
           "instruction": {
-            "en": "With power OFF, connect input:OUT to power:IN using a 10 cm BOSON cable. Follow the printed socket arrows.",
-            "zh": "保持断电，用一根 10 厘米 BOSON 线连接 input:OUT 和 power:IN，核对实物插口箭头。"
+            "en": "With power OFF, connect i9 OUT to m2 IN using a 10 cm BOSON cable. Follow the printed socket arrows.",
+            "zh": "保持断电，用一根 10 厘米 BOSON 线连接 i9 OUT 和 m2 IN，核对实物插口箭头。"
           },
           "placement_ids": [
             "cable1"
@@ -1349,8 +1349,8 @@
             "zh": "连接第 2 根线"
           },
           "instruction": {
-            "en": "With power OFF, connect power:OUT to output:IN using a 10 cm BOSON cable. Follow the printed socket arrows.",
-            "zh": "保持断电，用一根 10 厘米 BOSON 线连接 power:OUT 和 output:IN，核对实物插口箭头。"
+            "en": "With power OFF, connect m2 OUT to o6 IN using a 10 cm BOSON cable. Follow the printed socket arrows.",
+            "zh": "保持断电，用一根 10 厘米 BOSON 线连接 m2 OUT 和 o6 IN，核对实物插口箭头。"
           },
           "placement_ids": [
             "cable2"
@@ -1599,8 +1599,8 @@
             "zh": "连接第 1 根线"
           },
           "instruction": {
-            "en": "With power OFF, connect motion:OUT to and:INA using a 10 cm BOSON cable. Follow the printed socket arrows.",
-            "zh": "保持断电，用一根 10 厘米 BOSON 线连接 motion:OUT 和 and:INA，核对实物插口箭头。"
+            "en": "With power OFF, connect i13 OUT to f1 INA using a 10 cm BOSON cable. Follow the printed socket arrows.",
+            "zh": "保持断电，用一根 10 厘米 BOSON 线连接 i13 OUT 和 f1 INA，核对实物插口箭头。"
           },
           "placement_ids": [
             "cable1"
@@ -1613,8 +1613,8 @@
             "zh": "连接第 2 根线"
           },
           "instruction": {
-            "en": "With power OFF, connect sound:OUT to and:INB using a 10 cm BOSON cable. Follow the printed socket arrows.",
-            "zh": "保持断电，用一根 10 厘米 BOSON 线连接 sound:OUT 和 and:INB，核对实物插口箭头。"
+            "en": "With power OFF, connect i9 OUT to f1 INB using a 10 cm BOSON cable. Follow the printed socket arrows.",
+            "zh": "保持断电，用一根 10 厘米 BOSON 线连接 i9 OUT 和 f1 INB，核对实物插口箭头。"
           },
           "placement_ids": [
             "cable2"
@@ -1627,8 +1627,8 @@
             "zh": "连接第 3 根线"
           },
           "instruction": {
-            "en": "With power OFF, connect and:OUT to power:IN using a 10 cm BOSON cable. Follow the printed socket arrows.",
-            "zh": "保持断电，用一根 10 厘米 BOSON 线连接 and:OUT 和 power:IN，核对实物插口箭头。"
+            "en": "With power OFF, connect f1 OUT to m2 IN using a 10 cm BOSON cable. Follow the printed socket arrows.",
+            "zh": "保持断电，用一根 10 厘米 BOSON 线连接 f1 OUT 和 m2 IN，核对实物插口箭头。"
           },
           "placement_ids": [
             "cable3"
@@ -1641,8 +1641,8 @@
             "zh": "连接第 4 根线"
           },
           "instruction": {
-            "en": "With power OFF, connect power:OUT to output:IN using a 10 cm BOSON cable. Follow the printed socket arrows.",
-            "zh": "保持断电，用一根 10 厘米 BOSON 线连接 power:OUT 和 output:IN，核对实物插口箭头。"
+            "en": "With power OFF, connect m2 OUT to o6 IN using a 10 cm BOSON cable. Follow the printed socket arrows.",
+            "zh": "保持断电，用一根 10 厘米 BOSON 线连接 m2 OUT 和 o6 IN，核对实物插口箭头。"
           },
           "placement_ids": [
             "cable4"

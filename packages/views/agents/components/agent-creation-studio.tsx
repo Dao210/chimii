@@ -1,5 +1,7 @@
 "use client";
 
+import { upsertChatMessageToCaches } from "@chimii/core/chat/message-cache";
+
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -650,23 +652,10 @@ export function AgentCreationStudio() {
         encodedContent,
       );
       const createdAt = new Date().toISOString();
-      qc.setQueryData<ChatMessage[]>(
-        chatKeys.messages(builderSessionId),
-        (current = []) =>
-          current.some((message) => message.id === result.message_id)
-            ? current
-            : [
-                ...current,
-                {
-                  id: result.message_id,
-                  chat_session_id: builderSessionId,
-                  role: "user",
-                  content: encodedContent,
-                  task_id: result.task_id,
-                  created_at: createdAt,
-                },
-              ],
-      );
+      upsertChatMessageToCaches(qc, builderSessionId, {
+        id: result.message_id, chat_session_id: builderSessionId, role: "user",
+        content: encodedContent, task_id: result.task_id, created_at: createdAt,
+      }, { seedIfMissing: true });
       qc.setQueryData(chatKeys.pendingTask(builderSessionId), {
         task_id: result.task_id,
         status: "queued",

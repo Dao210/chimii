@@ -19,13 +19,15 @@ import {
 } from "lucide-react";
 import { Button } from "@chimii/ui/components/ui/button";
 import { Textarea } from "@chimii/ui/components/ui/textarea";
-import { Input } from "@chimii/ui/components/ui/input";
 import { useWorkspaceId } from "@chimii/core/hooks";
 import { useWorkspacePaths } from "@chimii/core/paths";
 import { generateUUID } from "@chimii/core/utils";
 import { ApiError } from "@chimii/core/api";
 import {
   circuitCatalogOptions,
+  circuitKitsOptions,
+  circuitInventoryOptions,
+  type CircuitInventory,
   circuitListOptions,
   circuitCreationOptions,
   useCreateCircuit,
@@ -41,6 +43,9 @@ import {
 import { AppLink, useNavigation } from "../navigation";
 import { useT } from "../i18n";
 import { CircuitBoard } from "./circuit-board";
+import { CircuitInventoryPanel } from "./circuit-inventory";
+import { CircuitModuleBoard } from "./circuit-module-board";
+import { CircuitTrialPanel } from "./circuit-trials";
 import "@chimii/ui/styles/circuit.css";
 
 function ErrorNotice({
@@ -59,6 +64,9 @@ function ErrorNotice({
     "code" in error.body
   ) {
     switch (error.body.code) {
+      case "circuit_inventory_conflict":
+        message = t(($) => $.inventory_conflict);
+        break;
       case "circuit_unsupported":
         message = t(($) => $.unsupported);
         break;
@@ -96,10 +104,47 @@ function ErrorNotice({
 export function CircuitPage() {
   const wsId = useWorkspaceId();
   const { t } = useT("circuit");
-  const query = useQuery(circuitCatalogOptions(wsId));
+  const [selectedKit, setSelectedKit] = useState("");
+  const kits = useQuery(circuitKitsOptions(wsId));
+  const kitId = selectedKit || kits.data?.kits[0]?.kit_id || "";
+  const query = useQuery({
+    ...circuitCatalogOptions(wsId, kitId),
+    enabled: !!wsId && !!kitId,
+  });
+  const inventory = useQuery(circuitInventoryOptions(wsId, kitId));
+  const error = kits.isError || query.isError || inventory.isError;
   return (
     <main className="circuit-studio h-full overflow-y-auto">
-      {query.isPending ? (
+      {kits.data && (
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-3 px-5 pt-6 md:px-9">
+          <label htmlFor="circuit-kit" className="text-xs font-bold">
+            {t(($) => $.kit)}
+          </label>
+          <select
+            id="circuit-kit"
+            value={kitId}
+            onChange={(e) => setSelectedKit(e.target.value)}
+            className="max-w-full rounded-lg border bg-card px-3 py-2 text-sm"
+          >
+            {kits.data.kits.map((kit) => (
+              <option key={kit.kit_id} value={kit.kit_id}>
+                {kit.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+      {error ? (
+        <div className="mx-auto max-w-xl p-8">
+          <ErrorNotice
+            retry={() => {
+              void kits.refetch();
+              void query.refetch();
+              void inventory.refetch();
+            }}
+          />
+        </div>
+      ) : query.isPending || inventory.isPending || kits.isPending ? (
         <div
           role="status"
           className="flex min-h-80 items-center justify-center gap-3"
@@ -107,15 +152,12 @@ export function CircuitPage() {
           <LoaderCircle className="size-5 animate-spin" />
           {t(($) => $.loading)}
         </div>
-      ) : query.isError ? (
-        <div className="mx-auto max-w-xl p-8">
-          <ErrorNotice retry={() => void query.refetch()} />
-        </div>
       ) : (
         <CircuitHome
           key={`${wsId}:${query.data.catalog.version}`}
           wsId={wsId}
           data={query.data}
+          savedInventory={inventory.data}
         />
       )}
     </main>
@@ -125,9 +167,11 @@ export function CircuitPage() {
 function CircuitHome({
   wsId,
   data,
+  savedInventory,
 }: {
   wsId: string;
   data: CircuitCatalogResponse;
+  savedInventory: CircuitInventory;
 }) {
   const { t, i18n } = useT("circuit");
   const { catalog } = data;
@@ -137,9 +181,11 @@ function CircuitHome({
   const list = useQuery(circuitListOptions(wsId));
   const [prompt, setPrompt] = useState("");
   const [selected, setSelected] = useState(catalog.projects[0]?.id ?? "");
-  const [inventory, setInventory] = useState<Record<string, number>>(() =>
-    Object.fromEntries(catalog.parts.map((p) => [p.id, p.quantity])),
-  );
+  const inventory = savedInventory.quantities;
+  const boxReady =
+    savedInventory.confirmed &&
+    savedInventory.catalog_version === catalog.version;
+  const isModule = catalog.connection_system === "boson";
   const request = useRef({ signature: "", id: "" });
   const mounted = useRef(true);
   useEffect(() => {
@@ -154,11 +200,13 @@ function CircuitHome({
   const label = (v: { en: string; zh: string }) =>
     circuitText(v, i18n.language);
   const start = async (withAI: boolean) => {
+    if (!boxReady) return;
     const input = {
       kit_id: catalog.kit_id,
       catalog_version: catalog.version,
       locale: i18n.language,
       inventory,
+      inventory_revision: savedInventory.revision,
       ...(withAI ? { prompt: prompt.trim() } : { project_id: selected }),
     };
     const signature = JSON.stringify(input);
@@ -210,6 +258,11 @@ function CircuitHome({
           {t(($) => $.kit_note)}
         </p>
       </div>
+      {!boxReady && (
+        <p role="status" className="mb-5 rounded-xl border bg-card p-4 text-sm">
+          {t(($) => $.box_before_start)}
+        </p>
+      )}
       <div className="grid gap-7 lg:grid-cols-[minmax(0,1fr)_320px]">
         <section className="min-w-0">
           <div className="mb-4 flex items-center gap-3">
@@ -243,14 +296,26 @@ function CircuitHome({
                       {String(index + 1).padStart(2, "0")}
                     </span>
                   </div>
-                  <CircuitBoard
-                    miniature
-                    label={label(p.title)}
-                    parts={catalog.parts}
-                    placements={p.placements}
-                    columns={catalog.columns}
-                    rows={catalog.rows}
-                  />
+                  {isModule ? (
+                    <CircuitModuleBoard
+                      miniature
+                      label={label(p.title)}
+                      parts={catalog.parts}
+                      placements={p.placements}
+                      connections={p.connections ?? []}
+                      columns={catalog.columns}
+                      rows={catalog.rows}
+                    />
+                  ) : (
+                    <CircuitBoard
+                      miniature
+                      label={label(p.title)}
+                      parts={catalog.parts}
+                      placements={p.placements}
+                      columns={catalog.columns}
+                      rows={catalog.rows}
+                    />
+                  )}
                   <h3 className="mt-4 text-base font-bold">{label(p.title)}</h3>
                   <p className="mt-2 text-xs leading-5 text-muted-foreground">
                     {label(p.description)}
@@ -291,7 +356,7 @@ function CircuitHome({
               </div>
               <Button
                 onClick={() => void start(false)}
-                disabled={create.isPending || missing}
+                disabled={create.isPending || missing || !boxReady}
                 className="h-11 w-full rounded-xl font-bold sm:w-auto"
               >
                 {create.isPending ? (
@@ -338,6 +403,7 @@ function CircuitHome({
               <Button
                 onClick={() => void start(true)}
                 disabled={
+                  !boxReady ||
                   !prompt.trim() ||
                   create.isPending ||
                   data.ai_available !== true
@@ -359,58 +425,11 @@ function CircuitHome({
           )}
         </section>
         <aside className="space-y-5">
-          <section className="rounded-2xl border bg-card p-5">
-            <h2 className="flex items-center gap-2 font-bold">
-              <Layers className="size-4" />
-              {t(($) => $.shelf)}
-            </h2>
-            <p className="mb-4 mt-2 text-xs leading-5 text-muted-foreground">
-              {t(($) => $.shelf_hint)}
-            </p>
-            <details>
-              <summary className="cursor-pointer text-sm font-medium">
-                {t(($) => $.edit_materials)}
-              </summary>
-              <div className="mt-4 space-y-3">
-                {catalog.parts.map((p) => (
-                  <label
-                    key={p.id}
-                    className="flex items-center justify-between gap-3"
-                  >
-                    <span className="min-w-0 text-xs">
-                      <span className="mr-2 inline-block min-w-7 font-mono font-bold">
-                        {p.id}
-                      </span>
-                      {label(p.name)}
-                    </span>
-                    <Input
-                      type="number"
-                      min={0}
-                      max={p.quantity}
-                      step={1}
-                      aria-label={`${p.id} ${label(p.name)}`}
-                      value={inventory[p.id] ?? 0}
-                      onChange={(e) => {
-                        const n = Number(e.target.value);
-                        setInventory((prev) => ({
-                          ...prev,
-                          [p.id]: Math.max(
-                            0,
-                            Math.min(
-                              p.quantity,
-                              Number.isFinite(n) ? Math.trunc(n) : 0,
-                            ),
-                          ),
-                        }));
-                        create.reset();
-                      }}
-                      className="h-8 w-16 shrink-0 text-center"
-                    />
-                  </label>
-                ))}
-              </div>
-            </details>
-          </section>
+          <CircuitInventoryPanel
+            wsId={wsId}
+            catalog={catalog}
+            saved={savedInventory}
+          />
           <section className="rounded-2xl border bg-card p-5">
             <h2 className="font-bold">{t(($) => $.before)}</h2>
             <ul className="mt-3 space-y-3">
@@ -504,6 +523,7 @@ function CircuitWorkbench({
 }) {
   const { t, i18n } = useT("circuit");
   const { document: doc } = creation;
+  const isModule = doc.connection_system === "boson";
   const progress = useCircuitProgress(wsId, creation.id);
   const [previewStep, setPreviewStep] = useState<number | null>(null);
   const [overview, setOverview] = useState(false);
@@ -598,23 +618,25 @@ function CircuitWorkbench({
                   {t(($) => $.overview)}
                 </Button>
               </div>
-              <label className="flex items-center gap-2 text-xs text-muted-foreground">
-                <Layers className="size-4" />
-                <span className="sr-only">{t(($) => $.layers)}</span>
-                <select
-                  aria-label={t(($) => $.layers)}
-                  value={layer}
-                  onChange={(e) => setLayer(Number(e.target.value))}
-                  className="rounded-md border bg-background px-2 py-2 text-foreground"
-                >
-                  <option value={0}>{t(($) => $.all_layers)}</option>
-                  {[1, 2, 3].map((n) => (
-                    <option key={n} value={n}>
-                      {t(($) => $.layer, { n })}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              {!isModule && (
+                <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <Layers className="size-4" />
+                  <span className="sr-only">{t(($) => $.layers)}</span>
+                  <select
+                    aria-label={t(($) => $.layers)}
+                    value={layer}
+                    onChange={(e) => setLayer(Number(e.target.value))}
+                    className="rounded-md border bg-background px-2 py-2 text-foreground"
+                  >
+                    <option value={0}>{t(($) => $.all_layers)}</option>
+                    {[1, 2, 3].map((n) => (
+                      <option key={n} value={n}>
+                        {t(($) => $.layer, { n })}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
             </div>
             <Button
               variant="outline"
@@ -632,15 +654,27 @@ function CircuitWorkbench({
               tabIndex={enlarged ? 0 : undefined}
             >
               <div style={enlarged ? { minWidth: 900 } : undefined}>
-                <CircuitBoard
-                  label={doc.title}
-                  parts={doc.parts}
-                  placements={visible}
-                  columns={doc.columns}
-                  rows={doc.rows}
-                  highlighted={overview ? [] : step?.placement_ids}
-                  layer={layer}
-                />
+                {isModule ? (
+                  <CircuitModuleBoard
+                    label={doc.title}
+                    parts={doc.parts}
+                    placements={visible}
+                    connections={doc.project.connections ?? []}
+                    columns={doc.columns}
+                    rows={doc.rows}
+                    highlighted={overview ? [] : step?.placement_ids}
+                  />
+                ) : (
+                  <CircuitBoard
+                    label={doc.title}
+                    parts={doc.parts}
+                    placements={visible}
+                    columns={doc.columns}
+                    rows={doc.rows}
+                    highlighted={overview ? [] : step?.placement_ids}
+                    layer={layer}
+                  />
+                )}
               </div>
             </div>
             {enlarged && (
@@ -649,7 +683,9 @@ function CircuitWorkbench({
               </p>
             )}
             <p className="mt-4 text-xs leading-6 text-muted-foreground">
-              {t(($) => $.board_hint)}
+              {isModule
+                ? t(($) => $.module_board_hint)
+                : t(($) => $.board_hint)}
             </p>
             <div className="mt-5 border-t pt-4">
               <h2 className="mb-2 text-sm font-bold">{t(($) => $.how)}</h2>
@@ -717,20 +753,56 @@ function CircuitWorkbench({
                           <p className="mt-1 text-xs text-muted-foreground">
                             {label(part.purpose)}
                           </p>
-                          <p className="my-2 text-xs font-bold">
-                            {t(($) => $.layer, { n: p.layer })}
-                          </p>
-                          <div className="flex flex-wrap gap-1.5">
-                            {part.ports.map((port) => {
-                              const q = circuitPoint(p, port.x, port.y);
-                              return (
-                                <span
-                                  key={port.id}
-                                  className="rounded border bg-card px-2 py-1 font-mono text-xs"
-                                >{`${port.id} → ${circuitCoordinate(q.x, q.y)}`}</span>
-                              );
-                            })}
-                          </div>
+                          {isModule ? (
+                            <div className="mt-2 space-y-2 text-xs">
+                              {part.marking && (
+                                <p className="font-mono font-bold">
+                                  {part.marking}
+                                </p>
+                              )}
+                              {(doc.project.connections ?? [])
+                                .filter(
+                                  (w) =>
+                                    w.cable_id === id ||
+                                    w.from.startsWith(id + ":") ||
+                                    w.to.startsWith(id + ":"),
+                                )
+                                .map((w) => {
+                                  const name = (key: string) => {
+                                    const [instance, pin] = key.split(":");
+                                    const v = doc.project.placements.find(
+                                      (v) => v.id === instance,
+                                    );
+                                    return `${doc.parts.find((part) => part.id === v?.part_id)?.marking ?? instance} ${pin}`;
+                                  };
+                                  return (
+                                    <p
+                                      key={w.id}
+                                      className="rounded border bg-card p-2 font-mono"
+                                    >
+                                      {name(w.from)} → {name(w.to)}
+                                    </p>
+                                  );
+                                })}
+                            </div>
+                          ) : (
+                            <>
+                              <p className="my-2 text-xs font-bold">
+                                {t(($) => $.layer, { n: p.layer })}
+                              </p>
+                              <div className="flex flex-wrap gap-1.5">
+                                {part.ports.map((port) => {
+                                  const q = circuitPoint(p, port.x, port.y);
+                                  return (
+                                    <span
+                                      key={port.id}
+                                      className="rounded border bg-card px-2 py-1 font-mono text-xs"
+                                    >{`${port.id} → ${circuitCoordinate(q.x, q.y)}`}</span>
+                                  );
+                                })}
+                              </div>
+                            </>
+                          )}
                         </div>
                       );
                     })}
@@ -822,6 +894,7 @@ function CircuitWorkbench({
               </p>
             )}
             {progress.isError && <ErrorNotice error={progress.error} />}
+            <CircuitTrialPanel wsId={wsId} creation={creation} />
             <details className="rounded-2xl border bg-card p-5">
               <summary className="cursor-pointer text-sm font-bold">
                 {t(($) => $.all_steps)}

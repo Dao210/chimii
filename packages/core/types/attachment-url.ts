@@ -24,6 +24,15 @@
 const DOWNLOAD_PREFIX = "/api/attachments/";
 const DOWNLOAD_SUFFIX = "/download";
 
+// This marker is persisted source metadata, not a user-facing brand name.
+const CHANNEL_MEDIA_MARKER_RE =
+  /<!-- multica:channel-media:[0-9a-fA-F-]{36} -->/g;
+
+/** Remove channel merge metadata without removing the visible media link. */
+export function stripChannelMediaMarkers(content: string): string {
+  return content.replace(CHANNEL_MEDIA_MARKER_RE, "");
+}
+
 /**
  * UUID literal regex (RFC 4122 form). Used to extract an attachment id
  * out of a stable download URL when matching markdown image refs back

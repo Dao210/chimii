@@ -196,4 +196,17 @@ export interface ChatPendingTask {
   task_id?: string;
   status?: string;
   created_at?: string;
+  /** Optional response fields; absent on Chimii's single-task backend. */
+  wait_reason?: string;
+  supports_queue?: boolean;
+  queued_tasks?: ChatQueuedTask[];
+}
+
+/** A queued follow-up supplied by a backend that explicitly supports queues. */
+export interface ChatQueuedTask {
+  task_id: string;
+  status: string;
+  created_at: string;
+  message_id?: string;
+  content?: string;
 }

@@ -1,5 +1,7 @@
 "use client";
 
+import { upsertChatMessageToCaches } from "@chimii/core/chat/message-cache";
+
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useInfiniteQuery, useQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query";
 import { motion } from "motion/react";
@@ -517,11 +519,7 @@ export function ChatWindow() {
         created_at: result.created_at,
         attachments: draftAttachments,
       };
-      appendChatMessageToLatestPageCache(qc, sessionId, sent);
-      qc.setQueryData<ChatMessage[]>(
-        chatKeys.messages(sessionId),
-        (old) => (old ? [...old, sent] : [sent]),
-      );
+      upsertChatMessageToCaches(qc, sessionId, sent, { seedIfMissing: true });
       qc.setQueryData<ChatPendingTask>(chatKeys.pendingTask(sessionId), {
         task_id: result.task_id,
         status: "queued",

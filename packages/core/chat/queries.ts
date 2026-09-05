@@ -1,4 +1,4 @@
-import { infiniteQueryOptions, queryOptions } from "@tanstack/react-query";
+import { infiniteQueryOptions, queryOptions, replaceEqualDeep } from "@tanstack/react-query";
 import { api } from "../api";
 import type { TaskMessagePayload } from "../types/events";
 import type { ChatSession } from "../types/chat";
@@ -174,6 +174,12 @@ export function taskMessagesOptions(taskId: string) {
     queryFn: () => api.listTaskMessages(taskId),
     enabled: isTaskMessageTaskId(taskId),
     staleTime: Infinity,
+    // Fetch completion must preserve frames received while HTTP was in flight.
+    structuralSharing: (previous, incoming) => mergeTaskMessagesBySeq(
+      (previous as TaskMessagePayload[] | undefined) ?? [],
+      incoming as TaskMessagePayload[],
+      true,
+    ),
   });
 }
 
@@ -192,12 +198,21 @@ export function taskMessagesOptions(taskId: string) {
 export function mergeTaskMessagesBySeq(
   existing: readonly TaskMessagePayload[],
   incoming: readonly TaskMessagePayload[],
+  authoritative = false,
 ): TaskMessagePayload[] {
   if (incoming.length === 0) return existing as TaskMessagePayload[];
-  const knownSeqs = new Set(existing.map((m) => m.seq));
-  const fresh = incoming.filter((m) => !knownSeqs.has(m.seq));
-  if (fresh.length === 0) return existing as TaskMessagePayload[];
-  return [...existing, ...fresh].sort((a, b) => a.seq - b.seq);
+  const bySeq = new Map(existing.map((message) => [message.seq, message]));
+  let changed = false;
+  for (const message of incoming) {
+    const previous = bySeq.get(message.seq);
+    const next = previous && authoritative ? replaceEqualDeep(previous, message) : previous ?? message;
+    if (next !== previous) {
+      bySeq.set(message.seq, next);
+      changed = true;
+    }
+  }
+  if (!changed) return existing as TaskMessagePayload[];
+  return [...bySeq.values()].sort((a, b) => a.seq - b.seq);
 }
 
 /**

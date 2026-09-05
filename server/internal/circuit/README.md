@@ -1,26 +1,28 @@
 # Electronic construction
 
 This module turns an idea or a selected project into a saved, step-by-step
-assembly document for children using an existing snap-circuit kit. Its first
-catalogue targets **Snap Circuits SC-500**, using only the components needed by
-three documented projects: a switched lamp, an alarm sound, and a tabletop FM
-radio with volume control. Quantities are a subset of that kit, not its full BOM.
+assembly document for children using exact commercial kits. The catalogues target
+**Snap Circuits SC-500** (switched lamp, alarm sound, tabletop FM radio) and
+**DFRobot BOSON EDU0080-EN** (five non-programming projects). Quantities are
+subsets of each kit, not their full BOMs.
 Parts from other brands or kit revisions are not assumed interchangeable.
 
 ## Boundaries
 
 ```text
-Idea / selected project + kit version + available quantities
+Idea / selected project + kit version + saved parts-box revision
               |
      Plan: bounded model intent (optional)
               |
      Compile: reference project + component catalogue
               |
-     Validate: inventory, snaps, layers, bodies, netlist, shorts
+     Validate: inventory + kit-specific reference connections
+         Snap: layers / bodies / snaps / netlist / shorts
+         BOSON: keyed ports / directions / cables / expected pairs
               |
-     Document v1 -> immutable JSONB snapshot
+     Document v1 (Snap) or v2 (BOSON) -> immutable JSONB snapshot
               |
-     Shared SVG workbench -> separate progress / family observation
+     Shared SVG workbench -> separate progress / family trial history
 ```
 
 `internal/circuit` imports no brick compiler, HTTP, database, or provider SDK.
@@ -40,7 +42,7 @@ simulation, background agent job, or general-purpose circuit synthesis here.
 
 ## Catalogue and verification evidence
 
-`catalog.json` is the server-owned, embedded source of truth. Each component
+`catalog.json` (Snap) and `boson.json` are server-owned embedded sources of truth. Each Snap component
 defines snap coordinates, rotation, occupancy shape, part ID, and quantity.
 Each project separately records its functional-pin netlist, placement layout,
 instructions, original PDF URL, page number, and SHA-256 of the reviewed PDF.
@@ -82,7 +84,7 @@ Migrations 279–282 add `circuit_creation` and three separate concurrent indexe
 There are no new foreign keys. Workspace deletion and member removal explicitly
 clean up circuit creations in the existing application cleanup transactions.
 
-- `GET /api/circuit/catalog`: catalogue and optional AI availability.
+- `GET /api/circuit/catalog?kit_id=...`: catalogue and optional AI availability.
 - `POST /api/circuit/creations`: `client_request_id`, `kit_id`, `catalog_version`,
   `inventory`, `locale`, and exactly one of `project_id` or `prompt`.
 - `GET /api/circuit/creations`: last 50 creations for this actor.
@@ -94,8 +96,14 @@ All creations are scoped by workspace, parent user, and child actor (or
 `parent`). A repeated request ID returns the original document; a different
 payload with that ID returns 409. Insufficient inventory returns 422 and creates
 no document. The saved snapshot freezes inventory, catalogue version, source,
-layout, instructions, netlist and report. Inventory edits in the project picker
-are inputs to this snapshot, not a separate persistent inventory collection.
+layout, instructions, netlist and report. A family has one persistent `circuit_inventory` row per kit. A parent saves
+complete, explicitly checked quantities; children inherit read access. A fresh
+box contains zeros and is unconfirmed. Updates compare the expected revision.
+BOSON creation requires the saved inventory revision; existing Snap API clients
+can still supply quantities directly. The current UI always uses saved boxes.
+The handler checks quantities and revision before planning and again under a
+transaction lock before saving. The snapshot includes the inventory revision
+when supplied. Idempotent replay returns the original snapshot even after edits.
 The content hash is SHA-256 of Go's JSON encoding of `Document` with an empty
 `content_hash` field. Compilation detaches nested data from caller-owned maps.
 
@@ -127,7 +135,7 @@ go test ./internal/handler -run '^TestCircuit' -count=1
 go test ./internal/middleware -run '^TestChildCapabilities' -count=1
 
 # From repository root.
-pnpm --filter @chimii/core exec vitest run circuit/schemas.test.ts
+pnpm --filter @chimii/core exec vitest run circuit
 pnpm --filter @chimii/views exec vitest run circuit/circuit-page.test.tsx
 pnpm typecheck
 pnpm exec playwright test e2e/circuit.spec.ts
@@ -138,3 +146,43 @@ persistence, cookie authentication, a child session, and workspace cleanup. Set
 the local API, frontend and database environment variables explicitly. Model
 unit tests use a fake text generator; they do not establish a live provider's
 intent-classification accuracy.
+
+
+## Commercial module adapter
+
+BOSON records whole keyed cables between module sockets. It does not collapse a
+three-wire cable into a single electrical conductor. `modules.go` checks port
+identity, connector family, direction, single occupancy, cable ownership, full
+connectivity and an independently supplied reference connection list. A generic
+connector name is insufficient to accept a new module: the exact project and
+part IDs must also match. Diagrams use logical coordinates, not mounting scale,
+and do not establish cable reach, current budgets or physical safety.
+
+The five BOSON references are button light, inverted button light, dimmer light,
+sound fan, and motion-and-sound AND fan. The reviewed kit quick guide (pages 10,
+12) and non-programming cards (pages 2, 4, 8) supply the evidence. The long kit
+tutorial contains component differences; it is not a blanket compatibility
+source. All documents retain `physical_verification: not_tested`.
+
+Additional APIs:
+
+- `GET /api/circuit/kits`: supported exact kits and official purchase channels.
+- `GET /api/circuit/inventory/{kitID}`: this parent's family box and edit ability.
+- `PUT /api/circuit/inventory/{kitID}`: parent only; `catalog_version`, complete
+  `quantities`, `expected_revision`. Stale updates return 409.
+- `POST /api/circuit/creations`: optional `inventory_revision`, required for BOSON.
+- `GET /api/circuit/creations/{id}/trials`: last 50 reports for this actor's creation.
+- `POST /api/circuit/creations/{id}/trials`: `client_request_id`, `hardware_label`,
+  `result` (`worked` or `needs_help`), `notes`, `adult_checked: true`. A new report
+  requires persisted final-step progress; identical retries replay the old one.
+
+Trial reports append independently of the design. Their server-assigned document
+hash binds them to the original snapshot. `family_report` never upgrades platform
+hardware evidence. Scope is workspace + parent + child/parent actor. Workspace
+and membership removal explicitly clean up both new FK-free tables in the
+existing transactional cleanup path. Migrations 284–288 create tables and
+single-statement concurrent indexes.
+
+See [procurement and physical acceptance worksheet (Chinese)](HARDWARE-ACCEPTANCE.zh-CN.md)
+for exact parts, reviewed sources, source hashes, acquisition limitations and
+physical test steps. No kit was purchased or physically assembled in this run.

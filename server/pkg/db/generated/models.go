@@ -298,6 +298,9 @@ type BuildCreation struct {
 	CreatedAt         pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt         pgtype.Timestamptz `json:"updated_at"`
 	InventorySnapshot []byte             `json:"inventory_snapshot"`
+	CurrentStep       int32              `json:"current_step"`
+	CompletedAt       pgtype.Timestamptz `json:"completed_at"`
+	ProgressRevision  int32              `json:"progress_revision"`
 }
 
 type BuildJob struct {

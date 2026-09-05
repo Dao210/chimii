@@ -171,6 +171,14 @@ func (h *Handler) CreateCircuitCreation(w http.ResponseWriter, r *http.Request) 
 		writeJSON(w, 422, map[string]any{"error": "Circuit could not pass the reference checks", "code": "circuit_validation_failed", "validation": doc.Validation})
 		return
 	}
+	if req.InventoryRevision != nil {
+		doc.InventoryRevision = req.InventoryRevision
+		doc, err = circuit.SealDocument(doc)
+		if err != nil {
+			writeError(w, 500, "could not seal circuit")
+			return
+		}
+	}
 	data, err := json.Marshal(doc)
 	if err != nil {
 		writeError(w, 500, "could not encode circuit")

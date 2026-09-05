@@ -230,8 +230,9 @@ Do not claim verification passed unless you ran it. If you skip checks because t
 ## Commits and Releases
 
 - Commits should be atomic and use conventional prefixes: `feat(scope)`, `fix(scope)`, `refactor(scope)`, `docs`, `test(scope)`, `chore(scope)`.
-- A production deployment requires a CLI release tag on `main`: create `v0.x.x`, push it, and let `release.yml` publish binaries and the Homebrew tap.
-- Bump patch by default unless the user specifies a version.
+- Daily server deployment through `scripts/deploy-sh.sh` requires clean `main`. Use an exact stable tag matching the root package version when present; otherwise use `v<root-version>-<short-commit>`. Deployment never bumps versions, commits, tags, pushes, or triggers/waits for GitHub Releases.
+- Formal CLI/Desktop releases still require a tag matching the root package version on `main`: create `v0.x.x`, push it, and let `release.yml` publish the release artifacts. Commit-suffixed server versions are build identifiers, not client update releases.
+- Bump patch by default for formal releases unless the user specifies a version.
 
 ## Domain Reminders
 

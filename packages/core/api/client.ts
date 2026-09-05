@@ -1,4 +1,4 @@
-import { CircuitCatalogSchema, CircuitCreationSchema, CircuitListSchema, parseCircuit, type CreateCircuitInput, type CircuitProgressInput } from "../circuit/schemas";
+import { CircuitCatalogSchema, CircuitCreationSchema, CircuitListSchema, CircuitKitsSchema, CircuitInventorySchema, CircuitTrialSchema, CircuitTrialsSchema, parseCircuit, type CreateCircuitInput, type CircuitProgressInput, type SaveCircuitInventoryInput, type CircuitTrialInput } from "../circuit/schemas";
 import type {
   Issue,
   IssuePriority,
@@ -3105,8 +3105,24 @@ export class ApiClient {
     });
   }
 
-  async getCircuitCatalog() {
-    return parseCircuit(await this.fetch<unknown>("/api/circuit/catalog"), CircuitCatalogSchema, "GET /api/circuit/catalog");
+  async getCircuitCatalog(kitId?: string) {
+    const path = kitId ? `/api/circuit/catalog?kit_id=${encodeURIComponent(kitId)}` : "/api/circuit/catalog";
+    return parseCircuit(await this.fetch<unknown>(path), CircuitCatalogSchema, "GET /api/circuit/catalog");
+  }
+  async listCircuitKits() {
+    return parseCircuit(await this.fetch<unknown>("/api/circuit/kits"), CircuitKitsSchema, "GET /api/circuit/kits");
+  }
+  async getCircuitInventory(kitId: string) {
+    return parseCircuit(await this.fetch<unknown>(`/api/circuit/inventory/${encodeURIComponent(kitId)}`), CircuitInventorySchema, "GET /api/circuit/inventory/{kitId}");
+  }
+  async saveCircuitInventory(kitId: string, input: SaveCircuitInventoryInput) {
+    return parseCircuit(await this.fetch<unknown>(`/api/circuit/inventory/${encodeURIComponent(kitId)}`, { method: "PUT", body: JSON.stringify(input) }), CircuitInventorySchema, "PUT /api/circuit/inventory/{kitId}");
+  }
+  async listCircuitTrials(id: string) {
+    return parseCircuit(await this.fetch<unknown>(`/api/circuit/creations/${encodeURIComponent(id)}/trials`), CircuitTrialsSchema, "GET /api/circuit/creations/{id}/trials");
+  }
+  async createCircuitTrial(id: string, input: CircuitTrialInput) {
+    return parseCircuit(await this.fetch<unknown>(`/api/circuit/creations/${encodeURIComponent(id)}/trials`, { method: "POST", body: JSON.stringify(input) }), CircuitTrialSchema, "POST /api/circuit/creations/{id}/trials");
   }
   async listCircuitCreations() {
     return parseCircuit(await this.fetch<unknown>("/api/circuit/creations"), CircuitListSchema, "GET /api/circuit/creations");

@@ -57,7 +57,7 @@ func buildTestDB(t *testing.T) (*Handler, *pgxpool.Pool, db.BuildSession) {
 		}
 		admin.Close()
 	})
-	for _, n := range []string{"234", "235", "236", "237", "246", "247", "248", "260", "283"} {
+	for _, n := range []string{"234", "235", "236", "237", "246", "247", "248", "260", "283", "289"} {
 		paths, _ := filepath.Glob("../../migrations/" + n + "_*.up.sql")
 		for _, p := range paths {
 			raw, err := os.ReadFile(p)

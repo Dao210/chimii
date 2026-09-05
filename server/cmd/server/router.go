@@ -1130,6 +1130,8 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 				r.Post("/sessions/{id}/cancel", h.CancelBuildSession)
 				r.Get("/creations", h.ListBuildCreations)
 				r.Get("/creations/{id}", h.GetBuildCreation)
+				r.Get("/creations/{id}/progress", h.GetBuildProgress)
+				r.Put("/creations/{id}/progress", h.UpdateBuildProgress)
 				r.Get("/creations/{id}/export.mpd", h.ExportBuildCreationMPD)
 			})
 

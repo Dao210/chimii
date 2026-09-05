@@ -285,6 +285,10 @@ func (h *Handler) ListBuildCreations(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	if r.URL.Query().Get("view") == "summary" {
+		h.ListBuildCreationSummaries(w, r)
+		return
+	}
 	pageSize := int32(60)
 	if value, parseErr := strconv.Atoi(r.URL.Query().Get("limit")); parseErr == nil && value > 0 && value <= 100 {
 		pageSize = int32(value)

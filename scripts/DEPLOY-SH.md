@@ -6,26 +6,38 @@ From the repository root, run:
 scripts/deploy-sh.sh
 ```
 
-The default action is `deploy`. It requires a clean `main` checkout at an exact
-`vX.Y.Z` tag matching the root package version. Create and push the release tag
-before deployment, as required by `CLAUDE.md`. The script does not create commits,
-tags, or pushes. Repeating the command for the deployed commit verifies it without
-rebuilding; `FORCE_DEPLOY=true scripts/deploy-sh.sh` forces another deployment.
+The default action is `deploy`. It requires a clean `main` checkout. An exact
+stable `vX.Y.Z` tag matching the root package version is used when present;
+otherwise the deployment version is `v<root-version>-<short-commit>`, for example
+`v0.3.0-10f4f20`. The root version must be stable `X.Y.Z`. Prerelease or mismatched
+release tags at HEAD are rejected, not silently converted to commit builds.
+
+The script never bumps package versions, creates commits/tags, pushes, or triggers
+or waits for GitHub Releases. Uncommitted tracked and untracked changes are
+rejected before SSH; commit intended changes yourself. A commit build is not an
+uncommitted `-dirty` build. Repeating the command for the same deployed commit
+AND version verifies it without rebuilding. Adding a formal tag to that commit
+therefore refreshes the deployed version. `FORCE_DEPLOY=true scripts/deploy-sh.sh`
+forces another deployment.
 
 ## Release version consistency
 
-The root `package.json` version and the release tag must match (`0.3.0` and
+For formal CLI/Desktop releases, the root `package.json` version and tag must match (`0.3.0` and
 `v0.3.0`, respectively). Before creating a tag, update and commit the root
 version, then run `bash scripts/check-release-version.sh v0.3.0` with the intended
 tag. After tagging, run the same check without arguments to require an exact tag
 at HEAD. This is a metadata check only: deployment also requires clean `main`.
-The release workflow and `deploy-sh.sh` share this check, so a tag with stale
-package metadata is rejected before publishing binaries.
+The release workflow and tagged deployments share this check, so a tag with stale
+package metadata is rejected. Untagged server deployments use a commit suffix
+without relaxing the formal release workflow's checks.
 
-CLI and Desktop artifact versions are derived from the Git tag. Web receives
-that same tag through `NEXT_PUBLIC_APP_VERSION` during deployment. Workspace
-package versions are not the product release version; Mobile keeps its own
-release cadence. Do not bulk-rewrite dependency, catalog or migration versions.
+Published CLI and Desktop artifact versions are derived from the Git tag. Server
+deployments inject the same resolved tag or commit version into the backend, the
+bundled CLI, and Web (`NEXT_PUBLIC_APP_VERSION`), and record the full source commit
+in deployment state. Commit-suffixed versions are server build identifiers, not
+client auto-update releases. Workspace package versions are not the product
+release version; Mobile keeps its own release cadence. Do not bulk-rewrite
+dependency, catalog or migration versions.
 
 Updating `package.json` in a new commit does not update an existing tag. If a
 tag has already been pushed, do not silently move it or replace its assets:

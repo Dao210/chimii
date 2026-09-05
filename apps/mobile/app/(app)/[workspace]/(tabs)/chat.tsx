@@ -50,7 +50,7 @@ import {
   hideQueuedChatMessages,
   removePendingChatTask,
 } from "@chimii/core/chat/pending";
-import { canAssignAgentToIssue } from "@chimii/core/permissions";
+import { canAssignAgentToIssue } from "@chimii/core/permissions/rules";
 import { api } from "@/data/api";
 import { useAuthStore } from "@/data/auth-store";
 import { useWorkspaceStore } from "@/data/workspace-store";

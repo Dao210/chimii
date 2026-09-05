@@ -166,7 +166,7 @@ INSERT INTO build_creation (
     $1, $2, $3, $4, $5, $6, $7,
     $8, $9, $10, $11, $12
 )
-RETURNING id, workspace_id, creator_user_id, child_profile_id, session_id, title, prompt, archetype, recipe, build_plan, validation, ldraw_mpd, created_at, updated_at, inventory_snapshot
+RETURNING id, workspace_id, creator_user_id, child_profile_id, session_id, title, prompt, archetype, recipe, build_plan, validation, ldraw_mpd, created_at, updated_at, inventory_snapshot, current_step, completed_at, progress_revision
 `
 
 type CreateBuildCreationParams struct {
@@ -216,6 +216,9 @@ func (q *Queries) CreateBuildCreation(ctx context.Context, arg CreateBuildCreati
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.InventorySnapshot,
+		&i.CurrentStep,
+		&i.CompletedAt,
+		&i.ProgressRevision,
 	)
 	return i, err
 }
@@ -368,7 +371,7 @@ func (q *Queries) FailBuildSession(ctx context.Context, arg FailBuildSessionPara
 }
 
 const getBuildCreationInWorkspace = `-- name: GetBuildCreationInWorkspace :one
-SELECT id, workspace_id, creator_user_id, child_profile_id, session_id, title, prompt, archetype, recipe, build_plan, validation, ldraw_mpd, created_at, updated_at, inventory_snapshot FROM build_creation
+SELECT id, workspace_id, creator_user_id, child_profile_id, session_id, title, prompt, archetype, recipe, build_plan, validation, ldraw_mpd, created_at, updated_at, inventory_snapshot, current_step, completed_at, progress_revision FROM build_creation
 WHERE id = $1
   AND workspace_id = $2
   AND creator_user_id = $3
@@ -406,6 +409,49 @@ func (q *Queries) GetBuildCreationInWorkspace(ctx context.Context, arg GetBuildC
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.InventorySnapshot,
+		&i.CurrentStep,
+		&i.CompletedAt,
+		&i.ProgressRevision,
+	)
+	return i, err
+}
+
+const getBuildProgress = `-- name: GetBuildProgress :one
+SELECT id, current_step, completed_at, progress_revision, validation
+FROM build_creation
+WHERE id = $1 AND workspace_id = $2 AND creator_user_id = $3
+  AND ($4::uuid IS NULL OR child_profile_id = $4)
+`
+
+type GetBuildProgressParams struct {
+	ID             pgtype.UUID `json:"id"`
+	WorkspaceID    pgtype.UUID `json:"workspace_id"`
+	CreatorUserID  pgtype.UUID `json:"creator_user_id"`
+	ChildProfileID pgtype.UUID `json:"child_profile_id"`
+}
+
+type GetBuildProgressRow struct {
+	ID               pgtype.UUID        `json:"id"`
+	CurrentStep      int32              `json:"current_step"`
+	CompletedAt      pgtype.Timestamptz `json:"completed_at"`
+	ProgressRevision int32              `json:"progress_revision"`
+	Validation       []byte             `json:"validation"`
+}
+
+func (q *Queries) GetBuildProgress(ctx context.Context, arg GetBuildProgressParams) (GetBuildProgressRow, error) {
+	row := q.db.QueryRow(ctx, getBuildProgress,
+		arg.ID,
+		arg.WorkspaceID,
+		arg.CreatorUserID,
+		arg.ChildProfileID,
+	)
+	var i GetBuildProgressRow
+	err := row.Scan(
+		&i.ID,
+		&i.CurrentStep,
+		&i.CompletedAt,
+		&i.ProgressRevision,
+		&i.Validation,
 	)
 	return i, err
 }
@@ -535,8 +581,71 @@ func (q *Queries) GetBuildSessionInWorkspace(ctx context.Context, arg GetBuildSe
 	return i, err
 }
 
+const listBuildCreationSummaries = `-- name: ListBuildCreationSummaries :many
+SELECT id, title, prompt, archetype, validation, current_step, completed_at, progress_revision, created_at
+FROM build_creation
+WHERE workspace_id = $1 AND creator_user_id = $2
+  AND ($3::uuid IS NULL OR child_profile_id = $3)
+ORDER BY created_at DESC, id DESC
+LIMIT $4
+`
+
+type ListBuildCreationSummariesParams struct {
+	WorkspaceID    pgtype.UUID `json:"workspace_id"`
+	CreatorUserID  pgtype.UUID `json:"creator_user_id"`
+	ChildProfileID pgtype.UUID `json:"child_profile_id"`
+	PageSize       int32       `json:"page_size"`
+}
+
+type ListBuildCreationSummariesRow struct {
+	ID               pgtype.UUID        `json:"id"`
+	Title            string             `json:"title"`
+	Prompt           string             `json:"prompt"`
+	Archetype        string             `json:"archetype"`
+	Validation       []byte             `json:"validation"`
+	CurrentStep      int32              `json:"current_step"`
+	CompletedAt      pgtype.Timestamptz `json:"completed_at"`
+	ProgressRevision int32              `json:"progress_revision"`
+	CreatedAt        pgtype.Timestamptz `json:"created_at"`
+}
+
+func (q *Queries) ListBuildCreationSummaries(ctx context.Context, arg ListBuildCreationSummariesParams) ([]ListBuildCreationSummariesRow, error) {
+	rows, err := q.db.Query(ctx, listBuildCreationSummaries,
+		arg.WorkspaceID,
+		arg.CreatorUserID,
+		arg.ChildProfileID,
+		arg.PageSize,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListBuildCreationSummariesRow{}
+	for rows.Next() {
+		var i ListBuildCreationSummariesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Title,
+			&i.Prompt,
+			&i.Archetype,
+			&i.Validation,
+			&i.CurrentStep,
+			&i.CompletedAt,
+			&i.ProgressRevision,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listBuildCreations = `-- name: ListBuildCreations :many
-SELECT id, workspace_id, creator_user_id, child_profile_id, session_id, title, prompt, archetype, recipe, build_plan, validation, ldraw_mpd, created_at, updated_at, inventory_snapshot FROM build_creation
+SELECT id, workspace_id, creator_user_id, child_profile_id, session_id, title, prompt, archetype, recipe, build_plan, validation, ldraw_mpd, created_at, updated_at, inventory_snapshot, current_step, completed_at, progress_revision FROM build_creation
 WHERE workspace_id = $1
   AND creator_user_id = $2
   AND ($3::uuid IS NULL OR child_profile_id = $3)
@@ -583,6 +692,9 @@ func (q *Queries) ListBuildCreations(ctx context.Context, arg ListBuildCreations
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.InventorySnapshot,
+			&i.CurrentStep,
+			&i.CompletedAt,
+			&i.ProgressRevision,
 		); err != nil {
 			return nil, err
 		}
@@ -967,6 +1079,58 @@ func (q *Queries) SubmitBuildSessionAnswers(ctx context.Context, arg SubmitBuild
 		&i.Revision,
 		&i.Phase,
 		&i.Recipe,
+	)
+	return i, err
+}
+
+const updateBuildProgress = `-- name: UpdateBuildProgress :one
+UPDATE build_creation
+SET current_step = $1,
+    completed_at = CASE WHEN $2::boolean THEN COALESCE(completed_at, now()) ELSE completed_at END,
+    progress_revision = progress_revision + 1, updated_at = now()
+WHERE id = $3 AND workspace_id = $4 AND creator_user_id = $5
+  AND ($6::uuid IS NULL OR child_profile_id = $6)
+  AND progress_revision = $7
+  AND $1::integer BETWEEN 1 AND (validation->>'step_count')::integer
+  AND (NOT $2::boolean OR $1::integer = (validation->>'step_count')::integer)
+RETURNING id, current_step, completed_at, progress_revision, validation
+`
+
+type UpdateBuildProgressParams struct {
+	CurrentStep      int32       `json:"current_step"`
+	Completed        bool        `json:"completed"`
+	ID               pgtype.UUID `json:"id"`
+	WorkspaceID      pgtype.UUID `json:"workspace_id"`
+	CreatorUserID    pgtype.UUID `json:"creator_user_id"`
+	ChildProfileID   pgtype.UUID `json:"child_profile_id"`
+	ExpectedRevision int32       `json:"expected_revision"`
+}
+
+type UpdateBuildProgressRow struct {
+	ID               pgtype.UUID        `json:"id"`
+	CurrentStep      int32              `json:"current_step"`
+	CompletedAt      pgtype.Timestamptz `json:"completed_at"`
+	ProgressRevision int32              `json:"progress_revision"`
+	Validation       []byte             `json:"validation"`
+}
+
+func (q *Queries) UpdateBuildProgress(ctx context.Context, arg UpdateBuildProgressParams) (UpdateBuildProgressRow, error) {
+	row := q.db.QueryRow(ctx, updateBuildProgress,
+		arg.CurrentStep,
+		arg.Completed,
+		arg.ID,
+		arg.WorkspaceID,
+		arg.CreatorUserID,
+		arg.ChildProfileID,
+		arg.ExpectedRevision,
+	)
+	var i UpdateBuildProgressRow
+	err := row.Scan(
+		&i.ID,
+		&i.CurrentStep,
+		&i.CompletedAt,
+		&i.ProgressRevision,
+		&i.Validation,
 	)
 	return i, err
 }

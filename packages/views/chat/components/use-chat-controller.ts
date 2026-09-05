@@ -1,5 +1,7 @@
 "use client";
 
+import { upsertChatMessageToCaches } from "@chimii/core/chat/message-cache";
+
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   useInfiniteQuery,
@@ -575,11 +577,7 @@ export function useChatController(opts?: { isActive?: boolean }) {
         created_at: result.created_at,
         attachments: draftAttachments,
       };
-      appendChatMessageToLatestPageCache(qc, sessionId, sent);
-      qc.setQueryData<ChatMessage[]>(
-        chatKeys.messages(sessionId),
-        (old) => (old ? [...old, sent] : [sent]),
-      );
+      upsertChatMessageToCaches(qc, sessionId, sent, { seedIfMissing: true });
       qc.setQueryData<ChatPendingTask>(chatKeys.pendingTask(sessionId), {
         task_id: result.task_id,
         status: "queued",

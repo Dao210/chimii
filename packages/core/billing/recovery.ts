@@ -1,0 +1,41 @@
+export type BillingRecoveryKind =
+  | "billing_disabled"
+  | "checkout"
+  | "portal"
+  | "billing"
+  | "contact_admin"
+  | "checking"
+  | "billing_unavailable";
+
+/** Only server-authorized actions; this helper does not enable billing. */
+export interface BillingRecoveryActions {
+  checkout: boolean;
+  portal: boolean;
+  purchaseSeats: boolean;
+}
+
+/**
+ * Resolve the one recovery state shared by every issue/quota-limit surface.
+ * Cloud's complete availableActions object is authoritative: callers must not
+ * infer checkout or portal access from a locally cached member role or plan.
+ */
+export function resolveBillingRecovery({
+  actions,
+  billingEnabled,
+  loading,
+  portalFailed = false,
+}: {
+  actions: BillingRecoveryActions | undefined;
+  billingEnabled: boolean;
+  loading: boolean;
+  portalFailed?: boolean;
+}): BillingRecoveryKind {
+  if (!billingEnabled) return "billing_disabled";
+  if (portalFailed) return "billing_unavailable";
+  if (actions?.checkout) return "checkout";
+  if (actions?.portal) return "portal";
+  if (actions?.purchaseSeats) return "billing";
+  if (actions) return "contact_admin";
+  if (loading) return "checking";
+  return "billing_unavailable";
+}

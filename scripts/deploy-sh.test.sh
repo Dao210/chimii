@@ -21,6 +21,7 @@ if [[ "${1:-}" == failure-fixture ]]; then
 fi
 
 bash "$SCRIPT_DIR/check-release-version.test.sh"
+bash "$SCRIPT_DIR/deploy-sh-version.test.sh"
 validate_config
 [[ "$ACTION" == deploy && "$SSH_HOST" == sh && "$REMOTE_ROOT" == /opt/chimii ]]
 [[ "$DB_NAME" == chimii && "$BACKEND_PORT" == 8080 && "$WEB_PORT" == 3000 ]]
@@ -82,12 +83,43 @@ done
 (
   cleanup() { :; }
   acquire_local_lock() { :; }
+  resolve_deploy_version() { :; }
   verify_target() { :; }
   deploy_daily() { echo daily > "$fixture_dir/dispatch"; }
   replace_legacy() { exit 99; }
   main
 )
 [[ "$(< "$fixture_dir/dispatch")" == daily ]]
+
+# An identical commit with a newly added release tag must refresh its version.
+for scenario in same-version promoted-tag forced; do
+  (
+    SOURCE_COMMIT=same-commit
+    VERSION=v0.3.0
+    FORCE_DEPLOY=false
+    [[ "$scenario" != forced ]] || FORCE_DEPLOY=true
+    SKIP_LOCAL_CHECKS=true
+    init_release() { :; }
+    acquire_remote_lock() { :; }
+    daily_remote() { :; }
+    remote_user() {
+      printf 'SOURCE_COMMIT=same-commit\n'
+      if [[ "$scenario" == promoted-tag ]]; then
+        printf 'VERSION=v0.3.0-1234567\n'
+      else
+        printf 'VERSION=v0.3.0\n'
+      fi
+    }
+    verify_deployment() { echo verified > "$fixture_dir/$scenario"; }
+    build_backend() { echo build-required > "$fixture_dir/$scenario"; exit 0; }
+    deploy_daily
+  )
+  if [[ "$scenario" == same-version ]]; then
+    [[ "$(< "$fixture_dir/$scenario")" == verified ]]
+  else
+    [[ "$(< "$fixture_dir/$scenario")" == build-required ]]
+  fi
+done
 
 # A failed rehearsal stops before candidate startup or production cutover.
 (
@@ -114,4 +146,4 @@ done
 [[ "$fixture_rc" == 47 ]]
 [[ "$(< "$fixture_dir/stages")" == $'preflight\nrehearse' ]]
 
-printf 'deploy-sh tests passed: dispatch, Caddy convergence, ports, recovery, migration gating\n'
+printf 'deploy-sh tests passed: dispatch, Caddy convergence, ports, recovery, migration gating, version-aware no-op\n'

@@ -1,10 +1,11 @@
 // Test-only adapter for the server-owned catalogue; never bundled by the UI.
 import catalogData from "../../../server/internal/circuit/catalog.json";
+import bosonData from "../../../server/internal/circuit/boson.json";
 import { CircuitCatalogSchema, CircuitCreationSchema } from "./schemas";
 
 export function circuitFixture(projectId = "switch-light") {
   const catalog = CircuitCatalogSchema.parse({
-    catalog: catalogData,
+    catalog: projectId.startsWith("boson-") ? bosonData : catalogData,
     ai_available: false,
   });
   const project = catalog.catalog.projects.find((p) => p.id === projectId)!;
@@ -22,7 +23,8 @@ export function circuitFixture(projectId = "switch-light") {
     progress_revision: 0,
     created_at: "2026-09-05T00:00:00Z",
     document: {
-      version: 1,
+      version: projectId.startsWith("boson-") ? 2 : 1,
+      connection_system: projectId.startsWith("boson-") ? "boson" : undefined,
       catalog_version: catalog.catalog.version,
       kit_id: catalog.catalog.kit_id,
       prompt: "",

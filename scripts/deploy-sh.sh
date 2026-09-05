@@ -227,17 +227,40 @@ REMOTE
   REMOTE_LOCK_HELD=true
 }
 
-init_release() {
+resolve_deploy_version() {
   require_cmd git
   require_cmd node
+  [[ "$(git -C "$ROOT_DIR" branch --show-current)" == main ]] || die "production deployment requires branch main"
+  local worktree_status package_version release_tags tag short_commit
+  worktree_status="$(git -C "$ROOT_DIR" status --porcelain --untracked-files=all --ignore-submodules=none)" || die "could not inspect the worktree"
+  if [[ -n "$worktree_status" ]]; then
+    printf '%s\n' "$worktree_status" >&2
+    die "production deployment requires a clean worktree; commit intended changes first (no automatic commit or stash)"
+  fi
+  SOURCE_COMMIT="$(git -C "$ROOT_DIR" rev-parse --verify 'HEAD^{commit}')" || die "HEAD is not a commit"
+  package_version="$(node -p 'require(process.argv[1]).version' "$ROOT_DIR/package.json")" || die "could not read root package.json version"
+  [[ "$package_version" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] || die "root package version must be stable X.Y.Z; got $package_version"
+
+  # Inspect all release-like tags so another tag cannot hide a mismatch.
+  release_tags="$(git -C "$ROOT_DIR" tag --points-at "$SOURCE_COMMIT" --list 'v[0-9]*')" || die "could not inspect HEAD tags"
+  VERSION=""
+  while IFS= read -r tag; do
+    [[ -n "$tag" ]] || continue
+    [[ "$tag" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] || die "deployment requires a stable release tag; got $tag"
+    bash "$ROOT_DIR/scripts/check-release-version.sh" "$tag" || return 1
+    VERSION="$tag"
+  done <<< "$release_tags"
+  if [[ -z "$VERSION" ]]; then
+    short_commit="$(git -C "$ROOT_DIR" rev-parse --short=7 "$SOURCE_COMMIT")" || die "could not abbreviate the source commit"
+    VERSION="v$package_version-$short_commit"
+  fi
+}
+
+init_release() {
+  resolve_deploy_version || return 1
+  log "deployment version=$VERSION commit=$SOURCE_COMMIT"
   local catalog_lock="$ROOT_DIR/server/internal/ldrawsync/catalog.lock.json"
   local catalog_manifest="$ROOT_DIR/server/internal/ldrawsync/starter-kit-1000.json"
-  SOURCE_COMMIT="$(git -C "$ROOT_DIR" rev-parse HEAD)"
-  VERSION="$(git -C "$ROOT_DIR" describe --tags --exact-match HEAD 2>/dev/null || true)"
-  [[ -n "$VERSION" && "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || die "production deployment requires HEAD at an exact vX.Y.Z tag"
-  [[ "$(git -C "$ROOT_DIR" branch --show-current)" == main ]] || die "production deployment requires branch main"
-  [[ -z "$(git -C "$ROOT_DIR" status --porcelain)" ]] || die "production deployment requires a clean worktree"
-  bash "$ROOT_DIR/scripts/check-release-version.sh" "$VERSION" || return 1
   CATALOG_RELEASE="$(node -e 'const x=require(process.argv[1]); process.stdout.write(x.release)' "$catalog_lock")"
   CATALOG_SHA256="$(node -e 'const x=require(process.argv[1]); process.stdout.write(x.archive_sha256)' "$catalog_lock")"
   CATALOG_PART_COUNT="$(node -e 'const x=require(process.argv[1]); process.stdout.write(String(x.part_count))' "$catalog_manifest")"
@@ -934,11 +957,13 @@ deploy_daily() {
   init_release
   daily_remote preflight
   acquire_remote_lock "$RELEASE_ID"
-  local deployed_commit
-  deployed_commit="$(remote_user "sudo -n sed -n 's/^SOURCE_COMMIT=//p' '$REMOTE_ROOT/state/current.env'")"
-  if [[ "$deployed_commit" == "$SOURCE_COMMIT" && "$FORCE_DEPLOY" == false ]]; then
+  local deployed_state deployed_commit deployed_version
+  deployed_state="$(remote_user "sudo -n sed -n '/^SOURCE_COMMIT=/p; /^VERSION=/p' '$REMOTE_ROOT/state/current.env'")"
+  deployed_commit="$(printf '%s\n' "$deployed_state" | sed -n 's/^SOURCE_COMMIT=//p')"
+  deployed_version="$(printf '%s\n' "$deployed_state" | sed -n 's/^VERSION=//p')"
+  if [[ "$deployed_commit" == "$SOURCE_COMMIT" && "$deployed_version" == "$VERSION" && "$FORCE_DEPLOY" == false ]]; then
     verify_deployment
-    ok "this commit is already deployed; verification passed"
+    ok "this commit and version are already deployed; verification passed"
     return 0
   fi
   if [[ "$SKIP_LOCAL_CHECKS" == false ]]; then
@@ -1081,6 +1106,7 @@ main() {
     plan) plan ;;
     deploy)
       acquire_local_lock
+      resolve_deploy_version || return 1
       verify_target
       deploy_daily
       ;;
@@ -1118,7 +1144,7 @@ main() {
       acquire_remote_lock "$RELEASE_ID"
       rollback_legacy "$target_release"
       ;;
-    help|--help|-h) printf 'usage: %s [deploy|plan|verify|config|rollback|bootstrap|rollback-legacy]\nNo argument deploys the current tagged main checkout to sh.\n' "$0" ;;
+    help|--help|-h) printf 'usage: %s [deploy|plan|verify|config|rollback|bootstrap|rollback-legacy]\nNo argument deploys clean main to sh, using an exact release tag or v<root-version>-<commit>.\nNo version bump, commit, tag, push, or GitHub Release is performed.\n' "$0" ;;
     *) die "usage: $0 [deploy|plan|verify|config|rollback|bootstrap|rollback-legacy]" ;;
   esac
 }
