@@ -19,9 +19,20 @@ export function useSubmitBuildAnswers() {
   const workspaceId = useWorkspaceId();
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ sessionId, answers }: { sessionId: string; answers: Record<string, string> }) =>
-      api.submitBuildAnswers(sessionId, answers),
+    mutationFn: ({ sessionId, answers, revision }: { sessionId: string; answers: Record<string, string>; revision?: number }) =>
+      api.submitBuildAnswers(sessionId, answers, revision),
     onSuccess: (session) => queryClient.setQueryData(buildKeys.session(workspaceId, session.id), session),
+    onError: (_error, variables) => queryClient.invalidateQueries({ queryKey: buildKeys.session(workspaceId, variables.sessionId) }),
+  });
+}
+
+export function useCancelBuildSession() {
+  const workspaceId = useWorkspaceId();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ sessionId, revision }: { sessionId: string; revision: number }) => api.cancelBuildSession(sessionId, revision),
+    onSuccess: (session) => queryClient.setQueryData(buildKeys.session(workspaceId, session.id), session),
+    onError: (_error, variables) => queryClient.invalidateQueries({ queryKey: buildKeys.session(workspaceId, variables.sessionId) }),
   });
 }
 

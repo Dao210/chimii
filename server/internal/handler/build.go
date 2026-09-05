@@ -28,11 +28,16 @@ type createBuildSessionRequest struct {
 }
 
 type submitBuildAnswersRequest struct {
-	Answers map[string]string `json:"answers"`
+	Answers  map[string]string `json:"answers"`
+	Revision int32             `json:"revision,omitempty"`
 }
 
 type buildSessionResponse struct {
 	ID         string                          `json:"id"`
+	Revision   int32                           `json:"revision"`
+	Phase      string                          `json:"phase"`
+	Summary    string                          `json:"summary,omitempty"`
+	Message    string                          `json:"message,omitempty"`
 	Prompt     string                          `json:"prompt"`
 	Status     string                          `json:"status"`
 	Question   *buildstudio.ClarifyingQuestion `json:"question,omitempty"`
@@ -83,13 +88,7 @@ func (h *Handler) CreateBuildSession(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "client_request_id must be a UUID")
 		return
 	}
-	question := buildstudio.QuestionFor(req.Prompt)
 	status := "queued"
-	var questionJSON []byte
-	if question != nil {
-		status = "clarifying"
-		questionJSON, _ = json.Marshal(question)
-	}
 	tx, err := h.TxStarter.Begin(r.Context())
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to start build")
@@ -154,7 +153,7 @@ func (h *Handler) CreateBuildSession(w http.ResponseWriter, r *http.Request) {
 	session, err := qtx.CreateBuildSession(r.Context(), db.CreateBuildSessionParams{
 		WorkspaceID: workspaceID, CreatorUserID: userID, ChildProfileID: childProfileID,
 		ClientRequestID: clientRequestID, Prompt: req.Prompt,
-		Status: status, Question: questionJSON, Answers: []byte(`{}`), InventorySnapshot: inventoryJSON,
+		Status: status, Question: nil, Answers: []byte(`{}`), InventorySnapshot: inventoryJSON,
 	})
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to start build")
@@ -199,7 +198,6 @@ func (h *Handler) SubmitBuildAnswers(w http.ResponseWriter, r *http.Request) {
 		}
 		req.Answers[key] = value
 	}
-	answers, _ := json.Marshal(req.Answers)
 	tx, err := h.TxStarter.Begin(r.Context())
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to save answer")
@@ -215,8 +213,28 @@ func (h *Handler) SubmitBuildAnswers(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "failed to save answer")
 		return
 	}
+
+	current, err := qtx.LockBuildSessionForAnswer(r.Context(), db.LockBuildSessionForAnswerParams{ID: sessionID, WorkspaceID: wsUUID, CreatorUserID: userID, ChildProfileID: childProfileID})
+	if errors.Is(err, pgx.ErrNoRows) {
+		writeError(w, http.StatusNotFound, "build session not found")
+		return
+	}
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to load build session")
+		return
+	}
+	normalized, duplicate, err := validateBuildAnswer(current, req)
+	if err != nil {
+		writeError(w, http.StatusConflict, "answer does not match the current question")
+		return
+	}
+	if duplicate {
+		writeJSON(w, http.StatusOK, toBuildSessionResponse(current))
+		return
+	}
+	answers, _ := json.Marshal(normalized)
 	session, err := qtx.SubmitBuildSessionAnswers(r.Context(), db.SubmitBuildSessionAnswersParams{
-		Answers: answers, ID: sessionID, WorkspaceID: wsUUID, CreatorUserID: userID, ChildProfileID: childProfileID,
+		Answers: answers, Revision: current.Revision, ID: sessionID, WorkspaceID: wsUUID, CreatorUserID: userID, ChildProfileID: childProfileID,
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		writeError(w, http.StatusConflict, "build session is not waiting for an answer")
@@ -381,7 +399,7 @@ func lockWorkspaceMemberForScopedWrite(ctx context.Context, queries *db.Queries,
 }
 
 func toBuildSessionResponse(row db.BuildSession) buildSessionResponse {
-	response := buildSessionResponse{ID: uuidToString(row.ID), Prompt: row.Prompt, Status: row.Status, Answers: map[string]string{}, CreationID: uuidToString(row.CreationID)}
+	response := buildSessionResponse{Revision: row.Revision, Phase: row.Phase, ID: uuidToString(row.ID), Prompt: row.Prompt, Status: row.Status, Answers: map[string]string{}, CreationID: uuidToString(row.CreationID)}
 	if row.CreatedAt.Valid {
 		response.CreatedAt = row.CreatedAt.Time.UTC().Format("2006-01-02T15:04:05Z07:00")
 	}
@@ -393,10 +411,20 @@ func toBuildSessionResponse(row db.BuildSession) buildSessionResponse {
 		// responses expose only a stable product code and never raw LLM/upstream
 		// text, URLs, credentials, or stack details.
 		switch row.Error.String {
-		case buildstudio.BuildErrorInsufficientInventory, buildstudio.BuildErrorCountUnsupported, buildstudio.BuildErrorStructureInvalid:
+		case buildstudio.BuildErrorInsufficientInventory, buildstudio.BuildErrorCountUnsupported, buildstudio.BuildErrorStructureInvalid, buildstudio.BuildErrorUnsupported, buildstudio.BuildErrorRequirements, "BUILD_CANCELLED":
 			response.Error = row.Error.String
 		default:
 			response.Error = "BUILD_GENERATION_FAILED"
+		}
+	}
+
+	if len(row.Recipe) > 0 {
+		var recipe buildstudio.AssemblyRecipe
+		if json.Unmarshal(row.Recipe, &recipe) == nil {
+			response.Summary = recipe.Summary
+			if response.Error == buildstudio.BuildErrorUnsupported {
+				response.Message = recipe.Summary
+			}
 		}
 	}
 	if len(row.Question) > 0 {
@@ -445,4 +473,56 @@ func toBuildCreationResponse(row db.BuildCreation) (buildCreationResponse, error
 		response.BuildPlan.Inventory.Items = []buildstudio.InventoryItem{}
 	}
 	return response, nil
+}
+
+func (h *Handler) CancelBuildSession(w http.ResponseWriter, r *http.Request) {
+	ws, user, child, ok := buildActorScope(w, r)
+	if !ok {
+		return
+	}
+	id, err := util.ParseUUID(chi.URLParam(r, "id"))
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid build session")
+		return
+	}
+	var req struct {
+		Revision int32 `json:"revision"`
+	}
+	if err = json.NewDecoder(http.MaxBytesReader(w, r.Body, 1024)).Decode(&req); err != nil || req.Revision < 1 {
+		writeError(w, http.StatusBadRequest, "revision is required")
+		return
+	}
+	tx, err := h.TxStarter.Begin(r.Context())
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to cancel build")
+		return
+	}
+	defer tx.Rollback(r.Context())
+	q := h.Queries.WithTx(tx)
+	session, err := q.LockBuildSessionForAnswer(r.Context(), db.LockBuildSessionForAnswerParams{ID: id, WorkspaceID: ws, CreatorUserID: user, ChildProfileID: child})
+	if err != nil {
+		writeError(w, http.StatusNotFound, "build session not found")
+		return
+	}
+	if session.Revision != req.Revision {
+		writeError(w, http.StatusConflict, "build session changed")
+		return
+	}
+	if session.Status == "completed" || session.Status == "failed" {
+		writeJSON(w, http.StatusOK, toBuildSessionResponse(session))
+		return
+	}
+	if err = q.CancelBuildJob(r.Context(), id); err == nil {
+		err = q.FailBuildSession(r.Context(), db.FailBuildSessionParams{ID: id, Error: pgtype.Text{String: "BUILD_CANCELLED", Valid: true}})
+	}
+	if err == nil {
+		err = tx.Commit(r.Context())
+	}
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to cancel build")
+		return
+	}
+	session.Status = "failed"
+	session.Error = pgtype.Text{String: "BUILD_CANCELLED", Valid: true}
+	writeJSON(w, http.StatusOK, toBuildSessionResponse(session))
 }

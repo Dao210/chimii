@@ -209,6 +209,9 @@ const BuildPlanSchema = z.looseObject({
 });
 
 const BuildRecipeSchema = z.looseObject({
+  subject: z.string().optional(), summary: z.string().optional(), requirements: z.array(z.string()).optional(),
+  constraints: z.looseObject({ exact_colors: z.boolean(), no_wheels: z.boolean(), part_count: z.number().int().nonnegative(), required_modules: z.array(z.string()).nullable().transform((v) => v ?? []).optional() }).optional(),
+  modules: z.array(z.looseObject({ id: z.string(), kind: z.string(), parent: z.string().optional(), port: z.string().optional(), color: z.number().int(), alternative_ports: z.array(z.string()).optional() })).optional(),
   version: z.number().int().positive(),
   archetype: z.string(),
   title: z.string(),
@@ -222,7 +225,15 @@ export const BuildSessionSchema = z.looseObject({
   id: z.string(),
   prompt: z.string(),
   status: z.enum(["clarifying", "queued", "generating", "completed", "failed"]),
-  question: z.looseObject({ id: z.string(), prompt: z.string(), options: z.array(z.string()) }).optional(),
+  revision: z.number().int().positive().optional(),
+  phase: z.string().optional(),
+  summary: z.string().optional(),
+  message: z.string().optional(),
+  question: z.looseObject({
+    id: z.string(), prompt: z.string(), options: z.array(z.string()).default([]),
+    choices: z.array(z.object({ id: z.string(), label: z.string() })).optional().catch(undefined),
+    allow_free_text: z.boolean().optional().catch(undefined),
+  }).optional(),
   answers: z.record(z.string(), z.string()),
   creation_id: z.string().optional(),
   error: z.string().optional(),

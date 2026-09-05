@@ -119,13 +119,18 @@ type BuildStep struct {
 }
 
 type AssemblyRecipe struct {
-	Version   int               `json:"version"`
-	Archetype string            `json:"archetype"`
-	Title     string            `json:"title"`
-	Prompt    string            `json:"prompt"`
-	Palette   []int             `json:"palette"`
-	Features  []string          `json:"features"`
-	Metadata  map[string]string `json:"metadata"`
+	Version      int               `json:"version"`
+	Archetype    string            `json:"archetype"`
+	Title        string            `json:"title"`
+	Prompt       string            `json:"prompt"`
+	Palette      []int             `json:"palette"`
+	Features     []string          `json:"features"`
+	Metadata     map[string]string `json:"metadata"`
+	Summary      string            `json:"summary,omitempty"`
+	Subject      string            `json:"subject,omitempty"`
+	Requirements []string          `json:"requirements,omitempty"`
+	Constraints  RecipeConstraints `json:"constraints"`
+	Modules      []ModuleInstance  `json:"modules"`
 }
 
 type ValidationIssue struct {
@@ -168,13 +173,35 @@ type BuildPlan struct {
 }
 
 type ClarifyingQuestion struct {
-	ID      string   `json:"id"`
-	Prompt  string   `json:"prompt"`
-	Options []string `json:"options"`
+	ID            string           `json:"id"`
+	Prompt        string           `json:"prompt"`
+	Options       []string         `json:"options"`
+	Choices       []QuestionChoice `json:"choices,omitempty"`
+	AllowFreeText bool             `json:"allow_free_text"`
 }
 
 type CompileResult struct {
 	Recipe AssemblyRecipe `json:"recipe"`
 	Plan   BuildPlan      `json:"plan"`
 	MPD    string         `json:"mpd"`
+}
+
+// Constraints are executable requirements, independent of model prose.
+type RecipeConstraints struct {
+	ExactColors     bool     `json:"exact_colors"`
+	NoWheels        bool     `json:"no_wheels"`
+	PartCount       int      `json:"part_count"`
+	RequiredModules []string `json:"required_modules"`
+}
+type ModuleInstance struct {
+	ID               string   `json:"id"`
+	Kind             string   `json:"kind"`
+	Parent           string   `json:"parent,omitempty"`
+	Port             string   `json:"port,omitempty"`
+	AlternativePorts []string `json:"alternative_ports,omitempty"`
+	Color            int      `json:"color"`
+}
+type QuestionChoice struct {
+	ID    string `json:"id"`
+	Label string `json:"label"`
 }

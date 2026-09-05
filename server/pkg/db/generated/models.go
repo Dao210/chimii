@@ -330,6 +330,9 @@ type BuildSession struct {
 	CreatedAt         pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt         pgtype.Timestamptz `json:"updated_at"`
 	InventorySnapshot []byte             `json:"inventory_snapshot"`
+	Revision          int32              `json:"revision"`
+	Phase             string             `json:"phase"`
+	Recipe            []byte             `json:"recipe"`
 }
 
 type ChannelBindingToken struct {
@@ -521,6 +524,30 @@ type CircuitCreation struct {
 	ProgressRevision int32              `json:"progress_revision"`
 	CreatedAt        pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt        pgtype.Timestamptz `json:"updated_at"`
+}
+
+type CircuitInventory struct {
+	WorkspaceID    pgtype.UUID        `json:"workspace_id"`
+	ParentUserID   pgtype.UUID        `json:"parent_user_id"`
+	KitID          string             `json:"kit_id"`
+	CatalogVersion string             `json:"catalog_version"`
+	Quantities     []byte             `json:"quantities"`
+	Revision       int32              `json:"revision"`
+	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
+}
+
+type CircuitTrial struct {
+	ID            pgtype.UUID        `json:"id"`
+	WorkspaceID   pgtype.UUID        `json:"workspace_id"`
+	ParentUserID  pgtype.UUID        `json:"parent_user_id"`
+	ActorKey      string             `json:"actor_key"`
+	CreationID    pgtype.UUID        `json:"creation_id"`
+	DocumentHash  string             `json:"document_hash"`
+	RequestHash   string             `json:"request_hash"`
+	HardwareLabel string             `json:"hardware_label"`
+	Result        string             `json:"result"`
+	Notes         string             `json:"notes"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
 }
 
 type ClientUsageDaily struct {

@@ -1100,11 +1100,16 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 			})
 
 			r.Route("/api/circuit", func(r chi.Router) {
+				r.Get("/kits", h.ListCircuitKits)
 				r.Get("/catalog", h.GetCircuitCatalog)
+				r.Get("/inventory/{kitID}", h.GetCircuitInventory)
+				r.With(handler.RequireHumanActor).Put("/inventory/{kitID}", h.SaveCircuitInventory)
 				r.Post("/creations", h.CreateCircuitCreation)
 				r.Get("/creations", h.ListCircuitCreations)
 				r.Get("/creations/{id}", h.GetCircuitCreation)
 				r.Put("/creations/{id}/progress", h.UpdateCircuitProgress)
+				r.Get("/creations/{id}/trials", h.ListCircuitTrials)
+				r.Post("/creations/{id}/trials", h.CreateCircuitTrial)
 			})
 
 			// Build Studio: child-language prompt -> deterministic, inventory-
@@ -1122,6 +1127,7 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 				r.Post("/sessions", h.CreateBuildSession)
 				r.Get("/sessions/{id}", h.GetBuildSession)
 				r.Post("/sessions/{id}/answers", h.SubmitBuildAnswers)
+				r.Post("/sessions/{id}/cancel", h.CancelBuildSession)
 				r.Get("/creations", h.ListBuildCreations)
 				r.Get("/creations/{id}", h.GetBuildCreation)
 				r.Get("/creations/{id}/export.mpd", h.ExportBuildCreationMPD)

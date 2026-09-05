@@ -54,7 +54,9 @@ SELECT * FROM build_session WHERE id = @id;
 
 -- name: SubmitBuildSessionAnswers :one
 UPDATE build_session
-SET answers = @answers,
+SET answers = answers || @answers::jsonb,
+    revision = revision + 1,
+    phase = 'planning',
     status = 'queued',
     question = NULL,
     error = NULL,
@@ -65,12 +67,28 @@ WHERE id = @id
   AND (sqlc.narg(child_profile_id)::uuid IS NULL OR child_profile_id = sqlc.narg(child_profile_id))
   AND expires_at > now()
   AND status = 'clarifying'
+  AND revision = @revision
 RETURNING *;
 
--- name: MarkBuildSessionGenerating :exec
-UPDATE build_session
+-- name: MarkBuildSessionGenerating :one
+UPDATE build_session s
 SET status = 'generating', updated_at = now()
-WHERE id = @id AND status IN ('queued', 'generating');
+WHERE s.id = @id AND s.revision = @revision AND s.status IN ('queued', 'generating')
+  AND EXISTS (SELECT 1 FROM build_job j WHERE j.session_id = s.id AND j.status = 'running' AND j.lease_token = @lease_token AND j.leased_until > clock_timestamp())
+RETURNING s.*;
+
+-- name: SaveBuildSessionRecipe :one
+UPDATE build_session s
+SET recipe = @recipe, phase = 'compiling', updated_at = now()
+WHERE s.id = @id AND s.revision = @revision AND s.status = 'generating'
+  AND EXISTS (SELECT 1 FROM build_job j WHERE j.session_id = s.id AND j.status = 'running' AND j.lease_token = @lease_token AND j.leased_until > clock_timestamp())
+RETURNING s.*;
+
+-- name: PauseBuildSession :one
+UPDATE build_session
+SET status = 'clarifying', question = @question, recipe = @recipe, phase = 'planning', updated_at = now()
+WHERE id = @id AND revision = @revision AND status = 'generating'
+RETURNING *;
 
 -- name: CompleteBuildSession :one
 UPDATE build_session
@@ -86,7 +104,9 @@ WHERE id = @id;
 -- name: EnqueueBuildJob :one
 INSERT INTO build_job (workspace_id, session_id)
 VALUES (@workspace_id, @session_id)
-ON CONFLICT (session_id) DO UPDATE SET updated_at = build_job.updated_at
+ON CONFLICT (session_id) DO UPDATE
+SET status = 'queued', attempts = 0, available_at = now(), leased_until = NULL, lease_token = NULL, last_error = NULL, updated_at = now()
+WHERE build_job.status IN ('completed', 'failed')
 RETURNING *;
 
 -- name: ClaimBuildJob :one
@@ -115,13 +135,13 @@ RETURNING job.*;
 -- name: CompleteBuildJob :one
 UPDATE build_job
 SET status = 'completed', leased_until = NULL, updated_at = now()
-WHERE id = @id AND lease_token = @lease_token AND status = 'running'
+WHERE id = @id AND lease_token = @lease_token AND status = 'running' AND leased_until > clock_timestamp()
 RETURNING *;
 
 -- name: FailBuildJob :one
 UPDATE build_job
 SET status = 'failed', leased_until = NULL, last_error = @last_error, updated_at = now()
-WHERE id = @id AND lease_token = @lease_token AND status = 'running'
+WHERE id = @id AND lease_token = @lease_token AND status = 'running' AND leased_until > clock_timestamp()
 RETURNING *;
 
 -- name: RetryBuildJob :one
@@ -131,7 +151,7 @@ SET status = CASE WHEN attempts >= 3 THEN 'failed' ELSE 'queued' END,
     leased_until = NULL,
     last_error = @last_error,
     updated_at = now()
-WHERE id = @id AND lease_token = @lease_token AND status = 'running'
+WHERE id = @id AND lease_token = @lease_token AND status = 'running' AND leased_until > clock_timestamp()
 RETURNING *;
 
 -- name: CreateBuildCreation :one
@@ -158,3 +178,26 @@ WHERE workspace_id = @workspace_id
   AND (sqlc.narg(child_profile_id)::uuid IS NULL OR child_profile_id = sqlc.narg(child_profile_id))
 ORDER BY created_at DESC
 LIMIT @page_size OFFSET @page_offset;
+
+-- name: LockBuildSessionForAnswer :one
+SELECT * FROM build_session
+WHERE id = @id AND workspace_id = @workspace_id AND creator_user_id = @creator_user_id
+ AND ((sqlc.narg(child_profile_id)::uuid IS NULL AND child_profile_id IS NULL) OR child_profile_id = sqlc.narg(child_profile_id))
+FOR UPDATE;
+
+-- name: SaveBuildSessionMessage :one
+UPDATE build_session SET recipe = @recipe, updated_at = now()
+WHERE id = @id AND revision = @revision AND status = 'generating'
+RETURNING *;
+
+-- name: LockBuildSessionForWorker :one
+SELECT * FROM build_session WHERE id = @id FOR UPDATE;
+
+-- name: CancelBuildJob :exec
+UPDATE build_job SET status = 'completed', lease_token = NULL, leased_until = NULL, updated_at = now()
+WHERE session_id = @session_id AND status IN ('queued', 'running');
+
+-- name: LockBuildJobLease :one
+SELECT id FROM build_job
+WHERE id = @id AND lease_token = @lease_token AND status = 'running' AND leased_until > clock_timestamp()
+FOR UPDATE;

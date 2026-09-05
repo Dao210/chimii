@@ -6,60 +6,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
-	"strings"
 	"time"
 )
-
-// QuestionFor returns at most one high-value question. Prompts that already
-// describe a movement or strong silhouette proceed without interruption.
-func QuestionFor(prompt string) *ClarifyingQuestion {
-	p := strings.ToLower(strings.TrimSpace(prompt))
-	if p == "" {
-		return &ClarifyingQuestion{ID: "idea", Prompt: "你想创造什么积木朋友？", Options: []string{"会跑的小车", "会飞的动物", "勇敢的机器人"}}
-	}
-	for _, signal := range []string{"轮", "跑", "车", "飞", "翼", "翅", "尾", "机器人", "robot", "wheel", "fly", "wing"} {
-		if strings.Contains(p, signal) {
-			return nil
-		}
-	}
-	return &ClarifyingQuestion{
-		ID:      "movement",
-		Prompt:  "这个新朋友最想怎么动？",
-		Options: []string{"用轮子飞快地跑", "张开翅膀飞", "摇尾巴和我打招呼"},
-	}
-}
-
-// PlanRecipe converts a validated intent into the deliberately small,
-// deterministic construction vocabulary. Production generation always gets
-// the selected archetype/title/features from the configured LLM first; this
-// function never masquerades as an AI fallback when the planner is unavailable.
-func PlanRecipe(prompt string, answers map[string]string) AssemblyRecipe {
-	joined := strings.ToLower(prompt + " " + answers["idea"] + " " + answers["movement"])
-	archetype := "creature"
-	features := []string{"friendly-face", "stable-feet"}
-	switch {
-	case containsAny(joined, "车", "轮", "跑", "car", "wheel", "race"):
-		archetype = "racer"
-		features = []string{"rolling-base", "driver-cabin"}
-	case containsAny(joined, "飞", "翼", "翅", "鸟", "dragon", "fly", "wing"):
-		archetype = "flyer"
-		features = []string{"wide-wings", "balanced-tail"}
-	case containsAny(joined, "机器人", "机械", "robot", "mech"):
-		archetype = "robot"
-		features = []string{"friendly-face", "strong-arms", "stable-feet"}
-	}
-	title := map[string]string{"racer": "闪电探险车", "flyer": "云朵飞行兽", "robot": "勇气机器人", "creature": "摇尾巴积木朋友"}[archetype]
-	return AssemblyRecipe{Version: 1, Archetype: archetype, Title: title, Prompt: strings.TrimSpace(prompt), Palette: []int{4, 14, 1, 15}, Features: features, Metadata: map[string]string{"planner": "chimii-construction-grammar-v1"}}
-}
-
-func containsAny(value string, words ...string) bool {
-	for _, word := range words {
-		if strings.Contains(value, word) {
-			return true
-		}
-	}
-	return false
-}
 
 func Compile(recipe AssemblyRecipe, inventory InventorySnapshot, now time.Time) (CompileResult, error) {
 	return CompileWithCatalog(recipe, inventory, CatalogVersion, StarterCatalog, now)
@@ -68,7 +16,36 @@ func Compile(recipe AssemblyRecipe, inventory InventorySnapshot, now time.Time) 
 // CompileWithCatalog is the production compiler entry point. The catalog is
 // resolved from the inventory snapshot's immutable catalog version before this
 // function is called; the model never supplies part identifiers or geometry.
+// CompileWithCatalog tries only explicitly permitted layout alternatives, within
+// a fixed budget. It never changes required colors, part counts, or module kinds.
 func CompileWithCatalog(recipe AssemblyRecipe, inventory InventorySnapshot, catalogVersion string, catalog PartCatalog, now time.Time) (CompileResult, error) {
+	result, err := compileCandidate(recipe, inventory, catalogVersion, catalog, now)
+	if code, ok := BuildErrorCode(err); !ok || code != BuildErrorStructureInvalid {
+		return result, err
+	}
+	attempts := 0
+	for i, m := range recipe.Modules {
+		for _, port := range m.AlternativePorts {
+			if port == m.Port {
+				continue
+			}
+			attempts++
+			if attempts > 4 {
+				return result, err
+			}
+			candidate := recipe
+			candidate.Modules = append([]ModuleInstance(nil), recipe.Modules...)
+			candidate.Modules[i].Port = port
+			next, nextErr := compileCandidate(candidate, inventory, catalogVersion, catalog, now)
+			if nextErr == nil {
+				return next, nil
+			}
+		}
+	}
+	return result, err
+}
+
+func compileCandidate(recipe AssemblyRecipe, inventory InventorySnapshot, catalogVersion string, catalog PartCatalog, now time.Time) (CompileResult, error) {
 	if len(catalog) == 0 {
 		return CompileResult{}, fmt.Errorf("certified part catalog is empty")
 	}
@@ -78,10 +55,13 @@ func CompileWithCatalog(recipe AssemblyRecipe, inventory InventorySnapshot, cata
 	if catalogVersion == "" {
 		catalogVersion = CatalogVersion
 	}
-	placements := placementsFor(recipe)
-	placements = resolveCertifiedVariants(placements, recipe, inventory, catalog)
-	placements = resolveInventoryColors(placements, inventory)
-	var err error
+	placements, err := ExpandRecipe(recipe)
+	if err != nil {
+		return CompileResult{}, err
+	}
+	if !recipe.Constraints.ExactColors {
+		placements = resolveInventoryColors(placements, inventory)
+	}
 	placements, err = scalePlacementsToTargetWithCatalog(placements, recipe, inventory, catalog)
 	if err != nil {
 		return CompileResult{Recipe: recipe}, err
@@ -110,44 +90,6 @@ func CompileWithCatalog(recipe AssemblyRecipe, inventory InventorySnapshot, cata
 		return CompileResult{Recipe: recipe, Plan: plan}, &BuildError{Code: code, Cause: fmt.Errorf("compiled plan is not buildable: %v", report.Issues)}
 	}
 	return CompileResult{Recipe: recipe, Plan: plan, MPD: ExportMPD(plan)}, nil
-}
-
-// AvailableArchetypes reports which deterministic construction grammars can
-// be completed with a frozen inventory. Unlimited mode enables every grammar;
-// configured mode accounts for both part shape and per-color quantities.
-func AvailableArchetypes(inventory InventorySnapshot) []string {
-	return AvailableArchetypesWithCatalog(inventory, StarterCatalog)
-}
-
-func AvailableArchetypesWithCatalog(inventory InventorySnapshot, catalog PartCatalog) []string {
-	return AvailableArchetypesForRecipe(AssemblyRecipe{}, inventory, catalog)
-}
-
-func AvailableArchetypesForRecipe(base AssemblyRecipe, inventory InventorySnapshot, catalog PartCatalog) []string {
-	archetypes := []string{"racer", "flyer", "robot", "creature"}
-	available := make([]string, 0, len(archetypes))
-	for _, archetype := range archetypes {
-		recipe := base
-		recipe.Archetype = archetype
-		placements := resolveCertifiedVariants(placementsFor(recipe), recipe, inventory, catalog)
-		placements = resolveInventoryColors(placements, inventory)
-		placements, err := scalePlacementsToTargetWithCatalog(placements, recipe, inventory, catalog)
-		if err != nil {
-			continue
-		}
-		if ValidateWithCatalog(placements, inventory, catalog).Buildable {
-			available = append(available, archetype)
-		}
-	}
-	return available
-}
-
-// resolveCertifiedVariants intentionally preserves the reviewed module BOM.
-// Replacing one spanning brick with two coplanar bricks preserves occupancy but
-// can sever the load path at their seam. Variants must therefore be authored as
-// complete, mechanically certified modules rather than inferred per placement.
-func resolveCertifiedVariants(placements []Placement, _ AssemblyRecipe, _ InventorySnapshot, _ PartCatalog) []Placement {
-	return append([]Placement(nil), placements...)
 }
 
 type orientedDimensions struct{ x, z int }
@@ -200,76 +142,6 @@ func physicalContentHash(plan BuildPlan) string {
 	raw, _ := json.Marshal(payload)
 	sum := sha256.Sum256(raw)
 	return hex.EncodeToString(sum[:])
-}
-
-func placementsFor(recipe AssemblyRecipe) []Placement {
-	var p []Placement
-	add := func(part string, color, x, y, z, rotation, step int, module string) {
-		p = append(p, Placement{ID: fmt.Sprintf("p%02d", len(p)+1), PartID: part, Color: color, X: x, Y: y, Z: z, Rotation: rotation, Step: step, Module: module})
-	}
-
-	switch recipe.Archetype {
-	case "racer":
-		// 4600.dat provides real wheel pins; 4624c04.dat is the matching
-		// rim+tyre shortcut. Build both holders and their bridge before adding
-		// wheels so every saved step has a real support polygon.
-		for _, z := range []int{0, 2} {
-			add("wheel-holder-2x2", 71, 0, 0, z, 0, 1, "rolling-base")
-		}
-		add("plate-2x4", 4, 0, 1, 0, 90, 2, "rolling-base")
-		for _, z := range []int{0, 2} {
-			add("wheel", 71, -1, 0, z, 90, 3, "wheels")
-			add("wheel", 71, 2, 0, z, 270, 3, "wheels")
-		}
-		add("brick-2x4", 14, 0, 2, 0, 90, 4, "body")
-		add("brick-2x2", 1, 0, 5, 1, 0, 5, "driver-cabin")
-		add("slope-2x2", 15, 0, 8, 1, 0, 6, "driver-cabin")
-	case "flyer":
-		add("brick-2x4", 1, 0, 0, 0, 0, 1, "body")
-		add("brick-2x2", 14, 1, 3, 0, 0, 2, "head")
-		add("plate-2x4", 4, -3, 3, 0, 0, 3, "left-wing")
-		add("plate-2x4", 4, 3, 3, 0, 0, 3, "right-wing")
-		add("plate-1x2", 14, 1, 6, 1, 0, 4, "tail")
-		add("slope-2x2", 15, 1, 7, 1, 0, 5, "tail")
-	case "robot":
-		p = append(p, robotPlacements(recipe)...)
-	default:
-		add("brick-2x4", 2, 0, 0, 0, 0, 1, "body")
-		add("brick-2x2", 14, 0, 3, 0, 0, 2, "head")
-		add("brick-1x1", 15, 0, 6, 0, 0, 3, "left-eye")
-		add("brick-1x1", 15, 1, 6, 0, 0, 3, "right-eye")
-		add("plate-1x2", 4, 3, 3, 0, 0, 4, "tail")
-		add("slope-2x2", 4, 3, 4, 0, 0, 5, "tail-tip")
-	}
-	return p
-}
-
-func robotPlacements(recipe AssemblyRecipe) []Placement {
-	paletteColor := func(index int, fallback int) int {
-		if index < len(recipe.Palette) && IsAllowedColor(recipe.Palette[index]) {
-			return recipe.Palette[index]
-		}
-		return fallback
-	}
-	primaryColor := paletteColor(0, 4)
-	coreColor := paletteColor(1, 14)
-	accentColor := paletteColor(2, 15)
-	headColor := paletteColor(3, 1)
-
-	parts := make([]Placement, 0, 12)
-	add := func(part string, color, x, y, z, rotation, step int, module string) {
-		parts = append(parts, Placement{ID: fmt.Sprintf("r%02d", len(parts)+1), PartID: part, Color: color, X: x, Y: y, Z: z, Rotation: rotation, Step: step, Module: module})
-	}
-
-	add("brick-2x2", primaryColor, 0, 0, 0, 0, 1, "left-foot")
-	add("brick-2x2", primaryColor, 2, 0, 0, 0, 1, "right-foot")
-	add("brick-2x4", coreColor, 0, 3, 0, 0, 2, "body")
-	add("brick-2x4", coreColor, 0, 6, 0, 0, 3, "body")
-	add("brick-2x2", headColor, 1, 9, 0, 0, 4, "head")
-	add("brick-1x1", accentColor, 1, 12, 0, 0, 5, "left-eye")
-	add("brick-1x1", accentColor, 2, 12, 0, 0, 5, "right-eye")
-
-	return parts
 }
 
 func Validate(placements []Placement, inventory InventorySnapshot) ValidationReport {

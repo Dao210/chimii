@@ -57,6 +57,56 @@ func (q *Queries) CreateCircuitCreation(ctx context.Context, arg CreateCircuitCr
 	return i, err
 }
 
+const createCircuitTrial = `-- name: CreateCircuitTrial :one
+INSERT INTO circuit_trial (id, workspace_id, parent_user_id, actor_key, creation_id, document_hash, request_hash, hardware_label, result, notes)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+ON CONFLICT (workspace_id, parent_user_id, actor_key, id) DO NOTHING
+RETURNING id, workspace_id, parent_user_id, actor_key, creation_id, document_hash, request_hash, hardware_label, result, notes, created_at
+`
+
+type CreateCircuitTrialParams struct {
+	ID            pgtype.UUID `json:"id"`
+	WorkspaceID   pgtype.UUID `json:"workspace_id"`
+	ParentUserID  pgtype.UUID `json:"parent_user_id"`
+	ActorKey      string      `json:"actor_key"`
+	CreationID    pgtype.UUID `json:"creation_id"`
+	DocumentHash  string      `json:"document_hash"`
+	RequestHash   string      `json:"request_hash"`
+	HardwareLabel string      `json:"hardware_label"`
+	Result        string      `json:"result"`
+	Notes         string      `json:"notes"`
+}
+
+func (q *Queries) CreateCircuitTrial(ctx context.Context, arg CreateCircuitTrialParams) (CircuitTrial, error) {
+	row := q.db.QueryRow(ctx, createCircuitTrial,
+		arg.ID,
+		arg.WorkspaceID,
+		arg.ParentUserID,
+		arg.ActorKey,
+		arg.CreationID,
+		arg.DocumentHash,
+		arg.RequestHash,
+		arg.HardwareLabel,
+		arg.Result,
+		arg.Notes,
+	)
+	var i CircuitTrial
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.ParentUserID,
+		&i.ActorKey,
+		&i.CreationID,
+		&i.DocumentHash,
+		&i.RequestHash,
+		&i.HardwareLabel,
+		&i.Result,
+		&i.Notes,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const getCircuitCreation = `-- name: GetCircuitCreation :one
 SELECT id, workspace_id, creator_user_id, child_profile_id, actor_key, client_request_id, request_hash, document, current_step, observation, progress_revision, created_at, updated_at FROM circuit_creation
 WHERE id = $1 AND workspace_id = $2 AND creator_user_id = $3 AND actor_key = $4
@@ -133,6 +183,68 @@ func (q *Queries) GetCircuitCreationByRequest(ctx context.Context, arg GetCircui
 	return i, err
 }
 
+const getCircuitInventory = `-- name: GetCircuitInventory :one
+SELECT workspace_id, parent_user_id, kit_id, catalog_version, quantities, revision, updated_at FROM circuit_inventory
+WHERE workspace_id = $1 AND parent_user_id = $2 AND kit_id = $3
+`
+
+type GetCircuitInventoryParams struct {
+	WorkspaceID  pgtype.UUID `json:"workspace_id"`
+	ParentUserID pgtype.UUID `json:"parent_user_id"`
+	KitID        string      `json:"kit_id"`
+}
+
+func (q *Queries) GetCircuitInventory(ctx context.Context, arg GetCircuitInventoryParams) (CircuitInventory, error) {
+	row := q.db.QueryRow(ctx, getCircuitInventory, arg.WorkspaceID, arg.ParentUserID, arg.KitID)
+	var i CircuitInventory
+	err := row.Scan(
+		&i.WorkspaceID,
+		&i.ParentUserID,
+		&i.KitID,
+		&i.CatalogVersion,
+		&i.Quantities,
+		&i.Revision,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getCircuitTrial = `-- name: GetCircuitTrial :one
+SELECT id, workspace_id, parent_user_id, actor_key, creation_id, document_hash, request_hash, hardware_label, result, notes, created_at FROM circuit_trial
+WHERE id = $1 AND workspace_id = $2 AND parent_user_id = $3 AND actor_key = $4
+`
+
+type GetCircuitTrialParams struct {
+	ID           pgtype.UUID `json:"id"`
+	WorkspaceID  pgtype.UUID `json:"workspace_id"`
+	ParentUserID pgtype.UUID `json:"parent_user_id"`
+	ActorKey     string      `json:"actor_key"`
+}
+
+func (q *Queries) GetCircuitTrial(ctx context.Context, arg GetCircuitTrialParams) (CircuitTrial, error) {
+	row := q.db.QueryRow(ctx, getCircuitTrial,
+		arg.ID,
+		arg.WorkspaceID,
+		arg.ParentUserID,
+		arg.ActorKey,
+	)
+	var i CircuitTrial
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.ParentUserID,
+		&i.ActorKey,
+		&i.CreationID,
+		&i.DocumentHash,
+		&i.RequestHash,
+		&i.HardwareLabel,
+		&i.Result,
+		&i.Notes,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const listCircuitCreations = `-- name: ListCircuitCreations :many
 SELECT id, document->>'title' AS title, document->'project'->>'id' AS project_id, observation, current_step, created_at
 FROM circuit_creation
@@ -181,6 +293,162 @@ func (q *Queries) ListCircuitCreations(ctx context.Context, arg ListCircuitCreat
 		return nil, err
 	}
 	return items, nil
+}
+
+const listCircuitTrials = `-- name: ListCircuitTrials :many
+SELECT id, workspace_id, parent_user_id, actor_key, creation_id, document_hash, request_hash, hardware_label, result, notes, created_at FROM circuit_trial
+WHERE creation_id = $1 AND workspace_id = $2 AND parent_user_id = $3 AND actor_key = $4
+ORDER BY created_at DESC, id DESC
+LIMIT 50
+`
+
+type ListCircuitTrialsParams struct {
+	CreationID   pgtype.UUID `json:"creation_id"`
+	WorkspaceID  pgtype.UUID `json:"workspace_id"`
+	ParentUserID pgtype.UUID `json:"parent_user_id"`
+	ActorKey     string      `json:"actor_key"`
+}
+
+func (q *Queries) ListCircuitTrials(ctx context.Context, arg ListCircuitTrialsParams) ([]CircuitTrial, error) {
+	rows, err := q.db.Query(ctx, listCircuitTrials,
+		arg.CreationID,
+		arg.WorkspaceID,
+		arg.ParentUserID,
+		arg.ActorKey,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []CircuitTrial{}
+	for rows.Next() {
+		var i CircuitTrial
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkspaceID,
+			&i.ParentUserID,
+			&i.ActorKey,
+			&i.CreationID,
+			&i.DocumentHash,
+			&i.RequestHash,
+			&i.HardwareLabel,
+			&i.Result,
+			&i.Notes,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const lockCircuitInventory = `-- name: LockCircuitInventory :one
+SELECT workspace_id, parent_user_id, kit_id, catalog_version, quantities, revision, updated_at FROM circuit_inventory
+WHERE workspace_id = $1 AND parent_user_id = $2 AND kit_id = $3
+FOR SHARE
+`
+
+type LockCircuitInventoryParams struct {
+	WorkspaceID  pgtype.UUID `json:"workspace_id"`
+	ParentUserID pgtype.UUID `json:"parent_user_id"`
+	KitID        string      `json:"kit_id"`
+}
+
+func (q *Queries) LockCircuitInventory(ctx context.Context, arg LockCircuitInventoryParams) (CircuitInventory, error) {
+	row := q.db.QueryRow(ctx, lockCircuitInventory, arg.WorkspaceID, arg.ParentUserID, arg.KitID)
+	var i CircuitInventory
+	err := row.Scan(
+		&i.WorkspaceID,
+		&i.ParentUserID,
+		&i.KitID,
+		&i.CatalogVersion,
+		&i.Quantities,
+		&i.Revision,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const saveCircuitInventory = `-- name: SaveCircuitInventory :one
+INSERT INTO circuit_inventory (workspace_id, parent_user_id, kit_id, catalog_version, quantities)
+SELECT $1, $2, $3, $4, $5
+WHERE $6::integer = 0
+ON CONFLICT (workspace_id, parent_user_id, kit_id) DO NOTHING
+RETURNING workspace_id, parent_user_id, kit_id, catalog_version, quantities, revision, updated_at
+`
+
+type SaveCircuitInventoryParams struct {
+	WorkspaceID      pgtype.UUID `json:"workspace_id"`
+	ParentUserID     pgtype.UUID `json:"parent_user_id"`
+	KitID            string      `json:"kit_id"`
+	CatalogVersion   string      `json:"catalog_version"`
+	Quantities       []byte      `json:"quantities"`
+	ExpectedRevision int32       `json:"expected_revision"`
+}
+
+func (q *Queries) SaveCircuitInventory(ctx context.Context, arg SaveCircuitInventoryParams) (CircuitInventory, error) {
+	row := q.db.QueryRow(ctx, saveCircuitInventory,
+		arg.WorkspaceID,
+		arg.ParentUserID,
+		arg.KitID,
+		arg.CatalogVersion,
+		arg.Quantities,
+		arg.ExpectedRevision,
+	)
+	var i CircuitInventory
+	err := row.Scan(
+		&i.WorkspaceID,
+		&i.ParentUserID,
+		&i.KitID,
+		&i.CatalogVersion,
+		&i.Quantities,
+		&i.Revision,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const updateCircuitInventory = `-- name: UpdateCircuitInventory :one
+UPDATE circuit_inventory
+SET catalog_version = $1, quantities = $2, revision = revision + 1, updated_at = now()
+WHERE workspace_id = $3 AND parent_user_id = $4 AND kit_id = $5
+  AND revision = $6
+RETURNING workspace_id, parent_user_id, kit_id, catalog_version, quantities, revision, updated_at
+`
+
+type UpdateCircuitInventoryParams struct {
+	CatalogVersion   string      `json:"catalog_version"`
+	Quantities       []byte      `json:"quantities"`
+	WorkspaceID      pgtype.UUID `json:"workspace_id"`
+	ParentUserID     pgtype.UUID `json:"parent_user_id"`
+	KitID            string      `json:"kit_id"`
+	ExpectedRevision int32       `json:"expected_revision"`
+}
+
+func (q *Queries) UpdateCircuitInventory(ctx context.Context, arg UpdateCircuitInventoryParams) (CircuitInventory, error) {
+	row := q.db.QueryRow(ctx, updateCircuitInventory,
+		arg.CatalogVersion,
+		arg.Quantities,
+		arg.WorkspaceID,
+		arg.ParentUserID,
+		arg.KitID,
+		arg.ExpectedRevision,
+	)
+	var i CircuitInventory
+	err := row.Scan(
+		&i.WorkspaceID,
+		&i.ParentUserID,
+		&i.KitID,
+		&i.CatalogVersion,
+		&i.Quantities,
+		&i.Revision,
+		&i.UpdatedAt,
+	)
+	return i, err
 }
 
 const updateCircuitProgress = `-- name: UpdateCircuitProgress :one

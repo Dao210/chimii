@@ -62,7 +62,8 @@ export function buildSessionOptions(workspaceId: string, id: string) {
     enabled: id.length > 0,
     refetchInterval: (query) => {
       const status = query.state.data?.status;
-      return status === "queued" || status === "generating" ? 900 : false;
+      return status === "queued" || status === "generating"
+        ? Math.min(1_000 + query.state.dataUpdateCount * 400, 3_000) : false;
     },
   });
 }

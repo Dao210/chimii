@@ -213,3 +213,5 @@ func scalePlacementsToTargetWithCatalog(placements []Placement, recipe AssemblyR
 	}
 	return placements, nil
 }
+
+func RequestedPartCount(recipe AssemblyRecipe) int { return targetPartCount(recipe) }

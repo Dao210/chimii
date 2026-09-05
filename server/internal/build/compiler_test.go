@@ -70,15 +70,6 @@ func TestValidateRejectsCollisionAndUnknownPart(t *testing.T) {
 	}
 }
 
-func TestQuestionForSkipsAlreadySpecificPrompt(t *testing.T) {
-	if QuestionFor("一辆会跑的红色小车") != nil {
-		t.Fatal("specific prompt should proceed")
-	}
-	if QuestionFor("做一只小狗") == nil {
-		t.Fatal("ambiguous prompt should ask one question")
-	}
-}
-
 func TestRacerUsesOfficialCompatibleWheelHolderAndCenteredLDrawCoordinates(t *testing.T) {
 	result, err := Compile(PlanRecipe("一辆会跑的红色小车", nil), UnlimitedInventory(), time.Unix(0, 0))
 	if err != nil {
@@ -170,7 +161,7 @@ func TestDifficultyPolicyBuildsEveryArchetypeAtEveryLevel(t *testing.T) {
 	for _, archetype := range []string{"racer", "flyer", "robot", "creature"} {
 		for level := 1; level <= 5; level++ {
 			recipe := PlanRecipe("难度 "+strconv.Itoa(level), nil)
-			recipe.Archetype = archetype
+			recipe = ExampleRecipe(archetype)
 			recipe = ApplyDifficultyPolicy(recipe, recipe.Prompt, nil)
 			result, err := Compile(recipe, UnlimitedInventory(), time.Unix(0, 0))
 			if err != nil {

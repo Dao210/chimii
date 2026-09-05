@@ -34,8 +34,12 @@ func ChildCapabilities(next http.Handler) http.Handler {
 }
 
 func childCircuitCapabilityAllowed(method, path string) bool {
-	if path == "/api/circuit/catalog" {
+	if path == "/api/circuit/catalog" || path == "/api/circuit/kits" {
 		return method == http.MethodGet
+	}
+	if strings.HasPrefix(path, "/api/circuit/inventory/") {
+		kitID := strings.TrimPrefix(path, "/api/circuit/inventory/")
+		return method == http.MethodGet && kitID != "" && !strings.Contains(kitID, "/")
 	}
 	if path == "/api/circuit/creations" {
 		return method == http.MethodGet || method == http.MethodPost
@@ -44,7 +48,7 @@ func childCircuitCapabilityAllowed(method, path string) bool {
 		return false
 	}
 	segments := strings.Split(strings.TrimPrefix(path, "/api/circuit/creations/"), "/")
-	return segments[0] != "" && ((len(segments) == 1 && method == http.MethodGet) || (len(segments) == 2 && segments[1] == "progress" && method == http.MethodPut))
+	return segments[0] != "" && ((len(segments) == 1 && method == http.MethodGet) || (len(segments) == 2 && segments[1] == "progress" && method == http.MethodPut) || (len(segments) == 2 && segments[1] == "trials" && (method == http.MethodGet || method == http.MethodPost)))
 }
 
 func childBuildCapabilityAllowed(method, path string) bool {
@@ -66,7 +70,7 @@ func childBuildCapabilityAllowed(method, path string) bool {
 	case "sessions":
 		return (len(segments) == 1 && method == http.MethodPost) ||
 			(len(segments) == 2 && segments[1] != "" && method == http.MethodGet) ||
-			(len(segments) == 3 && segments[1] != "" && segments[2] == "answers" && method == http.MethodPost)
+			(len(segments) == 3 && segments[1] != "" && (segments[2] == "answers" || segments[2] == "cancel") && method == http.MethodPost)
 	case "creations":
 		return (len(segments) == 1 && method == http.MethodGet) ||
 			(len(segments) == 2 && segments[1] != "" && method == http.MethodGet) ||

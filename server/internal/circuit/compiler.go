@@ -34,6 +34,13 @@ type terminal struct {
 // Passing means consistency with a documented circuit, not simulated behavior
 // or physical certification. General-purpose circuit synthesis is not enabled.
 func Validate(c Catalog, projectID string, placements []Placement, inventory map[string]int) Report {
+	if c.ConnectionSystem == "boson" {
+		p, _ := c.Project(projectID)
+		return ValidateModuleConnections(c, projectID, placements, p.Connections, inventory)
+	}
+	if c.ConnectionSystem != "" && c.ConnectionSystem != "snap" {
+		return Report{Issues: []Issue{{Code: "unsupported_connection_system"}}, Nets: [][]string{}, UsedParts: map[string]int{}, PhysicalVerification: "not_tested"}
+	}
 	r := Report{Issues: []Issue{}, Nets: [][]string{}, UsedParts: map[string]int{}, PhysicalVerification: "not_tested"}
 	add := func(code, id string) { r.Issues = append(r.Issues, Issue{Code: code, PlacementID: id}) }
 	ref, ok := c.Project(projectID)
@@ -291,6 +298,10 @@ func Compile(c Catalog, projectID, prompt, title, planner string, inventory map[
 		}
 	}
 	d := Document{Version: 1, CatalogVersion: c.Version, KitID: c.KitID, Prompt: prompt, Title: title, Planner: planner, Project: p, Parts: parts, Columns: c.Columns, Rows: c.Rows, Preparation: c.Preparation, Inventory: inventory, Validation: r}
+	if c.ConnectionSystem == "boson" {
+		d.Version = 2
+		d.ConnectionSystem = c.ConnectionSystem
+	}
 	data, err := json.Marshal(d)
 	if err != nil {
 		return Document{}, err

@@ -1,0 +1,1760 @@
+{
+  "version": "boson-edu0080-en-reference-v1",
+  "kit_id": "dfrobot-edu0080-en",
+  "name": "DFRobot BOSON EDU0080-EN",
+  "columns": 30,
+  "rows": 17,
+  "minimum_age": 8,
+  "connection_system": "boson",
+  "parts": [
+    {
+      "id": "BOS0036",
+      "manufacturer_id": "BOS0036",
+      "marking": "m2",
+      "name": {
+        "en": "1IO power board",
+        "zh": "单路电源板"
+      },
+      "purpose": {
+        "en": "Find m2. Input is on the left, output on the right, and USB power at the bottom. Keep its switch OFF while connecting.",
+        "zh": "找到 m2。左侧为输入、右侧为输出，下方接电源；连线时保持 OFF。"
+      },
+      "kind": "power",
+      "ports": [
+        {
+          "id": "IN",
+          "x": 0,
+          "y": 1,
+          "direction": "input",
+          "connector": "boson-ph2-3"
+        },
+        {
+          "id": "OUT",
+          "x": 4,
+          "y": 1,
+          "direction": "output",
+          "connector": "boson-ph2-3"
+        },
+        {
+          "id": "USB",
+          "x": 2,
+          "y": 3,
+          "direction": "power_sink",
+          "connector": "fit0529-usb"
+        }
+      ],
+      "body": [
+        {
+          "x": 0,
+          "y": 0
+        },
+        {
+          "x": 4,
+          "y": 0
+        },
+        {
+          "x": 4,
+          "y": 3
+        },
+        {
+          "x": 0,
+          "y": 3
+        }
+      ],
+      "quantity": 1,
+      "conductive": [],
+      "specification_url": "https://wiki.dfrobot.com/edu0080-en/docs/20920"
+    },
+    {
+      "id": "FIT0529",
+      "manufacturer_id": "FIT0529",
+      "marking": "3×AAA",
+      "name": {
+        "en": "3×AAA battery holder",
+        "zh": "三节 AAA 电池盒"
+      },
+      "purpose": {
+        "en": "Use the matching battery holder and its USB lead. An adult installs three 1.5 V AAA batteries following the holder markings; connect it last.",
+        "zh": "使用配套电池盒和自带 USB 引线，由成人按盒内方向装入三节 1.5V AAA 电池，最后连接。"
+      },
+      "kind": "battery",
+      "ports": [
+        {
+          "id": "USB",
+          "x": 2,
+          "y": 0,
+          "direction": "power_source",
+          "connector": "fit0529-usb"
+        }
+      ],
+      "body": [
+        {
+          "x": 0,
+          "y": 0
+        },
+        {
+          "x": 4,
+          "y": 0
+        },
+        {
+          "x": 4,
+          "y": 3
+        },
+        {
+          "x": 0,
+          "y": 3
+        }
+      ],
+      "quantity": 1,
+      "conductive": [],
+      "specification_url": "https://wiki.dfrobot.com/edu0080-en/docs/20920"
+    },
+    {
+      "id": "BOS0002-R",
+      "manufacturer_id": "BOS0002-R",
+      "marking": "i2r",
+      "name": {
+        "en": "Red push button",
+        "zh": "红色按钮"
+      },
+      "purpose": {
+        "en": "Find the blue module marked i2r with a red button. Its single socket sends the button signal.",
+        "zh": "找到标有 i2r、带红色按钮的蓝色模块，唯一插口输出按钮信号。"
+      },
+      "kind": "input",
+      "ports": [
+        {
+          "id": "OUT",
+          "x": 4,
+          "y": 1,
+          "direction": "output",
+          "connector": "boson-ph2-3"
+        }
+      ],
+      "body": [
+        {
+          "x": 0,
+          "y": 0
+        },
+        {
+          "x": 4,
+          "y": 0
+        },
+        {
+          "x": 4,
+          "y": 3
+        },
+        {
+          "x": 0,
+          "y": 3
+        }
+      ],
+      "quantity": 1,
+      "conductive": [],
+      "specification_url": "https://wiki.dfrobot.com/edu0080-en/docs/20920"
+    },
+    {
+      "id": "BOS0017-R",
+      "manufacturer_id": "BOS0017-R",
+      "marking": "o2r",
+      "name": {
+        "en": "Red LED",
+        "zh": "红色 LED 灯"
+      },
+      "purpose": {
+        "en": "Find the green o2r module with a small red LED. Turn its socket toward the connecting cable.",
+        "zh": "找到绿色 o2r 模块和红色小灯，让插口朝向连接线。"
+      },
+      "kind": "output",
+      "ports": [
+        {
+          "id": "IN",
+          "x": 0,
+          "y": 1,
+          "direction": "input",
+          "connector": "boson-ph2-3"
+        }
+      ],
+      "body": [
+        {
+          "x": 0,
+          "y": 0
+        },
+        {
+          "x": 4,
+          "y": 0
+        },
+        {
+          "x": 4,
+          "y": 3
+        },
+        {
+          "x": 0,
+          "y": 3
+        }
+      ],
+      "quantity": 1,
+      "conductive": [],
+      "specification_url": "https://wiki.dfrobot.com/edu0080-en/docs/20920"
+    },
+    {
+      "id": "BOS0001",
+      "manufacturer_id": "BOS0001",
+      "marking": "i1",
+      "name": {
+        "en": "Rotary knob",
+        "zh": "旋钮模块"
+      },
+      "purpose": {
+        "en": "Find i1 with a turning knob. Turning changes its output level; it is not a timer.",
+        "zh": "找到带旋钮的 i1，转动可改变输出强弱，它不是计时器。"
+      },
+      "kind": "input",
+      "ports": [
+        {
+          "id": "OUT",
+          "x": 4,
+          "y": 1,
+          "direction": "output",
+          "connector": "boson-ph2-3"
+        }
+      ],
+      "body": [
+        {
+          "x": 0,
+          "y": 0
+        },
+        {
+          "x": 4,
+          "y": 0
+        },
+        {
+          "x": 4,
+          "y": 3
+        },
+        {
+          "x": 0,
+          "y": 3
+        }
+      ],
+      "quantity": 1,
+      "conductive": [],
+      "specification_url": "https://wiki.dfrobot.com/edu0080-en/docs/20920"
+    },
+    {
+      "id": "BOS0009",
+      "manufacturer_id": "BOS0009",
+      "marking": "i9",
+      "name": {
+        "en": "Sound sensor",
+        "zh": "声音传感器"
+      },
+      "purpose": {
+        "en": "Find i9 with a small dark microphone. It senses sound strength; it does not understand words or record audio.",
+        "zh": "找到带黑色小麦克风的 i9，它感知声音强弱，不识别词语或录音。"
+      },
+      "kind": "input",
+      "ports": [
+        {
+          "id": "OUT",
+          "x": 4,
+          "y": 1,
+          "direction": "output",
+          "connector": "boson-ph2-3"
+        }
+      ],
+      "body": [
+        {
+          "x": 0,
+          "y": 0
+        },
+        {
+          "x": 4,
+          "y": 0
+        },
+        {
+          "x": 4,
+          "y": 3
+        },
+        {
+          "x": 0,
+          "y": 3
+        }
+      ],
+      "quantity": 1,
+      "conductive": [],
+      "specification_url": "https://wiki.dfrobot.com/edu0080-en/docs/20920"
+    },
+    {
+      "id": "BOS0021",
+      "manufacturer_id": "BOS0021",
+      "marking": "o6",
+      "name": {
+        "en": "Fan module",
+        "zh": "风扇模块"
+      },
+      "purpose": {
+        "en": "Find the green o6 fan module. Keep hair, fingers and loose materials away from the blades.",
+        "zh": "找到绿色 o6 风扇模块，让头发、手指和松散材料远离扇叶。"
+      },
+      "kind": "output",
+      "ports": [
+        {
+          "id": "IN",
+          "x": 0,
+          "y": 1,
+          "direction": "input",
+          "connector": "boson-ph2-3"
+        }
+      ],
+      "body": [
+        {
+          "x": 0,
+          "y": 0
+        },
+        {
+          "x": 4,
+          "y": 0
+        },
+        {
+          "x": 4,
+          "y": 3
+        },
+        {
+          "x": 0,
+          "y": 3
+        }
+      ],
+      "quantity": 1,
+      "conductive": [],
+      "specification_url": "https://wiki.dfrobot.com/edu0080-en/docs/20920"
+    },
+    {
+      "id": "BOS0029",
+      "manufacturer_id": "BOS0029",
+      "marking": "f3",
+      "name": {
+        "en": "NOT logic module",
+        "zh": "非逻辑模块"
+      },
+      "purpose": {
+        "en": "Find yellow f3 / NOT. Follow the printed arrow from its input to its output; it reverses a button signal.",
+        "zh": "找到黄色 f3 / NOT，按印刷箭头区分输入和输出，它反转按钮的信号。"
+      },
+      "kind": "logic",
+      "ports": [
+        {
+          "id": "IN",
+          "x": 0,
+          "y": 1,
+          "direction": "input",
+          "connector": "boson-ph2-3"
+        },
+        {
+          "id": "OUT",
+          "x": 4,
+          "y": 1,
+          "direction": "output",
+          "connector": "boson-ph2-3"
+        }
+      ],
+      "body": [
+        {
+          "x": 0,
+          "y": 0
+        },
+        {
+          "x": 4,
+          "y": 0
+        },
+        {
+          "x": 4,
+          "y": 3
+        },
+        {
+          "x": 0,
+          "y": 3
+        }
+      ],
+      "quantity": 1,
+      "conductive": [],
+      "specification_url": "https://wiki.dfrobot.com/edu0080-en/docs/20920"
+    },
+    {
+      "id": "BOS0027",
+      "manufacturer_id": "BOS0027",
+      "marking": "f1",
+      "name": {
+        "en": "AND logic module",
+        "zh": "与逻辑模块"
+      },
+      "purpose": {
+        "en": "Find yellow f1 / AND. It has two input sockets and one output; both inputs must be active.",
+        "zh": "找到黄色 f1 / AND，两个插口为输入，一个为输出，需要两个输入同时有效。"
+      },
+      "kind": "logic",
+      "ports": [
+        {
+          "id": "INA",
+          "x": 0,
+          "y": 0,
+          "direction": "input",
+          "connector": "boson-ph2-3"
+        },
+        {
+          "id": "INB",
+          "x": 0,
+          "y": 3,
+          "direction": "input",
+          "connector": "boson-ph2-3"
+        },
+        {
+          "id": "OUT",
+          "x": 4,
+          "y": 1,
+          "direction": "output",
+          "connector": "boson-ph2-3"
+        }
+      ],
+      "body": [
+        {
+          "x": 0,
+          "y": 0
+        },
+        {
+          "x": 4,
+          "y": 0
+        },
+        {
+          "x": 4,
+          "y": 3
+        },
+        {
+          "x": 0,
+          "y": 3
+        }
+      ],
+      "quantity": 1,
+      "conductive": [],
+      "specification_url": "https://wiki.dfrobot.com/edu0080-en/docs/20920"
+    },
+    {
+      "id": "BOS0013",
+      "manufacturer_id": "BOS0013",
+      "marking": "i13",
+      "name": {
+        "en": "Motion sensor",
+        "zh": "人体运动传感器"
+      },
+      "purpose": {
+        "en": "Find blue i13 with the pale sensor lens. Leave the lens uncovered; detection and release can take time.",
+        "zh": "找到带浅色感应罩的蓝色 i13，勿遮挡感应罩，触发和恢复可能需要等待。"
+      },
+      "kind": "input",
+      "ports": [
+        {
+          "id": "OUT",
+          "x": 4,
+          "y": 1,
+          "direction": "output",
+          "connector": "boson-ph2-3"
+        }
+      ],
+      "body": [
+        {
+          "x": 0,
+          "y": 0
+        },
+        {
+          "x": 4,
+          "y": 0
+        },
+        {
+          "x": 4,
+          "y": 3
+        },
+        {
+          "x": 0,
+          "y": 3
+        }
+      ],
+      "quantity": 1,
+      "conductive": [],
+      "specification_url": "https://wiki.dfrobot.com/edu0080-en/docs/20920"
+    },
+    {
+      "id": "BOSON-CABLE-10CM",
+      "manufacturer_id": "BOSON-CABLE-10CM",
+      "marking": "10 cm",
+      "name": {
+        "en": "BOSON 10 cm cable",
+        "zh": "BOSON 10 厘米连接线"
+      },
+      "purpose": {
+        "en": "Use the matching 3-pin BOSON cable. Align the keyed plug and press the housing gently; do not pull its wires.",
+        "zh": "使用配套三针 BOSON 连接线，对准防反插方向，轻按插头外壳，不拉扯电线。"
+      },
+      "kind": "cable",
+      "ports": [
+        {
+          "id": "A",
+          "x": 0,
+          "y": 0,
+          "direction": "input",
+          "connector": "boson-ph2-3"
+        },
+        {
+          "id": "B",
+          "x": 4,
+          "y": 0,
+          "direction": "output",
+          "connector": "boson-ph2-3"
+        }
+      ],
+      "body": [
+        {
+          "x": 0,
+          "y": 0
+        },
+        {
+          "x": 4,
+          "y": 0
+        },
+        {
+          "x": 4,
+          "y": 3
+        },
+        {
+          "x": 0,
+          "y": 3
+        }
+      ],
+      "quantity": 15,
+      "conductive": [],
+      "specification_url": "https://wiki.dfrobot.com/edu0080-en/docs/20920"
+    }
+  ],
+  "projects": [
+    {
+      "id": "boson-button-light",
+      "title": {
+        "en": "Press to light",
+        "zh": "按住就亮的小灯"
+      },
+      "description": {
+        "en": "Press the red button to light the LED; release to turn it off.",
+        "zh": "按住红色按钮让小灯亮起，松开熄灭。"
+      },
+      "explanation": {
+        "en": "The button sends a signal through m2 to the LED. The keyed cables also carry the supply connections.",
+        "zh": "按钮通过 m2 向灯传递信号，配套连接线同时包含供电连接。"
+      },
+      "test_instruction": {
+        "en": "Turn ON, press and release the button three times. Check that the LED follows each press and release. Switch OFF when finished.",
+        "zh": "打开开关，按下和松开按钮三次，观察灯是否每次随之亮灭，结束后关闭电源。"
+      },
+      "troubleshooting": [
+        {
+          "en": "Turn the m2 switch OFF before adjusting plugs. Check the printed IDs and arrows against the complete diagram.",
+          "zh": "调整插头前先将 m2 关闭，对照完整图检查印刷编号和箭头。"
+        },
+        {
+          "en": "Check the matching battery holder, battery directions and fully seated keyed plugs. Ask an adult if the expected response does not appear.",
+          "zh": "检查配套电池盒、电池方向和插头是否插到位，未出现预期现象时请成人帮助。"
+        }
+      ],
+      "source": {
+        "url": "https://dfimg.dfrobot.com/nobody/wiki/9e1deee4de0662f547d6f98283f7eacd.pdf",
+        "title": "DFRobot EDU0080-EN Quick Start Guide",
+        "page": 10,
+        "sha256": "ea388d4527598e6546ac64150cbe6280be2888168eff87d7cf2b0527f1470fb4"
+      },
+      "placements": [
+        {
+          "id": "power",
+          "part_id": "BOS0036",
+          "x": 12,
+          "y": 6,
+          "rotation": 0,
+          "layer": 1
+        },
+        {
+          "id": "battery",
+          "part_id": "FIT0529",
+          "x": 12,
+          "y": 12,
+          "rotation": 0,
+          "layer": 1
+        },
+        {
+          "id": "input",
+          "part_id": "BOS0002-R",
+          "x": 1,
+          "y": 6,
+          "rotation": 0,
+          "layer": 1
+        },
+        {
+          "id": "output",
+          "part_id": "BOS0017-R",
+          "x": 23,
+          "y": 6,
+          "rotation": 0,
+          "layer": 1
+        },
+        {
+          "id": "cable1",
+          "part_id": "BOSON-CABLE-10CM",
+          "x": 0,
+          "y": 0,
+          "rotation": 0,
+          "layer": 1
+        },
+        {
+          "id": "cable2",
+          "part_id": "BOSON-CABLE-10CM",
+          "x": 0,
+          "y": 0,
+          "rotation": 0,
+          "layer": 1
+        }
+      ],
+      "steps": [
+        {
+          "id": "prepare",
+          "title": {
+            "en": "Find the power board",
+            "zh": "找到电源板"
+          },
+          "instruction": {
+            "en": "Keep the m2 switch OFF. Lay out the modules with their markings visible.",
+            "zh": "将 m2 开关保持在 OFF，摆好元件，让编号朝上。"
+          },
+          "placement_ids": [
+            "power"
+          ]
+        },
+        {
+          "id": "place-input",
+          "title": {
+            "en": "Find the input module",
+            "zh": "找到输入模块"
+          },
+          "instruction": {
+            "en": "Find BOS0002-R (i2r) and place it as shown. The diagram shows connections, not a mounting scale.",
+            "zh": "找到 BOS0002-R（i2r），按图摆放。示意图表示连接关系，不是安装尺寸。"
+          },
+          "placement_ids": [
+            "input"
+          ]
+        },
+        {
+          "id": "place-output",
+          "title": {
+            "en": "Find the output module",
+            "zh": "找到输出模块"
+          },
+          "instruction": {
+            "en": "Find BOS0017-R (o2r) and place it as shown. The diagram shows connections, not a mounting scale.",
+            "zh": "找到 BOS0017-R（o2r），按图摆放。示意图表示连接关系，不是安装尺寸。"
+          },
+          "placement_ids": [
+            "output"
+          ]
+        },
+        {
+          "id": "connect-1",
+          "title": {
+            "en": "Connect cable 1",
+            "zh": "连接第 1 根线"
+          },
+          "instruction": {
+            "en": "With power OFF, connect input:OUT to power:IN using a 10 cm BOSON cable. Follow the printed socket arrows.",
+            "zh": "保持断电，用一根 10 厘米 BOSON 线连接 input:OUT 和 power:IN，核对实物插口箭头。"
+          },
+          "placement_ids": [
+            "cable1"
+          ]
+        },
+        {
+          "id": "connect-2",
+          "title": {
+            "en": "Connect cable 2",
+            "zh": "连接第 2 根线"
+          },
+          "instruction": {
+            "en": "With power OFF, connect power:OUT to output:IN using a 10 cm BOSON cable. Follow the printed socket arrows.",
+            "zh": "保持断电，用一根 10 厘米 BOSON 线连接 power:OUT 和 output:IN，核对实物插口箭头。"
+          },
+          "placement_ids": [
+            "cable2"
+          ]
+        },
+        {
+          "id": "power-last",
+          "title": {
+            "en": "Connect power last",
+            "zh": "最后连接电源"
+          },
+          "instruction": {
+            "en": "Ask an adult to check every connection and battery direction. Connect the matching 3×AAA holder to m2 USB. Turn ON only when ready to try.",
+            "zh": "请成人检查全部连接和电池方向，把配套三节 AAA 电池盒接入 m2 的 USB 口，准备试验时才拨到 ON。"
+          },
+          "placement_ids": [
+            "battery"
+          ]
+        }
+      ],
+      "expected_nets": [
+        [
+          "input:OUT",
+          "power:IN"
+        ],
+        [
+          "power:OUT",
+          "output:IN"
+        ],
+        [
+          "battery:USB",
+          "power:USB"
+        ]
+      ],
+      "connections": [
+        {
+          "id": "link1",
+          "from": "input:OUT",
+          "to": "power:IN",
+          "cable_id": "cable1"
+        },
+        {
+          "id": "link2",
+          "from": "power:OUT",
+          "to": "output:IN",
+          "cable_id": "cable2"
+        },
+        {
+          "id": "battery-lead",
+          "from": "battery:USB",
+          "to": "power:USB"
+        }
+      ]
+    },
+    {
+      "id": "boson-inverted-light",
+      "title": {
+        "en": "The opposite lamp",
+        "zh": "反着来的小灯"
+      },
+      "description": {
+        "en": "Add NOT: release the button to light the LED, press to turn it off.",
+        "zh": "加入非逻辑模块：松开按钮亮灯，按住反而熄灭。"
+      },
+      "explanation": {
+        "en": "NOT reverses the button signal. Follow its input-to-output arrow when inserting it after m2.",
+        "zh": "非逻辑模块反转按钮信号，接在 m2 后方时要按箭头区分输入和输出。"
+      },
+      "test_instruction": {
+        "en": "Turn ON. Compare the light with the button released and pressed. Repeat three times, then switch OFF.",
+        "zh": "打开开关，比较松开和按住按钮时灯的状态，重复三次后关闭电源。"
+      },
+      "troubleshooting": [
+        {
+          "en": "Turn the m2 switch OFF before adjusting plugs. Check the printed IDs and arrows against the complete diagram.",
+          "zh": "调整插头前先将 m2 关闭，对照完整图检查印刷编号和箭头。"
+        },
+        {
+          "en": "Check the matching battery holder, battery directions and fully seated keyed plugs. Ask an adult if the expected response does not appear.",
+          "zh": "检查配套电池盒、电池方向和插头是否插到位，未出现预期现象时请成人帮助。"
+        }
+      ],
+      "source": {
+        "url": "https://dfimg.dfrobot.com/nobody/wiki/9e1deee4de0662f547d6f98283f7eacd.pdf",
+        "title": "DFRobot EDU0080-EN Quick Start Guide",
+        "page": 12,
+        "sha256": "ea388d4527598e6546ac64150cbe6280be2888168eff87d7cf2b0527f1470fb4"
+      },
+      "placements": [
+        {
+          "id": "power",
+          "part_id": "BOS0036",
+          "x": 12,
+          "y": 6,
+          "rotation": 0,
+          "layer": 1
+        },
+        {
+          "id": "battery",
+          "part_id": "FIT0529",
+          "x": 12,
+          "y": 12,
+          "rotation": 0,
+          "layer": 1
+        },
+        {
+          "id": "input",
+          "part_id": "BOS0002-R",
+          "x": 1,
+          "y": 6,
+          "rotation": 0,
+          "layer": 1
+        },
+        {
+          "id": "not",
+          "part_id": "BOS0029",
+          "x": 18,
+          "y": 6,
+          "rotation": 0,
+          "layer": 1
+        },
+        {
+          "id": "output",
+          "part_id": "BOS0017-R",
+          "x": 23,
+          "y": 6,
+          "rotation": 0,
+          "layer": 1
+        },
+        {
+          "id": "cable1",
+          "part_id": "BOSON-CABLE-10CM",
+          "x": 0,
+          "y": 0,
+          "rotation": 0,
+          "layer": 1
+        },
+        {
+          "id": "cable2",
+          "part_id": "BOSON-CABLE-10CM",
+          "x": 0,
+          "y": 0,
+          "rotation": 0,
+          "layer": 1
+        },
+        {
+          "id": "cable3",
+          "part_id": "BOSON-CABLE-10CM",
+          "x": 0,
+          "y": 0,
+          "rotation": 0,
+          "layer": 1
+        }
+      ],
+      "steps": [
+        {
+          "id": "prepare",
+          "title": {
+            "en": "Find the power board",
+            "zh": "找到电源板"
+          },
+          "instruction": {
+            "en": "Keep the m2 switch OFF. Lay out the modules with their markings visible.",
+            "zh": "将 m2 开关保持在 OFF，摆好元件，让编号朝上。"
+          },
+          "placement_ids": [
+            "power"
+          ]
+        },
+        {
+          "id": "place-input",
+          "title": {
+            "en": "Find the input module",
+            "zh": "找到输入模块"
+          },
+          "instruction": {
+            "en": "Find BOS0002-R (i2r) and place it as shown. The diagram shows connections, not a mounting scale.",
+            "zh": "找到 BOS0002-R（i2r），按图摆放。示意图表示连接关系，不是安装尺寸。"
+          },
+          "placement_ids": [
+            "input"
+          ]
+        },
+        {
+          "id": "place-not",
+          "title": {
+            "en": "Find the NOT module",
+            "zh": "找到非逻辑模块"
+          },
+          "instruction": {
+            "en": "Find BOS0029 (f3) and place it as shown. The diagram shows connections, not a mounting scale.",
+            "zh": "找到 BOS0029（f3），按图摆放。示意图表示连接关系，不是安装尺寸。"
+          },
+          "placement_ids": [
+            "not"
+          ]
+        },
+        {
+          "id": "place-output",
+          "title": {
+            "en": "Find the output module",
+            "zh": "找到输出模块"
+          },
+          "instruction": {
+            "en": "Find BOS0017-R (o2r) and place it as shown. The diagram shows connections, not a mounting scale.",
+            "zh": "找到 BOS0017-R（o2r），按图摆放。示意图表示连接关系，不是安装尺寸。"
+          },
+          "placement_ids": [
+            "output"
+          ]
+        },
+        {
+          "id": "connect-1",
+          "title": {
+            "en": "Connect cable 1",
+            "zh": "连接第 1 根线"
+          },
+          "instruction": {
+            "en": "With power OFF, connect input:OUT to power:IN using a 10 cm BOSON cable. Follow the printed socket arrows.",
+            "zh": "保持断电，用一根 10 厘米 BOSON 线连接 input:OUT 和 power:IN，核对实物插口箭头。"
+          },
+          "placement_ids": [
+            "cable1"
+          ]
+        },
+        {
+          "id": "connect-2",
+          "title": {
+            "en": "Connect cable 2",
+            "zh": "连接第 2 根线"
+          },
+          "instruction": {
+            "en": "With power OFF, connect power:OUT to not:IN using a 10 cm BOSON cable. Follow the printed socket arrows.",
+            "zh": "保持断电，用一根 10 厘米 BOSON 线连接 power:OUT 和 not:IN，核对实物插口箭头。"
+          },
+          "placement_ids": [
+            "cable2"
+          ]
+        },
+        {
+          "id": "connect-3",
+          "title": {
+            "en": "Connect cable 3",
+            "zh": "连接第 3 根线"
+          },
+          "instruction": {
+            "en": "With power OFF, connect not:OUT to output:IN using a 10 cm BOSON cable. Follow the printed socket arrows.",
+            "zh": "保持断电，用一根 10 厘米 BOSON 线连接 not:OUT 和 output:IN，核对实物插口箭头。"
+          },
+          "placement_ids": [
+            "cable3"
+          ]
+        },
+        {
+          "id": "power-last",
+          "title": {
+            "en": "Connect power last",
+            "zh": "最后连接电源"
+          },
+          "instruction": {
+            "en": "Ask an adult to check every connection and battery direction. Connect the matching 3×AAA holder to m2 USB. Turn ON only when ready to try.",
+            "zh": "请成人检查全部连接和电池方向，把配套三节 AAA 电池盒接入 m2 的 USB 口，准备试验时才拨到 ON。"
+          },
+          "placement_ids": [
+            "battery"
+          ]
+        }
+      ],
+      "expected_nets": [
+        [
+          "input:OUT",
+          "power:IN"
+        ],
+        [
+          "power:OUT",
+          "not:IN"
+        ],
+        [
+          "not:OUT",
+          "output:IN"
+        ],
+        [
+          "battery:USB",
+          "power:USB"
+        ]
+      ],
+      "connections": [
+        {
+          "id": "link1",
+          "from": "input:OUT",
+          "to": "power:IN",
+          "cable_id": "cable1"
+        },
+        {
+          "id": "link2",
+          "from": "power:OUT",
+          "to": "not:IN",
+          "cable_id": "cable2"
+        },
+        {
+          "id": "link3",
+          "from": "not:OUT",
+          "to": "output:IN",
+          "cable_id": "cable3"
+        },
+        {
+          "id": "battery-lead",
+          "from": "battery:USB",
+          "to": "power:USB"
+        }
+      ]
+    },
+    {
+      "id": "boson-dimmer-light",
+      "title": {
+        "en": "My dimmable light",
+        "zh": "可以调亮度的小灯"
+      },
+      "description": {
+        "en": "Turn the knob to change the red LED brightness.",
+        "zh": "转动旋钮，观察红色 LED 亮度的变化。"
+      },
+      "explanation": {
+        "en": "The rotary knob changes the signal level passed to the LED. This assembly needs no downloaded program.",
+        "zh": "旋钮改变传给 LED 的信号强弱，这个组合无需下载程序。"
+      },
+      "test_instruction": {
+        "en": "Turn ON and slowly turn the knob across its range. Observe the brightness at three positions. Switch OFF afterwards.",
+        "zh": "打开开关，缓慢转动旋钮，观察三个位置的亮度变化，结束后关闭电源。"
+      },
+      "troubleshooting": [
+        {
+          "en": "Turn the m2 switch OFF before adjusting plugs. Check the printed IDs and arrows against the complete diagram.",
+          "zh": "调整插头前先将 m2 关闭，对照完整图检查印刷编号和箭头。"
+        },
+        {
+          "en": "Check the matching battery holder, battery directions and fully seated keyed plugs. Ask an adult if the expected response does not appear.",
+          "zh": "检查配套电池盒、电池方向和插头是否插到位，未出现预期现象时请成人帮助。"
+        }
+      ],
+      "source": {
+        "url": "https://dfimg.dfrobot.com/nobody/wiki/1b56d87f380b37fc80125eeb368bafe9.pdf",
+        "title": "DFRobot EDU0080-EN Non-programming Project Cards",
+        "page": 2,
+        "sha256": "62844000b896bebfd7c500a6410792fff4774dd432474ca4d4aca27b584185b8"
+      },
+      "placements": [
+        {
+          "id": "power",
+          "part_id": "BOS0036",
+          "x": 12,
+          "y": 6,
+          "rotation": 0,
+          "layer": 1
+        },
+        {
+          "id": "battery",
+          "part_id": "FIT0529",
+          "x": 12,
+          "y": 12,
+          "rotation": 0,
+          "layer": 1
+        },
+        {
+          "id": "input",
+          "part_id": "BOS0001",
+          "x": 1,
+          "y": 6,
+          "rotation": 0,
+          "layer": 1
+        },
+        {
+          "id": "output",
+          "part_id": "BOS0017-R",
+          "x": 23,
+          "y": 6,
+          "rotation": 0,
+          "layer": 1
+        },
+        {
+          "id": "cable1",
+          "part_id": "BOSON-CABLE-10CM",
+          "x": 0,
+          "y": 0,
+          "rotation": 0,
+          "layer": 1
+        },
+        {
+          "id": "cable2",
+          "part_id": "BOSON-CABLE-10CM",
+          "x": 0,
+          "y": 0,
+          "rotation": 0,
+          "layer": 1
+        }
+      ],
+      "steps": [
+        {
+          "id": "prepare",
+          "title": {
+            "en": "Find the power board",
+            "zh": "找到电源板"
+          },
+          "instruction": {
+            "en": "Keep the m2 switch OFF. Lay out the modules with their markings visible.",
+            "zh": "将 m2 开关保持在 OFF，摆好元件，让编号朝上。"
+          },
+          "placement_ids": [
+            "power"
+          ]
+        },
+        {
+          "id": "place-input",
+          "title": {
+            "en": "Find the input module",
+            "zh": "找到输入模块"
+          },
+          "instruction": {
+            "en": "Find BOS0001 (i1) and place it as shown. The diagram shows connections, not a mounting scale.",
+            "zh": "找到 BOS0001（i1），按图摆放。示意图表示连接关系，不是安装尺寸。"
+          },
+          "placement_ids": [
+            "input"
+          ]
+        },
+        {
+          "id": "place-output",
+          "title": {
+            "en": "Find the output module",
+            "zh": "找到输出模块"
+          },
+          "instruction": {
+            "en": "Find BOS0017-R (o2r) and place it as shown. The diagram shows connections, not a mounting scale.",
+            "zh": "找到 BOS0017-R（o2r），按图摆放。示意图表示连接关系，不是安装尺寸。"
+          },
+          "placement_ids": [
+            "output"
+          ]
+        },
+        {
+          "id": "connect-1",
+          "title": {
+            "en": "Connect cable 1",
+            "zh": "连接第 1 根线"
+          },
+          "instruction": {
+            "en": "With power OFF, connect input:OUT to power:IN using a 10 cm BOSON cable. Follow the printed socket arrows.",
+            "zh": "保持断电，用一根 10 厘米 BOSON 线连接 input:OUT 和 power:IN，核对实物插口箭头。"
+          },
+          "placement_ids": [
+            "cable1"
+          ]
+        },
+        {
+          "id": "connect-2",
+          "title": {
+            "en": "Connect cable 2",
+            "zh": "连接第 2 根线"
+          },
+          "instruction": {
+            "en": "With power OFF, connect power:OUT to output:IN using a 10 cm BOSON cable. Follow the printed socket arrows.",
+            "zh": "保持断电，用一根 10 厘米 BOSON 线连接 power:OUT 和 output:IN，核对实物插口箭头。"
+          },
+          "placement_ids": [
+            "cable2"
+          ]
+        },
+        {
+          "id": "power-last",
+          "title": {
+            "en": "Connect power last",
+            "zh": "最后连接电源"
+          },
+          "instruction": {
+            "en": "Ask an adult to check every connection and battery direction. Connect the matching 3×AAA holder to m2 USB. Turn ON only when ready to try.",
+            "zh": "请成人检查全部连接和电池方向，把配套三节 AAA 电池盒接入 m2 的 USB 口，准备试验时才拨到 ON。"
+          },
+          "placement_ids": [
+            "battery"
+          ]
+        }
+      ],
+      "expected_nets": [
+        [
+          "input:OUT",
+          "power:IN"
+        ],
+        [
+          "power:OUT",
+          "output:IN"
+        ],
+        [
+          "battery:USB",
+          "power:USB"
+        ]
+      ],
+      "connections": [
+        {
+          "id": "link1",
+          "from": "input:OUT",
+          "to": "power:IN",
+          "cable_id": "cable1"
+        },
+        {
+          "id": "link2",
+          "from": "power:OUT",
+          "to": "output:IN",
+          "cable_id": "cable2"
+        },
+        {
+          "id": "battery-lead",
+          "from": "battery:USB",
+          "to": "power:USB"
+        }
+      ]
+    },
+    {
+      "id": "boson-sound-fan",
+      "title": {
+        "en": "A fan that hears sound",
+        "zh": "听声音的小风扇"
+      },
+      "description": {
+        "en": "Explore how sound strength affects a small fan.",
+        "zh": "探索声音强弱怎样影响小风扇。"
+      },
+      "explanation": {
+        "en": "The microphone produces an analogue signal. It reacts to sound strength, without recognising speech or keeping the fan latched on.",
+        "zh": "麦克风产生模拟信号，响应声音强弱，不识别口令，也不会让风扇持续锁定开启。"
+      },
+      "test_instruction": {
+        "en": "Keep clear of the fan. Turn ON and compare a quiet room with speaking near the sensor. Record the fan response, then switch OFF.",
+        "zh": "远离扇叶，打开开关，比较安静时和对着传感器说话时的风扇反应，记录后关闭电源。"
+      },
+      "troubleshooting": [
+        {
+          "en": "Turn the m2 switch OFF before adjusting plugs. Check the printed IDs and arrows against the complete diagram.",
+          "zh": "调整插头前先将 m2 关闭，对照完整图检查印刷编号和箭头。"
+        },
+        {
+          "en": "Check the matching battery holder, battery directions and fully seated keyed plugs. Ask an adult if the expected response does not appear.",
+          "zh": "检查配套电池盒、电池方向和插头是否插到位，未出现预期现象时请成人帮助。"
+        }
+      ],
+      "source": {
+        "url": "https://dfimg.dfrobot.com/nobody/wiki/1b56d87f380b37fc80125eeb368bafe9.pdf",
+        "title": "DFRobot EDU0080-EN Non-programming Project Cards",
+        "page": 4,
+        "sha256": "62844000b896bebfd7c500a6410792fff4774dd432474ca4d4aca27b584185b8"
+      },
+      "placements": [
+        {
+          "id": "power",
+          "part_id": "BOS0036",
+          "x": 12,
+          "y": 6,
+          "rotation": 0,
+          "layer": 1
+        },
+        {
+          "id": "battery",
+          "part_id": "FIT0529",
+          "x": 12,
+          "y": 12,
+          "rotation": 0,
+          "layer": 1
+        },
+        {
+          "id": "input",
+          "part_id": "BOS0009",
+          "x": 1,
+          "y": 6,
+          "rotation": 0,
+          "layer": 1
+        },
+        {
+          "id": "output",
+          "part_id": "BOS0021",
+          "x": 23,
+          "y": 6,
+          "rotation": 0,
+          "layer": 1
+        },
+        {
+          "id": "cable1",
+          "part_id": "BOSON-CABLE-10CM",
+          "x": 0,
+          "y": 0,
+          "rotation": 0,
+          "layer": 1
+        },
+        {
+          "id": "cable2",
+          "part_id": "BOSON-CABLE-10CM",
+          "x": 0,
+          "y": 0,
+          "rotation": 0,
+          "layer": 1
+        }
+      ],
+      "steps": [
+        {
+          "id": "prepare",
+          "title": {
+            "en": "Find the power board",
+            "zh": "找到电源板"
+          },
+          "instruction": {
+            "en": "Keep the m2 switch OFF. Lay out the modules with their markings visible.",
+            "zh": "将 m2 开关保持在 OFF，摆好元件，让编号朝上。"
+          },
+          "placement_ids": [
+            "power"
+          ]
+        },
+        {
+          "id": "place-input",
+          "title": {
+            "en": "Find the input module",
+            "zh": "找到输入模块"
+          },
+          "instruction": {
+            "en": "Find BOS0009 (i9) and place it as shown. The diagram shows connections, not a mounting scale.",
+            "zh": "找到 BOS0009（i9），按图摆放。示意图表示连接关系，不是安装尺寸。"
+          },
+          "placement_ids": [
+            "input"
+          ]
+        },
+        {
+          "id": "place-output",
+          "title": {
+            "en": "Find the output module",
+            "zh": "找到输出模块"
+          },
+          "instruction": {
+            "en": "Find BOS0021 (o6) and place it as shown. The diagram shows connections, not a mounting scale.",
+            "zh": "找到 BOS0021（o6），按图摆放。示意图表示连接关系，不是安装尺寸。"
+          },
+          "placement_ids": [
+            "output"
+          ]
+        },
+        {
+          "id": "connect-1",
+          "title": {
+            "en": "Connect cable 1",
+            "zh": "连接第 1 根线"
+          },
+          "instruction": {
+            "en": "With power OFF, connect input:OUT to power:IN using a 10 cm BOSON cable. Follow the printed socket arrows.",
+            "zh": "保持断电，用一根 10 厘米 BOSON 线连接 input:OUT 和 power:IN，核对实物插口箭头。"
+          },
+          "placement_ids": [
+            "cable1"
+          ]
+        },
+        {
+          "id": "connect-2",
+          "title": {
+            "en": "Connect cable 2",
+            "zh": "连接第 2 根线"
+          },
+          "instruction": {
+            "en": "With power OFF, connect power:OUT to output:IN using a 10 cm BOSON cable. Follow the printed socket arrows.",
+            "zh": "保持断电，用一根 10 厘米 BOSON 线连接 power:OUT 和 output:IN，核对实物插口箭头。"
+          },
+          "placement_ids": [
+            "cable2"
+          ]
+        },
+        {
+          "id": "power-last",
+          "title": {
+            "en": "Connect power last",
+            "zh": "最后连接电源"
+          },
+          "instruction": {
+            "en": "Ask an adult to check every connection and battery direction. Connect the matching 3×AAA holder to m2 USB. Turn ON only when ready to try.",
+            "zh": "请成人检查全部连接和电池方向，把配套三节 AAA 电池盒接入 m2 的 USB 口，准备试验时才拨到 ON。"
+          },
+          "placement_ids": [
+            "battery"
+          ]
+        }
+      ],
+      "expected_nets": [
+        [
+          "input:OUT",
+          "power:IN"
+        ],
+        [
+          "power:OUT",
+          "output:IN"
+        ],
+        [
+          "battery:USB",
+          "power:USB"
+        ]
+      ],
+      "connections": [
+        {
+          "id": "link1",
+          "from": "input:OUT",
+          "to": "power:IN",
+          "cable_id": "cable1"
+        },
+        {
+          "id": "link2",
+          "from": "power:OUT",
+          "to": "output:IN",
+          "cable_id": "cable2"
+        },
+        {
+          "id": "battery-lead",
+          "from": "battery:USB",
+          "to": "power:USB"
+        }
+      ]
+    },
+    {
+      "id": "boson-motion-sound-fan",
+      "title": {
+        "en": "Two clues for a fan",
+        "zh": "需要两个信号的风扇"
+      },
+      "description": {
+        "en": "Use AND to combine motion detection with a sound signal.",
+        "zh": "用与逻辑模块组合人体运动和声音信号。"
+      },
+      "explanation": {
+        "en": "AND combines two inputs before they reach m2. The motion sensor may retain its signal for a while; this is not a calibrated presence detector.",
+        "zh": "与逻辑模块将两个输入组合后传给 m2；人体感应信号可能延迟恢复，这不是经过标定的人员检测设备。"
+      },
+      "test_instruction": {
+        "en": "Keep clear of the fan and turn ON. Compare quiet movement, sound without movement, and movement with sound. Allow the motion sensor to settle between trials. Switch OFF afterwards.",
+        "zh": "远离扇叶，打开开关，分别观察仅移动、仅发声以及移动并发声的情况，每次等待人体感应信号恢复，结束后关闭电源。"
+      },
+      "troubleshooting": [
+        {
+          "en": "Turn the m2 switch OFF before adjusting plugs. Check the printed IDs and arrows against the complete diagram.",
+          "zh": "调整插头前先将 m2 关闭，对照完整图检查印刷编号和箭头。"
+        },
+        {
+          "en": "Check the matching battery holder, battery directions and fully seated keyed plugs. Ask an adult if the expected response does not appear.",
+          "zh": "检查配套电池盒、电池方向和插头是否插到位，未出现预期现象时请成人帮助。"
+        }
+      ],
+      "source": {
+        "url": "https://dfimg.dfrobot.com/nobody/wiki/1b56d87f380b37fc80125eeb368bafe9.pdf",
+        "title": "DFRobot EDU0080-EN Non-programming Project Cards",
+        "page": 8,
+        "sha256": "62844000b896bebfd7c500a6410792fff4774dd432474ca4d4aca27b584185b8"
+      },
+      "placements": [
+        {
+          "id": "power",
+          "part_id": "BOS0036",
+          "x": 12,
+          "y": 6,
+          "rotation": 0,
+          "layer": 1
+        },
+        {
+          "id": "battery",
+          "part_id": "FIT0529",
+          "x": 12,
+          "y": 12,
+          "rotation": 0,
+          "layer": 1
+        },
+        {
+          "id": "motion",
+          "part_id": "BOS0013",
+          "x": 1,
+          "y": 2,
+          "rotation": 0,
+          "layer": 1
+        },
+        {
+          "id": "sound",
+          "part_id": "BOS0009",
+          "x": 1,
+          "y": 10,
+          "rotation": 0,
+          "layer": 1
+        },
+        {
+          "id": "and",
+          "part_id": "BOS0027",
+          "x": 7,
+          "y": 6,
+          "rotation": 0,
+          "layer": 1
+        },
+        {
+          "id": "output",
+          "part_id": "BOS0021",
+          "x": 23,
+          "y": 6,
+          "rotation": 0,
+          "layer": 1
+        },
+        {
+          "id": "cable1",
+          "part_id": "BOSON-CABLE-10CM",
+          "x": 0,
+          "y": 0,
+          "rotation": 0,
+          "layer": 1
+        },
+        {
+          "id": "cable2",
+          "part_id": "BOSON-CABLE-10CM",
+          "x": 0,
+          "y": 0,
+          "rotation": 0,
+          "layer": 1
+        },
+        {
+          "id": "cable3",
+          "part_id": "BOSON-CABLE-10CM",
+          "x": 0,
+          "y": 0,
+          "rotation": 0,
+          "layer": 1
+        },
+        {
+          "id": "cable4",
+          "part_id": "BOSON-CABLE-10CM",
+          "x": 0,
+          "y": 0,
+          "rotation": 0,
+          "layer": 1
+        }
+      ],
+      "steps": [
+        {
+          "id": "prepare",
+          "title": {
+            "en": "Find the power board",
+            "zh": "找到电源板"
+          },
+          "instruction": {
+            "en": "Keep the m2 switch OFF. Lay out the modules with their markings visible.",
+            "zh": "将 m2 开关保持在 OFF，摆好元件，让编号朝上。"
+          },
+          "placement_ids": [
+            "power"
+          ]
+        },
+        {
+          "id": "place-motion",
+          "title": {
+            "en": "Find the motion sensor",
+            "zh": "找到人体运动传感器"
+          },
+          "instruction": {
+            "en": "Find BOS0013 (i13) and place it as shown. The diagram shows connections, not a mounting scale.",
+            "zh": "找到 BOS0013（i13），按图摆放。示意图表示连接关系，不是安装尺寸。"
+          },
+          "placement_ids": [
+            "motion"
+          ]
+        },
+        {
+          "id": "place-sound",
+          "title": {
+            "en": "Find the sound sensor",
+            "zh": "找到声音传感器"
+          },
+          "instruction": {
+            "en": "Find BOS0009 (i9) and place it as shown. The diagram shows connections, not a mounting scale.",
+            "zh": "找到 BOS0009（i9），按图摆放。示意图表示连接关系，不是安装尺寸。"
+          },
+          "placement_ids": [
+            "sound"
+          ]
+        },
+        {
+          "id": "place-and",
+          "title": {
+            "en": "Find the AND module",
+            "zh": "找到与逻辑模块"
+          },
+          "instruction": {
+            "en": "Find BOS0027 (f1) and place it as shown. The diagram shows connections, not a mounting scale.",
+            "zh": "找到 BOS0027（f1），按图摆放。示意图表示连接关系，不是安装尺寸。"
+          },
+          "placement_ids": [
+            "and"
+          ]
+        },
+        {
+          "id": "place-output",
+          "title": {
+            "en": "Find the output module",
+            "zh": "找到输出模块"
+          },
+          "instruction": {
+            "en": "Find BOS0021 (o6) and place it as shown. The diagram shows connections, not a mounting scale.",
+            "zh": "找到 BOS0021（o6），按图摆放。示意图表示连接关系，不是安装尺寸。"
+          },
+          "placement_ids": [
+            "output"
+          ]
+        },
+        {
+          "id": "connect-1",
+          "title": {
+            "en": "Connect cable 1",
+            "zh": "连接第 1 根线"
+          },
+          "instruction": {
+            "en": "With power OFF, connect motion:OUT to and:INA using a 10 cm BOSON cable. Follow the printed socket arrows.",
+            "zh": "保持断电，用一根 10 厘米 BOSON 线连接 motion:OUT 和 and:INA，核对实物插口箭头。"
+          },
+          "placement_ids": [
+            "cable1"
+          ]
+        },
+        {
+          "id": "connect-2",
+          "title": {
+            "en": "Connect cable 2",
+            "zh": "连接第 2 根线"
+          },
+          "instruction": {
+            "en": "With power OFF, connect sound:OUT to and:INB using a 10 cm BOSON cable. Follow the printed socket arrows.",
+            "zh": "保持断电，用一根 10 厘米 BOSON 线连接 sound:OUT 和 and:INB，核对实物插口箭头。"
+          },
+          "placement_ids": [
+            "cable2"
+          ]
+        },
+        {
+          "id": "connect-3",
+          "title": {
+            "en": "Connect cable 3",
+            "zh": "连接第 3 根线"
+          },
+          "instruction": {
+            "en": "With power OFF, connect and:OUT to power:IN using a 10 cm BOSON cable. Follow the printed socket arrows.",
+            "zh": "保持断电，用一根 10 厘米 BOSON 线连接 and:OUT 和 power:IN，核对实物插口箭头。"
+          },
+          "placement_ids": [
+            "cable3"
+          ]
+        },
+        {
+          "id": "connect-4",
+          "title": {
+            "en": "Connect cable 4",
+            "zh": "连接第 4 根线"
+          },
+          "instruction": {
+            "en": "With power OFF, connect power:OUT to output:IN using a 10 cm BOSON cable. Follow the printed socket arrows.",
+            "zh": "保持断电，用一根 10 厘米 BOSON 线连接 power:OUT 和 output:IN，核对实物插口箭头。"
+          },
+          "placement_ids": [
+            "cable4"
+          ]
+        },
+        {
+          "id": "power-last",
+          "title": {
+            "en": "Connect power last",
+            "zh": "最后连接电源"
+          },
+          "instruction": {
+            "en": "Ask an adult to check every connection and battery direction. Connect the matching 3×AAA holder to m2 USB. Turn ON only when ready to try.",
+            "zh": "请成人检查全部连接和电池方向，把配套三节 AAA 电池盒接入 m2 的 USB 口，准备试验时才拨到 ON。"
+          },
+          "placement_ids": [
+            "battery"
+          ]
+        }
+      ],
+      "expected_nets": [
+        [
+          "motion:OUT",
+          "and:INA"
+        ],
+        [
+          "sound:OUT",
+          "and:INB"
+        ],
+        [
+          "and:OUT",
+          "power:IN"
+        ],
+        [
+          "power:OUT",
+          "output:IN"
+        ],
+        [
+          "battery:USB",
+          "power:USB"
+        ]
+      ],
+      "connections": [
+        {
+          "id": "link1",
+          "from": "motion:OUT",
+          "to": "and:INA",
+          "cable_id": "cable1"
+        },
+        {
+          "id": "link2",
+          "from": "sound:OUT",
+          "to": "and:INB",
+          "cable_id": "cable2"
+        },
+        {
+          "id": "link3",
+          "from": "and:OUT",
+          "to": "power:IN",
+          "cable_id": "cable3"
+        },
+        {
+          "id": "link4",
+          "from": "power:OUT",
+          "to": "output:IN",
+          "cable_id": "cable4"
+        },
+        {
+          "id": "battery-lead",
+          "from": "battery:USB",
+          "to": "power:USB"
+        }
+      ]
+    }
+  ],
+  "preparation": [
+    {
+      "en": "Use the exact EDU0080-EN part markings shown here. This list covers only the five supported non-programming projects, not the entire box.",
+      "zh": "按这里的编号核对 EDU0080-EN 实物，本清单仅覆盖五个免编程项目所需元件，不代表整盒清单。"
+    },
+    {
+      "en": "An adult checks the matching 3×AAA battery holder and directions. Keep m2 OFF during assembly; use only one power source.",
+      "zh": "由成人核对配套三节 AAA 电池盒及电池方向，搭建时保持 m2 关闭，只用一个电源。"
+    },
+    {
+      "en": "Use matching BOSON keyed cables. Keep fan blades clear. Switch OFF before changing the assembly.",
+      "zh": "使用配套 BOSON 防反插连接线，保持扇叶周围空旷，改动前先断电。"
+    }
+  ],
+  "hardware": {
+    "manufacturer": "DFRobot",
+    "model": "EDU0080-EN",
+    "notes": {
+      "en": "Reference subset: 11 part types. Confirm the current SKU, m2 board and replacement-part availability with the supplier. Other BOSON boxes are not assumed equivalent.",
+      "zh": "参考子集共 11 类元件。采购前确认当前型号、m2 电源板和补件渠道，其他 BOSON 套装需单独核对。"
+    },
+    "checked_on": "2026-09-05",
+    "purchase_links": [
+      {
+        "label": {
+          "en": "DFRobot China shop",
+          "zh": "DFRobot 国内商城"
+        },
+        "url": "https://www.dfrobot.com.cn/brand-8-c235.html"
+      },
+      {
+        "label": {
+          "en": "Exact kit and component list",
+          "zh": "具体套装与元件清单"
+        },
+        "url": "https://wiki.dfrobot.com/edu0080-en/docs/20920"
+      }
+    ]
+  }
+}

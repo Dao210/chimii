@@ -11,6 +11,16 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const cancelBuildJob = `-- name: CancelBuildJob :exec
+UPDATE build_job SET status = 'completed', lease_token = NULL, leased_until = NULL, updated_at = now()
+WHERE session_id = $1 AND status IN ('queued', 'running')
+`
+
+func (q *Queries) CancelBuildJob(ctx context.Context, sessionID pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, cancelBuildJob, sessionID)
+	return err
+}
+
 const claimBuildJob = `-- name: ClaimBuildJob :one
 WITH candidate AS (
     SELECT id
@@ -57,7 +67,7 @@ func (q *Queries) ClaimBuildJob(ctx context.Context) (BuildJob, error) {
 const completeBuildJob = `-- name: CompleteBuildJob :one
 UPDATE build_job
 SET status = 'completed', leased_until = NULL, updated_at = now()
-WHERE id = $1 AND lease_token = $2 AND status = 'running'
+WHERE id = $1 AND lease_token = $2 AND status = 'running' AND leased_until > clock_timestamp()
 RETURNING id, workspace_id, session_id, status, attempts, available_at, leased_until, lease_token, last_error, created_at, updated_at
 `
 
@@ -89,7 +99,7 @@ const completeBuildSession = `-- name: CompleteBuildSession :one
 UPDATE build_session
 SET status = 'completed', creation_id = $1, error = NULL, updated_at = now()
 WHERE id = $2
-RETURNING id, workspace_id, creator_user_id, child_profile_id, client_request_id, prompt, status, question, answers, creation_id, error, expires_at, created_at, updated_at, inventory_snapshot
+RETURNING id, workspace_id, creator_user_id, child_profile_id, client_request_id, prompt, status, question, answers, creation_id, error, expires_at, created_at, updated_at, inventory_snapshot, revision, phase, recipe
 `
 
 type CompleteBuildSessionParams struct {
@@ -116,6 +126,9 @@ func (q *Queries) CompleteBuildSession(ctx context.Context, arg CompleteBuildSes
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.InventorySnapshot,
+		&i.Revision,
+		&i.Phase,
+		&i.Recipe,
 	)
 	return i, err
 }
@@ -222,7 +235,7 @@ ON CONFLICT (
     (COALESCE(child_profile_id, '00000000-0000-0000-0000-000000000000'::uuid))
 )
 DO UPDATE SET updated_at = build_session.updated_at
-RETURNING id, workspace_id, creator_user_id, child_profile_id, client_request_id, prompt, status, question, answers, creation_id, error, expires_at, created_at, updated_at, inventory_snapshot
+RETURNING id, workspace_id, creator_user_id, child_profile_id, client_request_id, prompt, status, question, answers, creation_id, error, expires_at, created_at, updated_at, inventory_snapshot, revision, phase, recipe
 `
 
 type CreateBuildSessionParams struct {
@@ -266,6 +279,9 @@ func (q *Queries) CreateBuildSession(ctx context.Context, arg CreateBuildSession
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.InventorySnapshot,
+		&i.Revision,
+		&i.Phase,
+		&i.Recipe,
 	)
 	return i, err
 }
@@ -273,7 +289,9 @@ func (q *Queries) CreateBuildSession(ctx context.Context, arg CreateBuildSession
 const enqueueBuildJob = `-- name: EnqueueBuildJob :one
 INSERT INTO build_job (workspace_id, session_id)
 VALUES ($1, $2)
-ON CONFLICT (session_id) DO UPDATE SET updated_at = build_job.updated_at
+ON CONFLICT (session_id) DO UPDATE
+SET status = 'queued', attempts = 0, available_at = now(), leased_until = NULL, lease_token = NULL, last_error = NULL, updated_at = now()
+WHERE build_job.status IN ('completed', 'failed')
 RETURNING id, workspace_id, session_id, status, attempts, available_at, leased_until, lease_token, last_error, created_at, updated_at
 `
 
@@ -304,7 +322,7 @@ func (q *Queries) EnqueueBuildJob(ctx context.Context, arg EnqueueBuildJobParams
 const failBuildJob = `-- name: FailBuildJob :one
 UPDATE build_job
 SET status = 'failed', leased_until = NULL, last_error = $1, updated_at = now()
-WHERE id = $2 AND lease_token = $3 AND status = 'running'
+WHERE id = $2 AND lease_token = $3 AND status = 'running' AND leased_until > clock_timestamp()
 RETURNING id, workspace_id, session_id, status, attempts, available_at, leased_until, lease_token, last_error, created_at, updated_at
 `
 
@@ -393,7 +411,7 @@ func (q *Queries) GetBuildCreationInWorkspace(ctx context.Context, arg GetBuildC
 }
 
 const getBuildSessionByClientRequest = `-- name: GetBuildSessionByClientRequest :one
-SELECT id, workspace_id, creator_user_id, child_profile_id, client_request_id, prompt, status, question, answers, creation_id, error, expires_at, created_at, updated_at, inventory_snapshot FROM build_session
+SELECT id, workspace_id, creator_user_id, child_profile_id, client_request_id, prompt, status, question, answers, creation_id, error, expires_at, created_at, updated_at, inventory_snapshot, revision, phase, recipe FROM build_session
 WHERE workspace_id = $1
   AND creator_user_id = $2
   AND client_request_id = $3
@@ -434,12 +452,15 @@ func (q *Queries) GetBuildSessionByClientRequest(ctx context.Context, arg GetBui
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.InventorySnapshot,
+		&i.Revision,
+		&i.Phase,
+		&i.Recipe,
 	)
 	return i, err
 }
 
 const getBuildSessionForWorker = `-- name: GetBuildSessionForWorker :one
-SELECT id, workspace_id, creator_user_id, child_profile_id, client_request_id, prompt, status, question, answers, creation_id, error, expires_at, created_at, updated_at, inventory_snapshot FROM build_session WHERE id = $1
+SELECT id, workspace_id, creator_user_id, child_profile_id, client_request_id, prompt, status, question, answers, creation_id, error, expires_at, created_at, updated_at, inventory_snapshot, revision, phase, recipe FROM build_session WHERE id = $1
 `
 
 func (q *Queries) GetBuildSessionForWorker(ctx context.Context, id pgtype.UUID) (BuildSession, error) {
@@ -461,12 +482,15 @@ func (q *Queries) GetBuildSessionForWorker(ctx context.Context, id pgtype.UUID) 
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.InventorySnapshot,
+		&i.Revision,
+		&i.Phase,
+		&i.Recipe,
 	)
 	return i, err
 }
 
 const getBuildSessionInWorkspace = `-- name: GetBuildSessionInWorkspace :one
-SELECT id, workspace_id, creator_user_id, child_profile_id, client_request_id, prompt, status, question, answers, creation_id, error, expires_at, created_at, updated_at, inventory_snapshot FROM build_session
+SELECT id, workspace_id, creator_user_id, child_profile_id, client_request_id, prompt, status, question, answers, creation_id, error, expires_at, created_at, updated_at, inventory_snapshot, revision, phase, recipe FROM build_session
 WHERE id = $1
   AND workspace_id = $2
   AND creator_user_id = $3
@@ -504,6 +528,9 @@ func (q *Queries) GetBuildSessionInWorkspace(ctx context.Context, arg GetBuildSe
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.InventorySnapshot,
+		&i.Revision,
+		&i.Phase,
+		&i.Recipe,
 	)
 	return i, err
 }
@@ -579,15 +606,182 @@ func (q *Queries) LockBuildActorCapacity(ctx context.Context, actorKey string) e
 	return err
 }
 
-const markBuildSessionGenerating = `-- name: MarkBuildSessionGenerating :exec
-UPDATE build_session
-SET status = 'generating', updated_at = now()
-WHERE id = $1 AND status IN ('queued', 'generating')
+const lockBuildJobLease = `-- name: LockBuildJobLease :one
+SELECT id FROM build_job
+WHERE id = $1 AND lease_token = $2 AND status = 'running' AND leased_until > clock_timestamp()
+FOR UPDATE
 `
 
-func (q *Queries) MarkBuildSessionGenerating(ctx context.Context, id pgtype.UUID) error {
-	_, err := q.db.Exec(ctx, markBuildSessionGenerating, id)
-	return err
+type LockBuildJobLeaseParams struct {
+	ID         pgtype.UUID `json:"id"`
+	LeaseToken pgtype.UUID `json:"lease_token"`
+}
+
+func (q *Queries) LockBuildJobLease(ctx context.Context, arg LockBuildJobLeaseParams) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, lockBuildJobLease, arg.ID, arg.LeaseToken)
+	var id pgtype.UUID
+	err := row.Scan(&id)
+	return id, err
+}
+
+const lockBuildSessionForAnswer = `-- name: LockBuildSessionForAnswer :one
+SELECT id, workspace_id, creator_user_id, child_profile_id, client_request_id, prompt, status, question, answers, creation_id, error, expires_at, created_at, updated_at, inventory_snapshot, revision, phase, recipe FROM build_session
+WHERE id = $1 AND workspace_id = $2 AND creator_user_id = $3
+ AND (($4::uuid IS NULL AND child_profile_id IS NULL) OR child_profile_id = $4)
+FOR UPDATE
+`
+
+type LockBuildSessionForAnswerParams struct {
+	ID             pgtype.UUID `json:"id"`
+	WorkspaceID    pgtype.UUID `json:"workspace_id"`
+	CreatorUserID  pgtype.UUID `json:"creator_user_id"`
+	ChildProfileID pgtype.UUID `json:"child_profile_id"`
+}
+
+func (q *Queries) LockBuildSessionForAnswer(ctx context.Context, arg LockBuildSessionForAnswerParams) (BuildSession, error) {
+	row := q.db.QueryRow(ctx, lockBuildSessionForAnswer,
+		arg.ID,
+		arg.WorkspaceID,
+		arg.CreatorUserID,
+		arg.ChildProfileID,
+	)
+	var i BuildSession
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.CreatorUserID,
+		&i.ChildProfileID,
+		&i.ClientRequestID,
+		&i.Prompt,
+		&i.Status,
+		&i.Question,
+		&i.Answers,
+		&i.CreationID,
+		&i.Error,
+		&i.ExpiresAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.InventorySnapshot,
+		&i.Revision,
+		&i.Phase,
+		&i.Recipe,
+	)
+	return i, err
+}
+
+const lockBuildSessionForWorker = `-- name: LockBuildSessionForWorker :one
+SELECT id, workspace_id, creator_user_id, child_profile_id, client_request_id, prompt, status, question, answers, creation_id, error, expires_at, created_at, updated_at, inventory_snapshot, revision, phase, recipe FROM build_session WHERE id = $1 FOR UPDATE
+`
+
+func (q *Queries) LockBuildSessionForWorker(ctx context.Context, id pgtype.UUID) (BuildSession, error) {
+	row := q.db.QueryRow(ctx, lockBuildSessionForWorker, id)
+	var i BuildSession
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.CreatorUserID,
+		&i.ChildProfileID,
+		&i.ClientRequestID,
+		&i.Prompt,
+		&i.Status,
+		&i.Question,
+		&i.Answers,
+		&i.CreationID,
+		&i.Error,
+		&i.ExpiresAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.InventorySnapshot,
+		&i.Revision,
+		&i.Phase,
+		&i.Recipe,
+	)
+	return i, err
+}
+
+const markBuildSessionGenerating = `-- name: MarkBuildSessionGenerating :one
+UPDATE build_session s
+SET status = 'generating', updated_at = now()
+WHERE s.id = $1 AND s.revision = $2 AND s.status IN ('queued', 'generating')
+  AND EXISTS (SELECT 1 FROM build_job j WHERE j.session_id = s.id AND j.status = 'running' AND j.lease_token = $3 AND j.leased_until > clock_timestamp())
+RETURNING s.id, s.workspace_id, s.creator_user_id, s.child_profile_id, s.client_request_id, s.prompt, s.status, s.question, s.answers, s.creation_id, s.error, s.expires_at, s.created_at, s.updated_at, s.inventory_snapshot, s.revision, s.phase, s.recipe
+`
+
+type MarkBuildSessionGeneratingParams struct {
+	ID         pgtype.UUID `json:"id"`
+	Revision   int32       `json:"revision"`
+	LeaseToken pgtype.UUID `json:"lease_token"`
+}
+
+func (q *Queries) MarkBuildSessionGenerating(ctx context.Context, arg MarkBuildSessionGeneratingParams) (BuildSession, error) {
+	row := q.db.QueryRow(ctx, markBuildSessionGenerating, arg.ID, arg.Revision, arg.LeaseToken)
+	var i BuildSession
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.CreatorUserID,
+		&i.ChildProfileID,
+		&i.ClientRequestID,
+		&i.Prompt,
+		&i.Status,
+		&i.Question,
+		&i.Answers,
+		&i.CreationID,
+		&i.Error,
+		&i.ExpiresAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.InventorySnapshot,
+		&i.Revision,
+		&i.Phase,
+		&i.Recipe,
+	)
+	return i, err
+}
+
+const pauseBuildSession = `-- name: PauseBuildSession :one
+UPDATE build_session
+SET status = 'clarifying', question = $1, recipe = $2, phase = 'planning', updated_at = now()
+WHERE id = $3 AND revision = $4 AND status = 'generating'
+RETURNING id, workspace_id, creator_user_id, child_profile_id, client_request_id, prompt, status, question, answers, creation_id, error, expires_at, created_at, updated_at, inventory_snapshot, revision, phase, recipe
+`
+
+type PauseBuildSessionParams struct {
+	Question []byte      `json:"question"`
+	Recipe   []byte      `json:"recipe"`
+	ID       pgtype.UUID `json:"id"`
+	Revision int32       `json:"revision"`
+}
+
+func (q *Queries) PauseBuildSession(ctx context.Context, arg PauseBuildSessionParams) (BuildSession, error) {
+	row := q.db.QueryRow(ctx, pauseBuildSession,
+		arg.Question,
+		arg.Recipe,
+		arg.ID,
+		arg.Revision,
+	)
+	var i BuildSession
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.CreatorUserID,
+		&i.ChildProfileID,
+		&i.ClientRequestID,
+		&i.Prompt,
+		&i.Status,
+		&i.Question,
+		&i.Answers,
+		&i.CreationID,
+		&i.Error,
+		&i.ExpiresAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.InventorySnapshot,
+		&i.Revision,
+		&i.Phase,
+		&i.Recipe,
+	)
+	return i, err
 }
 
 const retryBuildJob = `-- name: RetryBuildJob :one
@@ -597,7 +791,7 @@ SET status = CASE WHEN attempts >= 3 THEN 'failed' ELSE 'queued' END,
     leased_until = NULL,
     last_error = $2,
     updated_at = now()
-WHERE id = $3 AND lease_token = $4 AND status = 'running'
+WHERE id = $3 AND lease_token = $4 AND status = 'running' AND leased_until > clock_timestamp()
 RETURNING id, workspace_id, session_id, status, attempts, available_at, leased_until, lease_token, last_error, created_at, updated_at
 `
 
@@ -632,37 +826,65 @@ func (q *Queries) RetryBuildJob(ctx context.Context, arg RetryBuildJobParams) (B
 	return i, err
 }
 
-const submitBuildSessionAnswers = `-- name: SubmitBuildSessionAnswers :one
-UPDATE build_session
-SET answers = $1,
-    status = 'queued',
-    question = NULL,
-    error = NULL,
-    updated_at = now()
-WHERE id = $2
-  AND workspace_id = $3
-  AND creator_user_id = $4
-  AND ($5::uuid IS NULL OR child_profile_id = $5)
-  AND expires_at > now()
-  AND status = 'clarifying'
-RETURNING id, workspace_id, creator_user_id, child_profile_id, client_request_id, prompt, status, question, answers, creation_id, error, expires_at, created_at, updated_at, inventory_snapshot
+const saveBuildSessionMessage = `-- name: SaveBuildSessionMessage :one
+UPDATE build_session SET recipe = $1, updated_at = now()
+WHERE id = $2 AND revision = $3 AND status = 'generating'
+RETURNING id, workspace_id, creator_user_id, child_profile_id, client_request_id, prompt, status, question, answers, creation_id, error, expires_at, created_at, updated_at, inventory_snapshot, revision, phase, recipe
 `
 
-type SubmitBuildSessionAnswersParams struct {
-	Answers        []byte      `json:"answers"`
-	ID             pgtype.UUID `json:"id"`
-	WorkspaceID    pgtype.UUID `json:"workspace_id"`
-	CreatorUserID  pgtype.UUID `json:"creator_user_id"`
-	ChildProfileID pgtype.UUID `json:"child_profile_id"`
+type SaveBuildSessionMessageParams struct {
+	Recipe   []byte      `json:"recipe"`
+	ID       pgtype.UUID `json:"id"`
+	Revision int32       `json:"revision"`
 }
 
-func (q *Queries) SubmitBuildSessionAnswers(ctx context.Context, arg SubmitBuildSessionAnswersParams) (BuildSession, error) {
-	row := q.db.QueryRow(ctx, submitBuildSessionAnswers,
-		arg.Answers,
+func (q *Queries) SaveBuildSessionMessage(ctx context.Context, arg SaveBuildSessionMessageParams) (BuildSession, error) {
+	row := q.db.QueryRow(ctx, saveBuildSessionMessage, arg.Recipe, arg.ID, arg.Revision)
+	var i BuildSession
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.CreatorUserID,
+		&i.ChildProfileID,
+		&i.ClientRequestID,
+		&i.Prompt,
+		&i.Status,
+		&i.Question,
+		&i.Answers,
+		&i.CreationID,
+		&i.Error,
+		&i.ExpiresAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.InventorySnapshot,
+		&i.Revision,
+		&i.Phase,
+		&i.Recipe,
+	)
+	return i, err
+}
+
+const saveBuildSessionRecipe = `-- name: SaveBuildSessionRecipe :one
+UPDATE build_session s
+SET recipe = $1, phase = 'compiling', updated_at = now()
+WHERE s.id = $2 AND s.revision = $3 AND s.status = 'generating'
+  AND EXISTS (SELECT 1 FROM build_job j WHERE j.session_id = s.id AND j.status = 'running' AND j.lease_token = $4 AND j.leased_until > clock_timestamp())
+RETURNING s.id, s.workspace_id, s.creator_user_id, s.child_profile_id, s.client_request_id, s.prompt, s.status, s.question, s.answers, s.creation_id, s.error, s.expires_at, s.created_at, s.updated_at, s.inventory_snapshot, s.revision, s.phase, s.recipe
+`
+
+type SaveBuildSessionRecipeParams struct {
+	Recipe     []byte      `json:"recipe"`
+	ID         pgtype.UUID `json:"id"`
+	Revision   int32       `json:"revision"`
+	LeaseToken pgtype.UUID `json:"lease_token"`
+}
+
+func (q *Queries) SaveBuildSessionRecipe(ctx context.Context, arg SaveBuildSessionRecipeParams) (BuildSession, error) {
+	row := q.db.QueryRow(ctx, saveBuildSessionRecipe,
+		arg.Recipe,
 		arg.ID,
-		arg.WorkspaceID,
-		arg.CreatorUserID,
-		arg.ChildProfileID,
+		arg.Revision,
+		arg.LeaseToken,
 	)
 	var i BuildSession
 	err := row.Scan(
@@ -681,6 +903,70 @@ func (q *Queries) SubmitBuildSessionAnswers(ctx context.Context, arg SubmitBuild
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.InventorySnapshot,
+		&i.Revision,
+		&i.Phase,
+		&i.Recipe,
+	)
+	return i, err
+}
+
+const submitBuildSessionAnswers = `-- name: SubmitBuildSessionAnswers :one
+UPDATE build_session
+SET answers = answers || $1::jsonb,
+    revision = revision + 1,
+    phase = 'planning',
+    status = 'queued',
+    question = NULL,
+    error = NULL,
+    updated_at = now()
+WHERE id = $2
+  AND workspace_id = $3
+  AND creator_user_id = $4
+  AND ($5::uuid IS NULL OR child_profile_id = $5)
+  AND expires_at > now()
+  AND status = 'clarifying'
+  AND revision = $6
+RETURNING id, workspace_id, creator_user_id, child_profile_id, client_request_id, prompt, status, question, answers, creation_id, error, expires_at, created_at, updated_at, inventory_snapshot, revision, phase, recipe
+`
+
+type SubmitBuildSessionAnswersParams struct {
+	Answers        []byte      `json:"answers"`
+	ID             pgtype.UUID `json:"id"`
+	WorkspaceID    pgtype.UUID `json:"workspace_id"`
+	CreatorUserID  pgtype.UUID `json:"creator_user_id"`
+	ChildProfileID pgtype.UUID `json:"child_profile_id"`
+	Revision       int32       `json:"revision"`
+}
+
+func (q *Queries) SubmitBuildSessionAnswers(ctx context.Context, arg SubmitBuildSessionAnswersParams) (BuildSession, error) {
+	row := q.db.QueryRow(ctx, submitBuildSessionAnswers,
+		arg.Answers,
+		arg.ID,
+		arg.WorkspaceID,
+		arg.CreatorUserID,
+		arg.ChildProfileID,
+		arg.Revision,
+	)
+	var i BuildSession
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.CreatorUserID,
+		&i.ChildProfileID,
+		&i.ClientRequestID,
+		&i.Prompt,
+		&i.Status,
+		&i.Question,
+		&i.Answers,
+		&i.CreationID,
+		&i.Error,
+		&i.ExpiresAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.InventorySnapshot,
+		&i.Revision,
+		&i.Phase,
+		&i.Recipe,
 	)
 	return i, err
 }

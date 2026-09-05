@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { parseWithFallback } from "../api/schema";
 import {
+  BuildSessionSchema,
+  EMPTY_BUILD_SESSION,
   EMPTY_LDRAW_CATALOG_SYNC_STATUS,
   LDrawCatalogSyncStatusSchema,
 } from "./schemas";
@@ -36,5 +38,26 @@ describe("LDrawCatalogSyncStatusSchema", () => {
     expect(parsed).toBe(EMPTY_LDRAW_CATALOG_SYNC_STATUS);
     expect(parsed.status).toBe("idle");
     expect(parsed.enabled).toBe(false);
+  });
+});
+
+
+describe("BuildSessionSchema planning protocol", () => {
+  const session = { id: "s", prompt: "dog", status: "clarifying", answers: {}, created_at: "", updated_at: "" };
+  it("supports old labels and new versioned free-text questions", () => {
+    const old = BuildSessionSchema.parse({ ...session, question: { id: "movement", prompt: "Move?", options: ["Run"] } });
+    expect(old.question?.options).toEqual(["Run"]);
+    const next = BuildSessionSchema.parse({ ...session, revision: 2, phase: "planning", question: { id: "q2", prompt: "Which animal?", choices: [], allow_free_text: true } });
+    expect(next.question?.allow_free_text).toBe(true);
+    expect(next.question?.options).toEqual([]);
+  });
+  it("discards malformed optional choices without losing the session", () => {
+    const parsed = BuildSessionSchema.parse({ ...session, question: { id: "q1", prompt: "Which?", options: ["Dog"], choices: [{ label: "Dog" }], allow_free_text: "yes" } });
+    expect(parsed.id).toBe("s"); expect(parsed.question?.choices).toBeUndefined();
+    expect(parsed.question?.allow_free_text).toBeUndefined();
+  });
+  it("fails closed on a malformed revision or question", () => {
+    const parsed = parseWithFallback({ ...session, revision: "wrong", question: { prompt: "Which?" } }, BuildSessionSchema, EMPTY_BUILD_SESSION, { endpoint: "GET /api/build/sessions/{id}" });
+    expect(parsed.status).toBe("failed");
   });
 });

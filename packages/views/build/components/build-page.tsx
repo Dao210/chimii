@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, Blocks, Lightbulb, LoaderCircle, Sparkles, Wrench } from "lucide-react";
 import { motion } from "motion/react";
@@ -13,7 +13,7 @@ import {
   buildSessionOptions,
   useCreateBuildSession,
   useSubmitBuildAnswers,
-  type BuildSession,
+  useCancelBuildSession,
 } from "@chimii/core/build";
 import { AppLink } from "../../navigation";
 import { BuildResult } from "./build-result";
@@ -28,28 +28,29 @@ export function BuildPage() {
   const workspacePaths = useWorkspacePaths();
   const createSession = useCreateBuildSession();
   const submitAnswers = useSubmitBuildAnswers();
+  const cancelSession = useCancelBuildSession();
+  const [answer, setAnswer] = useState("");
   const [prompt, setPrompt] = useState("");
   const [clientRequestId, setClientRequestId] = useState(() => generateUUID());
-  const [seedSession, setSeedSession] = useState<BuildSession | null>(null);
+  const [sessionId, setSessionId] = useState("");
   const [friendlyError, setFriendlyError] = useState("");
   const buildAvailable = useConfigStore((state) => state.buildAvailable);
   const buildConfigLoaded = useConfigStore((state) => state.buildConfigLoaded);
-  const sessionId = seedSession?.id ?? "";
-  const sessionQuery = useQuery({ ...buildSessionOptions(workspaceId, sessionId), initialData: seedSession ?? undefined });
-  const session = sessionQuery.data ?? seedSession;
+  const sessionQuery = useQuery(buildSessionOptions(workspaceId, sessionId));
+  const session = sessionQuery.data;
   const creationId = session?.creation_id ?? "";
   const creationQuery = useQuery(buildCreationOptions(workspaceId, creationId));
-
-  useEffect(() => {
-    if (sessionQuery.data) setSeedSession(sessionQuery.data);
-  }, [sessionQuery.data]);
 
   const isWorking = session?.status === "queued" || session?.status === "generating";
   const creationIsPending = creationQuery.isPending || creationQuery.isFetching;
   const creationIsUnavailable = creationQuery.isError || (!creationIsPending && !creationQuery.data?.id);
   const ideaStarters = [t($ => $.starter_car), t($ => $.starter_dragon), t($ => $.starter_robot)];
-  const statusCopy = session?.status === "generating" ? t($ => $.generating) : t($ => $.queued);
-	const failedDescription = session?.error === "BUILD_INSUFFICIENT_INVENTORY"
+  const statusCopy = session?.status === "generating"
+    ? (session.phase === "planning" ? t($ => $.understanding) : t($ => $.generating)) : t($ => $.queued);
+	const failedDescription = session?.error === "BUILD_UNSUPPORTED" ? t($ => $.failed_unsupported)
+    : session?.error === "BUILD_REQUIREMENTS_UNMET" ? t($ => $.failed_requirements)
+    : session?.error === "BUILD_CANCELLED" ? t($ => $.cancelled)
+    : session?.error === "BUILD_INSUFFICIENT_INVENTORY"
 		? t($ => $.failed_inventory)
 		: session?.error === "BUILD_COUNT_UNSUPPORTED"
 			? t($ => $.failed_count)
@@ -62,7 +63,8 @@ export function BuildPage() {
     setFriendlyError("");
     try {
       const next = await createSession.mutateAsync({ prompt: prompt.trim(), clientRequestId });
-      setSeedSession(next);
+      if (!next.id) throw new Error("Invalid session response");
+      setSessionId(next.id);
     } catch {
       setFriendlyError(t($ => $.start_error));
     }
@@ -71,8 +73,31 @@ export function BuildPage() {
   const reset = () => {
     setPrompt("");
     setClientRequestId(generateUUID());
-    setSeedSession(null);
+    setSessionId("");
+    setAnswer("");
     setFriendlyError("");
+  };
+
+  const sendAnswer = async (value: string) => {
+    if (!session?.question || !value.trim()) return;
+    setFriendlyError("");
+    try {
+      const next = await submitAnswers.mutateAsync({ sessionId: session.id, revision: session.revision, answers: { [session.question.id]: value.trim() } });
+      if (!next.id) throw new Error("Invalid answer response");
+      setAnswer("");
+    } catch { setFriendlyError(t($ => $.answer_error)); }
+  };
+
+  const editIdea = async () => {
+    setFriendlyError("");
+    try {
+      if (session && session.status !== "failed" && session.status !== "completed") {
+        const next = await cancelSession.mutateAsync({ sessionId: session.id, revision: session.revision ?? 1 });
+        if (!next.id) throw new Error("Invalid cancellation response");
+      }
+      setSessionId(""); setAnswer(""); setClientRequestId(generateUUID());
+      setPrompt(session?.prompt ?? prompt);
+    } catch { setFriendlyError(t($ => $.cancel_error)); }
   };
 
   return (
@@ -127,35 +152,39 @@ export function BuildPage() {
               </>
             )}
           </section>
+        ) : sessionId && !session ? (
+          <section className="mx-auto max-w-xl py-20 text-center" aria-live="polite">
+            <p>{sessionQuery.isError ? t($ => $.session_fetch_error) : t($ => $.understanding)}</p>
+            {sessionQuery.isError && <Button onClick={() => void sessionQuery.refetch()}>{t($ => $.retry_fetch)}</Button>}
+          </section>
         ) : session?.status === "clarifying" && session.question ? (
-          <motion.section initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="mx-auto max-w-2xl pt-10">
+          <motion.section initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="mx-auto max-w-2xl pt-6 md:pt-10">
             <div className="rounded-[2rem] border-2 border-[#1d241f] bg-[#fffdf7] p-7 shadow-[8px_9px_0_#1d241f] md:p-9">
               <div className="mb-5 flex size-12 items-center justify-center rounded-2xl border-2 border-[#1d241f] bg-[#a8dfc2]">
                 <Lightbulb className="size-6" />
               </div>
               <p className="text-sm font-black text-[#39715a]">{t($ => $.clarify_label)}</p>
+              <p className="mt-3 break-words text-sm text-muted-foreground">{session.prompt}</p>
+              {session.summary && session.summary !== session.prompt && <p className="mt-2 break-words text-sm font-medium">{session.summary}</p>}
               <h2 className="mt-2 text-3xl font-black tracking-tight">{session.question.prompt}</h2>
               <div className="mt-7 grid gap-3">
-                {session.question.options.map((option) => (
-                  <button
-                    key={option}
-                    type="button"
-                    disabled={submitAnswers.isPending}
-                    onClick={async () => {
-                      setFriendlyError("");
-                      try {
-                        const next = await submitAnswers.mutateAsync({ sessionId: session.id, answers: { [session.question!.id]: option } });
-                        setSeedSession(next);
-                      } catch {
-                        setFriendlyError(t($ => $.answer_error));
-                      }
-                    }}
-                    className="group flex min-h-14 items-center justify-between rounded-2xl border-2 border-[#1d241f] bg-[#f7efde] px-5 text-left font-black transition hover:-translate-y-0.5 hover:bg-[#ffd85a] hover:shadow-[4px_5px_0_#1d241f] disabled:opacity-50"
+                {(session.question.choices?.length ? session.question.choices : session.question.options.map((label) => ({ id: label, label }))).map((choice) => (
+                  <button key={choice.id} type="button" disabled={submitAnswers.isPending || cancelSession.isPending}
+                    onClick={() => void sendAnswer(choice.id)}
+                    className="group flex min-h-14 items-center justify-between gap-3 rounded-2xl border-2 border-current bg-background px-5 py-3 text-left font-black transition hover:bg-accent disabled:opacity-50"
                   >
-                    {option}<ArrowRight className="size-5 transition group-hover:translate-x-1" />
+                    <span className="break-words">{choice.label}</span><ArrowRight className="size-5 shrink-0" />
                   </button>
                 ))}
               </div>
+              {session.question.allow_free_text !== false && (
+                <form key={session.question.id} onSubmit={(event) => { event.preventDefault(); void sendAnswer(answer); }} className="mt-5 space-y-3">
+                  <label htmlFor="build-answer" className="text-sm font-bold">{t($ => $.answer_label)}</label>
+                  <Textarea id="build-answer" value={answer} maxLength={120} onChange={(event) => setAnswer(event.target.value)} disabled={submitAnswers.isPending || cancelSession.isPending} className="min-h-24 bg-background" />
+                  <Button type="submit" disabled={!answer.trim() || submitAnswers.isPending || cancelSession.isPending}>{submitAnswers.isPending && <LoaderCircle className="size-4 animate-spin" />}{t($ => $.answer_submit)}</Button>
+                </form>
+              )}
+              <Button variant="ghost" onClick={() => void editIdea()} disabled={submitAnswers.isPending || cancelSession.isPending} className="mt-3">{t($ => $.edit_idea)}</Button>
               {friendlyError && <p role="alert" className="mt-4 text-sm font-bold text-[#a33b32]">{friendlyError}</p>}
             </div>
           </motion.section>
@@ -170,13 +199,15 @@ export function BuildPage() {
             </motion.div>
             <p className="text-xs font-black uppercase tracking-[.2em] text-[#39715a]">{t($ => $.checking_label)}</p>
             <h2 className="mt-3 text-3xl font-black md:text-5xl">{statusCopy}</h2>
-            <p className="mt-4 max-w-lg font-medium text-[#687068]">{t($ => $.checking_hint)}</p>
+            <p className="mt-4 max-w-lg font-medium text-[#687068]">{session.summary || t($ => $.checking_hint)}</p>
+            <Button variant="ghost" className="mt-5" disabled={cancelSession.isPending} onClick={() => void editIdea()}>{t($ => $.edit_idea)}</Button>
+            {friendlyError && <p role="alert">{friendlyError}</p>}
           </section>
         ) : session?.status === "failed" ? (
           <section className="mx-auto max-w-xl pt-20 text-center">
             <h2 className="text-3xl font-black">{t($ => $.failed_title)}</h2>
-			<p className="mt-3 text-[#687068]">{failedDescription}</p>
-            <Button onClick={reset} className="mt-6 rounded-xl bg-[#1d241f]">{t($ => $.create_again)}</Button>
+			<p className="mt-3 text-[#687068]">{session.message || failedDescription}</p>
+            <Button onClick={() => void editIdea()} className="mt-6 rounded-xl bg-[#1d241f]">{t($ => $.edit_idea)}</Button>
           </section>
         ) : (
           <section className="grid items-center gap-8 pt-5 lg:grid-cols-[minmax(0,1fr)_430px] lg:pt-14">

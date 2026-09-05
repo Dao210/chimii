@@ -3198,14 +3198,21 @@ export class ApiClient {
     });
   }
 
-  async submitBuildAnswers(id: string, answers: Record<string, string>): Promise<BuildSession> {
+  async submitBuildAnswers(id: string, answers: Record<string, string>, revision?: number): Promise<BuildSession> {
     const raw = await this.fetch<unknown>(`/api/build/sessions/${encodeURIComponent(id)}/answers`, {
       method: "POST",
-      body: JSON.stringify({ answers }),
+      body: JSON.stringify({ answers, revision }),
     });
     return parseWithFallback(raw, BuildSessionSchema, EMPTY_BUILD_SESSION, {
       endpoint: "POST /api/build/sessions/{id}/answers",
     });
+  }
+
+  async cancelBuildSession(id: string, revision: number): Promise<BuildSession> {
+    const raw = await this.fetch<unknown>(`/api/build/sessions/${encodeURIComponent(id)}/cancel`, {
+      method: "POST", body: JSON.stringify({ revision }),
+    });
+    return parseWithFallback(raw, BuildSessionSchema, EMPTY_BUILD_SESSION, { endpoint: "POST /api/build/sessions/{id}/cancel" });
   }
 
   async listBuildCreations(): Promise<BuildCreationList> {

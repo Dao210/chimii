@@ -1,0 +1,4 @@
+ALTER TABLE build_session
+ ADD COLUMN revision INTEGER NOT NULL DEFAULT 1,
+ ADD COLUMN phase TEXT NOT NULL DEFAULT 'planning',
+ ADD COLUMN recipe JSONB;

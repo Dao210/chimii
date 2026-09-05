@@ -201,7 +201,21 @@ export interface BuildPlan {
   generated_at: string;
 }
 
+export interface BuildModuleInstance {
+  id: string;
+  kind: string;
+  parent?: string;
+  port?: string;
+  alternative_ports?: string[];
+  color: number;
+}
+
 export interface BuildRecipe {
+  subject?: string;
+  summary?: string;
+  requirements?: string[];
+  constraints?: { exact_colors: boolean; no_wheels: boolean; part_count: number; required_modules?: string[] };
+  modules?: BuildModuleInstance[];
   version: number;
   archetype: string;
   title: string;
@@ -215,6 +229,8 @@ export interface BuildQuestion {
   id: string;
   prompt: string;
   options: string[];
+  choices?: { id: string; label: string }[];
+  allow_free_text?: boolean;
 }
 
 export type BuildSessionStatus =
@@ -228,6 +244,10 @@ export interface BuildSession {
   id: string;
   prompt: string;
   status: BuildSessionStatus;
+  revision?: number;
+  phase?: string;
+  summary?: string;
+  message?: string;
   question?: BuildQuestion;
   answers: Record<string, string>;
   creation_id?: string;

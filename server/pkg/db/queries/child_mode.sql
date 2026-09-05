@@ -62,6 +62,14 @@ WITH target_build_sessions AS (
     SELECT bs.id FROM build_session AS bs
     WHERE bs.workspace_id = @workspace_id AND bs.creator_user_id = @parent_user_id
 ),
+deleted_circuit_inventories AS (
+    DELETE FROM circuit_inventory
+    WHERE workspace_id = @workspace_id AND parent_user_id = @parent_user_id
+),
+deleted_circuit_trials AS (
+    DELETE FROM circuit_trial
+    WHERE workspace_id = @workspace_id AND parent_user_id = @parent_user_id
+),
 deleted_circuit_creations AS (
     DELETE FROM circuit_creation
     WHERE workspace_id = @workspace_id AND creator_user_id = @parent_user_id

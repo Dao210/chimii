@@ -34,6 +34,7 @@ func TestChildCapabilitiesAllowsOnlyChildProductSurface(t *testing.T) {
 		{http.MethodGet, "/api/build/creations/one", http.StatusNoContent},
 		{http.MethodGet, "/api/build/creations/one/export.mpd", http.StatusNoContent},
 		{http.MethodPost, "/api/build/sessions/one/answers", http.StatusNoContent},
+		{http.MethodPost, "/api/build/sessions/one/cancel", http.StatusNoContent},
 		{http.MethodPost, "/api/child-mode/exit", http.StatusNoContent},
 		{http.MethodDelete, "/api/build/creations/one", http.StatusForbidden},
 		{http.MethodPost, "/api/build/creations/one/archive", http.StatusForbidden},

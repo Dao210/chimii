@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"maps"
 	"net/http"
 	"strings"
 	"time"
@@ -19,13 +20,14 @@ import (
 )
 
 type circuitCreateRequest struct {
-	ClientRequestID string         `json:"client_request_id"`
-	KitID           string         `json:"kit_id"`
-	CatalogVersion  string         `json:"catalog_version"`
-	ProjectID       string         `json:"project_id"`
-	Prompt          string         `json:"prompt"`
-	Locale          string         `json:"locale"`
-	Inventory       map[string]int `json:"inventory"`
+	ClientRequestID   string         `json:"client_request_id"`
+	KitID             string         `json:"kit_id"`
+	CatalogVersion    string         `json:"catalog_version"`
+	ProjectID         string         `json:"project_id"`
+	Prompt            string         `json:"prompt"`
+	Locale            string         `json:"locale"`
+	Inventory         map[string]int `json:"inventory"`
+	InventoryRevision *int32         `json:"inventory_revision,omitempty"`
 }
 
 type circuitCreationResponse struct {
@@ -49,7 +51,16 @@ func circuitActorKey(child pgtype.UUID) string {
 }
 
 func (h *Handler) GetCircuitCatalog(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, http.StatusOK, map[string]any{"catalog": circuit.StarterCatalog(), "ai_available": h.LLM != nil && h.LLM.Enabled()})
+	kitID := r.URL.Query().Get("kit_id")
+	if kitID == "" {
+		kitID = circuit.StarterCatalog().KitID
+	}
+	c, ok := circuit.FindCatalog(kitID)
+	if !ok {
+		writeError(w, 404, "kit not supported")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"catalog": c, "ai_available": h.LLM != nil && h.LLM.Enabled()})
 }
 
 func decodeCircuitRequest(w http.ResponseWriter, r *http.Request, target any) bool {
@@ -79,22 +90,10 @@ func (h *Handler) CreateCircuitCreation(w http.ResponseWriter, r *http.Request) 
 	if !ok {
 		return
 	}
-	c := circuit.StarterCatalog()
 	req.Prompt = strings.TrimSpace(req.Prompt)
-	if req.KitID != c.KitID || req.CatalogVersion != c.Version {
-		writeJSON(w, 409, map[string]string{"error": "Refresh the component catalogue", "code": "circuit_catalog_changed"})
-		return
-	}
-	if req.Inventory == nil || len(req.Inventory) > len(c.Parts) || len([]rune(req.Prompt)) > 280 || ((req.ProjectID == "") == (req.Prompt == "")) {
+	if req.Inventory == nil || len(req.Inventory) > 128 || len([]rune(req.Prompt)) > 280 || ((req.ProjectID == "") == (req.Prompt == "")) {
 		writeError(w, 400, "provide either a project or an idea, and an inventory")
 		return
-	}
-	for part, n := range req.Inventory {
-		p, exists := c.Part(part)
-		if !exists || n < 0 || n > p.Quantity {
-			writeError(w, 400, "invalid inventory")
-			return
-		}
 	}
 	requestBytes, err := json.Marshal(req)
 	if err != nil {
@@ -111,6 +110,30 @@ func (h *Handler) CreateCircuitCreation(w http.ResponseWriter, r *http.Request) 
 		writeError(w, 500, "could not check request")
 		return
 	}
+	c, known := circuit.FindCatalog(req.KitID)
+	if !known || req.CatalogVersion != c.Version {
+		writeJSON(w, 409, map[string]string{"error": "Refresh the component catalogue", "code": "circuit_catalog_changed"})
+		return
+	}
+	if !validCircuitInventory(c, req.Inventory, false) {
+		writeError(w, 400, "invalid inventory")
+		return
+	}
+	if c.ConnectionSystem == "boson" && req.InventoryRevision == nil {
+		writeCircuitInventoryConflict(w)
+		return
+	}
+	if req.InventoryRevision != nil {
+		v, err := h.Queries.GetCircuitInventory(r.Context(), db.GetCircuitInventoryParams{WorkspaceID: ws, ParentUserID: user, KitID: req.KitID})
+		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+			writeError(w, 500, "could not load inventory")
+			return
+		}
+		if err != nil || !circuitInventoryMatches(v, req) {
+			writeCircuitInventoryConflict(w)
+			return
+		}
+	}
 	planner := "project"
 	title := ""
 	if req.ProjectID == "" {
@@ -120,13 +143,13 @@ func (h *Handler) CreateCircuitCreation(w http.ResponseWriter, r *http.Request) 
 		}
 		ctx, cancel := context.WithTimeout(r.Context(), 20*time.Second)
 		defer cancel()
-		intent, err := circuit.Plan(ctx, h.LLM, req.Prompt)
+		intent, err := circuit.PlanForCatalog(ctx, h.LLM, c, req.Prompt)
 		if err != nil {
 			writeJSON(w, 502, map[string]string{"error": "Could not understand this idea; retry or choose a project", "code": "circuit_planning_failed"})
 			return
 		}
 		if intent.ProjectID == "unsupported" {
-			writeJSON(w, 422, map[string]string{"error": "This idea needs features outside the three supported projects", "code": "circuit_unsupported"})
+			writeJSON(w, 422, map[string]string{"error": "This idea needs features outside this kit's supported projects", "code": "circuit_unsupported"})
 			return
 		}
 		req.ProjectID = intent.ProjectID
@@ -164,6 +187,17 @@ func (h *Handler) CreateCircuitCreation(w http.ResponseWriter, r *http.Request) 
 		writeError(w, 404, "workspace membership not found")
 		return
 	}
+	if req.InventoryRevision != nil {
+		v, err := q.LockCircuitInventory(r.Context(), db.LockCircuitInventoryParams{WorkspaceID: ws, ParentUserID: user, KitID: req.KitID})
+		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+			writeError(w, 500, "could not check inventory")
+			return
+		}
+		if err != nil || !circuitInventoryMatches(v, req) {
+			writeCircuitInventoryConflict(w)
+			return
+		}
+	}
 	created, err := q.CreateCircuitCreation(r.Context(), db.CreateCircuitCreationParams{WorkspaceID: ws, CreatorUserID: user, ChildProfileID: child, ActorKey: lookup.ActorKey, ClientRequestID: id, RequestHash: hash, Document: data})
 	if errors.Is(err, pgx.ErrNoRows) {
 		existing, readErr := q.GetCircuitCreationByRequest(r.Context(), lookup)
@@ -183,6 +217,11 @@ func (h *Handler) CreateCircuitCreation(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	writeJSON(w, http.StatusCreated, circuitResponse(created))
+}
+
+func circuitInventoryMatches(v db.CircuitInventory, req circuitCreateRequest) bool {
+	var quantities map[string]int
+	return req.InventoryRevision != nil && *req.InventoryRevision > 0 && v.Revision == *req.InventoryRevision && v.CatalogVersion == req.CatalogVersion && json.Unmarshal(v.Quantities, &quantities) == nil && maps.Equal(quantities, req.Inventory)
 }
 
 func (h *Handler) writeCircuitReplay(w http.ResponseWriter, v db.CircuitCreation, hash string) {

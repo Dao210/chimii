@@ -7,10 +7,10 @@ const (
 	CatalogRelease         = "2026-08"
 	CatalogArchiveSHA256   = "d2a695868ed2b3957c45b022a6451908edab22cc043179dd61d18dd382b35e11"
 	CatalogSourceURL       = "https://library.ldraw.org/library/updates/complete.zip"
-	ModuleLibraryVersion   = "chimii-construction-modules-v2"
-	CompilerVersion        = "build-compiler-v3"
+	ModuleLibraryVersion   = "chimii-construction-modules-v3"
+	CompilerVersion        = "build-compiler-v4"
 	ValidatorVersion       = "build-validator-v3"
-	GeneratorVersion       = "certified-module-grammar-v1"
+	GeneratorVersion       = "certified-module-grammar-v2"
 	PhysicsProfileVersion  = "conservative-static-v1"
 	ConnectorSchemaVersion = 2
 )

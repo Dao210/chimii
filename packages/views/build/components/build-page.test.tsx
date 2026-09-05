@@ -8,10 +8,14 @@ const {
   createSession,
   getCreation,
   getSession,
+  submitAnswer,
+  cancelBuild,
 } = vi.hoisted(() => ({
   createSession: vi.fn(),
   getCreation: vi.fn(),
   getSession: vi.fn(),
+  submitAnswer: vi.fn(),
+  cancelBuild: vi.fn(),
 }));
 
 vi.mock("@chimii/core/hooks", () => ({
@@ -43,7 +47,8 @@ vi.mock("@chimii/core/build", () => ({
     enabled: id.length > 0,
   }),
   useCreateBuildSession: () => ({ mutateAsync: createSession, isPending: false }),
-  useSubmitBuildAnswers: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useSubmitBuildAnswers: () => ({ mutateAsync: submitAnswer, isPending: false }),
+  useCancelBuildSession: () => ({ mutateAsync: cancelBuild, isPending: false }),
 }));
 
 vi.mock("../../navigation", () => ({
@@ -84,16 +89,18 @@ function renderPage() {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
-  return renderWithI18n(
+  const rendered = renderWithI18n(
     <QueryClientProvider client={queryClient}>
       <BuildPage />
     </QueryClientProvider>,
     { locale: "zh-Hans" },
   );
+  return { ...rendered, queryClient };
 }
 
 describe("BuildPage creation handoff", () => {
   beforeEach(() => {
+    submitAnswer.mockReset(); cancelBuild.mockReset();
     createSession.mockReset();
     getCreation.mockReset();
     getSession.mockReset();
@@ -115,5 +122,41 @@ describe("BuildPage creation handoff", () => {
     });
     expect(screen.queryByText("正在展开你的搭建方案…")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "再取一次" })).toBeInTheDocument();
+  });
+});
+
+
+describe("BuildPage clarification", () => {
+  const session = { ...completedSession, status: "clarifying", creation_id: undefined, revision: 2, summary: "一只蓝色小狗", question: { id: "q2", prompt: "耳朵需要多长？", options: ["长耳朵"], choices: [{ id: "long", label: "长耳朵" }], allow_free_text: true } };
+  it("submits the stable option ID and current revision", async () => {
+    createSession.mockResolvedValue(session); getSession.mockResolvedValue(session);
+    renderPage();
+    fireEvent.change(screen.getByPlaceholderText(/例如：我想做一辆/), { target: { value: "蓝色小狗" } });
+    fireEvent.click(screen.getByRole("button", { name: "开始创造" }));
+    await screen.findByText("耳朵需要多长？");
+    expect(screen.getByText("一只蓝色小狗")).toBeInTheDocument();
+    submitAnswer.mockResolvedValue({ ...session, status: "queued" });
+    fireEvent.click(screen.getByRole("button", { name: "长耳朵" }));
+    await waitFor(() => expect(submitAnswer).toHaveBeenCalledWith({ sessionId: "session-1", revision: 2, answers: { q2: "long" } }));
+  });
+  it("allows free text when there are no suggested choices", async () => {
+    const free = { ...session, question: { ...session.question, choices: [], options: [] } };
+    createSession.mockResolvedValue(free); getSession.mockResolvedValue(free); submitAnswer.mockResolvedValue({ ...free, status: "queued" });
+    renderPage();
+    fireEvent.change(screen.getByPlaceholderText(/例如：我想做一辆/), { target: { value: "蓝色小狗" } });
+    fireEvent.click(screen.getByRole("button", { name: "开始创造" }));
+    const input = await screen.findByLabelText("也可以用自己的话补充");
+    fireEvent.change(input, { target: { value: "耳朵短一点" } });
+    fireEvent.click(screen.getByRole("button", { name: "继续创造" }));
+    await waitFor(() => expect(submitAnswer).toHaveBeenCalledWith({ sessionId: "session-1", revision: 2, answers: { q2: "耳朵短一点" } }));
+  });
+  it("keeps the original idea when editing after cancellation", async () => {
+    createSession.mockResolvedValue(session); getSession.mockResolvedValue(session); cancelBuild.mockResolvedValue({ ...session, status: "failed" });
+    renderPage();
+    fireEvent.change(screen.getByPlaceholderText(/例如：我想做一辆/), { target: { value: "蓝色小狗" } });
+    fireEvent.click(screen.getByRole("button", { name: "开始创造" }));
+    fireEvent.click(await screen.findByRole("button", { name: "修改想法" }));
+    await waitFor(() => expect(cancelBuild).toHaveBeenCalledWith({ sessionId: "session-1", revision: 2 }));
+    expect(await screen.findByPlaceholderText(/例如：我想做一辆/)).toHaveValue(session.prompt);
   });
 });

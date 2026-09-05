@@ -204,6 +204,12 @@ cleared_vcs_connections AS (
 cleared_client_usage_workspace AS (
     UPDATE client_usage_daily SET workspace_id = NULL WHERE workspace_id = $1
 ),
+cleared_circuit_inventories AS (
+    DELETE FROM circuit_inventory WHERE workspace_id = $1
+),
+cleared_circuit_trials AS (
+    DELETE FROM circuit_trial WHERE workspace_id = $1
+),
 cleared_circuit_creations AS (
     DELETE FROM circuit_creation WHERE workspace_id = $1
 ),
