@@ -22,6 +22,7 @@ fi
 
 bash "$SCRIPT_DIR/check-release-version.test.sh"
 bash "$SCRIPT_DIR/deploy-sh-version.test.sh"
+bash "$SCRIPT_DIR/deploy-sh-verify.test.sh"
 validate_config
 [[ "$ACTION" == deploy && "$SSH_HOST" == sh && "$REMOTE_ROOT" == /opt/chimii ]]
 [[ "$DB_NAME" == chimii && "$BACKEND_PORT" == 8080 && "$WEB_PORT" == 3000 ]]

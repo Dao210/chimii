@@ -919,7 +919,10 @@ systemctl is-enabled --quiet postgresql redis-server caddy chimii-backend chimii
 curl -fsS "http://127.0.0.1:$BACKEND_PORT/readyz" | grep -F '"status":"ok"' >/dev/null
 curl -fsS -o /dev/null "http://127.0.0.1:$WEB_PORT/"
 expected_version="$(sed -n 's/^VERSION=//p' "$REMOTE_ROOT/state/current.env")"
-[[ "$expected_version" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+[[ "$expected_version" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9a-f]{7,40})?$ ]] || {
+  echo "invalid deployed version: $expected_version" >&2
+  exit 1
+}
 curl -fsS "http://127.0.0.1:$BACKEND_PORT/api/config" | grep -F "\"server_version\":\"$expected_version\"" >/dev/null
 ss -lnt | grep -Eq "127.0.0.1:$BACKEND_PORT"
 ss -lnt | grep -Eq "127.0.0.1:$WEB_PORT"
