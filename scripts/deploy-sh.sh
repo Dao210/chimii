@@ -1,26 +1,18 @@
 #!/usr/bin/env bash
 # Production deployment for the Tencent Cloud host configured as SSH alias `sh`.
 #
-# This entrypoint replaces the retired Auro/Chimii installation in-place while
-# preserving one explicit legacy rollback point. The active paths and ports stay
-# stable: /opt/chimii, database `chimii`, backend 127.0.0.1:8080, and Web
-# 127.0.0.1:3000. Public routing is disabled by default until ICP filing and
-# Tencent Cloud access filing are complete.
-#
-# Safe/read-only:
-#   ./scripts/deploy-sh.sh plan
-#   ./scripts/deploy-sh.sh verify
-#
-# One-time replacement:
-#   CONFIRM_REPLACE_LEGACY=replace-chimii ./scripts/deploy-sh.sh replace
-#
-# Explicitly enable the public chimii.com Caddy route only after filing:
-#   PUBLIC_ROUTE=true ./scripts/deploy-sh.sh config
+# Usage: scripts/deploy-sh.sh [deploy|plan|verify|config|rollback|bootstrap]
+# No argument deploys both applications, migrating the existing database in place.
+# Cloudflare forwards public HTTPS to Caddy :32443; applications stay on loopback
+# :8080/:3000. Integration secrets remain in /etc/chimii/secrets/runtime.env.
+# Bootstrap is a guarded, ONE-TIME replacement of the retired installation.
 
 set -Eeuo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-ACTION="${1:-plan}"
+# shellcheck source=lib/deploy-sh-runtime.sh
+source "$ROOT_DIR/scripts/lib/deploy-sh-runtime.sh"
+ACTION="${1:-deploy}"
 
 SSH_HOST="${SSH_HOST:-sh}"
 EXPECTED_SERVER_IP="${EXPECTED_SERVER_IP:-106.54.235.89}"
@@ -35,9 +27,13 @@ CANDIDATE_BACKEND_PORT="${CANDIDATE_BACKEND_PORT:-18080}"
 CANDIDATE_WEB_PORT="${CANDIDATE_WEB_PORT:-13000}"
 PNPM_VERSION="${PNPM_VERSION:-10.28.2}"
 KEEP_RELEASES="${KEEP_RELEASES:-2}"
-PUBLIC_ROUTE="${PUBLIC_ROUTE:-false}"
+PUBLIC_ROUTE="${PUBLIC_ROUTE:-true}"
+ORIGIN_HTTPS_PORT="${ORIGIN_HTTPS_PORT:-32443}"
+TLS_CERT_FILE="${TLS_CERT_FILE:-/etc/caddy/certs/chimii.com.pem}"
+TLS_KEY_FILE="${TLS_KEY_FILE:-/etc/caddy/certs/chimii.com.key}"
 ALLOW_SIGNUP="${ALLOW_SIGNUP:-true}"
 SKIP_LOCAL_CHECKS="${SKIP_LOCAL_CHECKS:-false}"
+FORCE_DEPLOY="${FORCE_DEPLOY:-false}"
 LDRAW_ARCHIVE="${LDRAW_ARCHIVE:-}"
 
 SSH_ARGS=(
@@ -106,11 +102,12 @@ cleanup() {
 }
 
 cleanup_candidate_units() {
-  [[ -n "$RELEASE_ID" && "$ACTION" == replace ]] || return 0
+  [[ -n "$RELEASE_ID" && ( "$ACTION" == deploy || "$ACTION" == bootstrap ) ]] || return 0
   remote_root "RELEASE_ID='$RELEASE_ID'" <<'REMOTE' >/dev/null 2>&1 || true
 set -eu
 systemctl stop "chimii-candidate-web-${RELEASE_ID//./-}.service" "chimii-candidate-backend-${RELEASE_ID//./-}.service" 2>/dev/null || true
 REMOTE
+  [[ "$ACTION" != deploy ]] || daily_remote cleanup-candidates >/dev/null 2>&1 || true
 }
 
 release_remote_lock() {
@@ -120,9 +117,11 @@ set -eu
 lock_dir="$REMOTE_ROOT/.deploy-lock"
 if [[ -f "$lock_dir/token" && "$(cat "$lock_dir/token")" == "$LOCK_TOKEN" ]]; then
   unit="chimii-sh-web-build-${RELEASE_ID//./-}.service"
-  if [[ -n "$RELEASE_ID" ]] && systemctl is-active --quiet "$unit"; then
+  if [[ -n "$RELEASE_ID" ]] && { systemctl is-active --quiet "$unit" || systemctl is-active --quiet "chimii-sh-cutover-${RELEASE_ID//./-}.service"; }; then
     exit 0
   fi
+  # A failed migration requires operator recovery; keep its lock and backup.
+  [[ ! -f "$REMOTE_ROOT/state/deployments/$RELEASE_ID/needs-recovery" ]] || exit 0
   rm -f -- "$lock_dir/token" "$lock_dir/started-at"
   rmdir "$lock_dir" 2>/dev/null || true
 fi
@@ -134,6 +133,7 @@ validate_config() {
   [[ "$SSH_HOST" =~ ^[A-Za-z0-9_.@-]+$ ]] || die "invalid SSH_HOST"
   [[ "$EXPECTED_SERVER_IP" =~ ^[0-9A-Fa-f:.]+$ ]] || die "invalid EXPECTED_SERVER_IP"
   [[ "$REMOTE_ROOT" =~ ^/[A-Za-z0-9._/-]+$ ]] || die "invalid REMOTE_ROOT"
+  [[ "$REMOTE_ROOT" == /opt/chimii ]] || die "this host-specific entrypoint requires /opt/chimii"
   [[ "$APP_USER" =~ ^[a-z_][a-z0-9_-]*$ ]] || die "invalid APP_USER"
   [[ "$DB_NAME" =~ ^[a-z_][a-z0-9_]*$ ]] || die "invalid DB_NAME"
   [[ "$DB_USER" =~ ^[a-z_][a-z0-9_]*$ ]] || die "invalid DB_USER"
@@ -142,11 +142,19 @@ validate_config() {
   [[ "$WEB_PORT" =~ ^[0-9]+$ ]] || die "invalid WEB_PORT"
   [[ "$CANDIDATE_BACKEND_PORT" =~ ^[0-9]+$ ]] || die "invalid CANDIDATE_BACKEND_PORT"
   [[ "$CANDIDATE_WEB_PORT" =~ ^[0-9]+$ ]] || die "invalid CANDIDATE_WEB_PORT"
+  local deploy_port
+  for deploy_port in "$BACKEND_PORT" "$WEB_PORT" "$CANDIDATE_BACKEND_PORT" "$CANDIDATE_WEB_PORT" "$ORIGIN_HTTPS_PORT"; do
+    [[ "$deploy_port" =~ ^[1-9][0-9]{0,4}$ ]] && (( deploy_port <= 65535 )) || die "invalid port"
+  done
+  [[ "$(printf '%s\n' "$BACKEND_PORT" "$WEB_PORT" "$CANDIDATE_BACKEND_PORT" "$CANDIDATE_WEB_PORT" "$ORIGIN_HTTPS_PORT" | sort -u | wc -l | tr -d ' ')" == 5 ]] || die "deployment ports must be distinct"
+  [[ "$TLS_CERT_FILE" =~ ^/etc/caddy/certs/[A-Za-z0-9._-]+$ ]] || die "invalid TLS_CERT_FILE"
+  [[ "$TLS_KEY_FILE" =~ ^/etc/caddy/certs/[A-Za-z0-9._-]+$ ]] || die "invalid TLS_KEY_FILE"
   [[ "$PNPM_VERSION" =~ ^[0-9]+([.][0-9]+){2}$ ]] || die "invalid PNPM_VERSION"
   [[ "$KEEP_RELEASES" =~ ^[1-9][0-9]*$ ]] || die "invalid KEEP_RELEASES"
   [[ "$PUBLIC_ROUTE" == true || "$PUBLIC_ROUTE" == false ]] || die "PUBLIC_ROUTE must be true or false"
   [[ "$ALLOW_SIGNUP" == true || "$ALLOW_SIGNUP" == false ]] || die "ALLOW_SIGNUP must be true or false"
   [[ "$SKIP_LOCAL_CHECKS" == true || "$SKIP_LOCAL_CHECKS" == false ]] || die "SKIP_LOCAL_CHECKS must be true or false"
+  [[ "$FORCE_DEPLOY" == true || "$FORCE_DEPLOY" == false ]] || die "FORCE_DEPLOY must be true or false"
   [[ -z "$LDRAW_ARCHIVE" || "$LDRAW_ARCHIVE" == /* ]] || die "LDRAW_ARCHIVE must be an absolute local path"
   [[ "$BACKEND_PORT" != "$CANDIDATE_BACKEND_PORT" ]] || die "candidate backend port must differ"
   [[ "$WEB_PORT" != "$CANDIDATE_WEB_PORT" ]] || die "candidate Web port must differ"
@@ -154,26 +162,18 @@ validate_config() {
 
 render_caddy_block() {
   [[ "$PUBLIC_ROUTE" == true ]] || return 0
-  cat <<EOF
-# BEGIN CHIMII-SH MANAGED
-$PRIMARY_DOMAIN {
-	encode zstd gzip
-	@backend path /api/* /auth/* /uploads/* /ws /health /healthz /readyz
-	handle @backend {
-		reverse_proxy 127.0.0.1:$BACKEND_PORT {
-			flush_interval -1
-			transport http {
-				read_timeout 24h
-				write_timeout 24h
-			}
-		}
-	}
-	handle {
-		reverse_proxy 127.0.0.1:$WEB_PORT
-	}
+  sh_render_caddy
 }
-# END CHIMII-SH MANAGED
-EOF
+
+daily_remote() {
+  local remote_action="$1" assignments="" setting value
+  # Only validated, non-secret deployment coordinates cross the SSH command line.
+  for setting in REMOTE_ROOT RELEASE_ID VERSION SOURCE_COMMIT APP_USER DB_NAME DB_USER PRIMARY_DOMAIN BACKEND_PORT WEB_PORT CANDIDATE_BACKEND_PORT CANDIDATE_WEB_PORT ORIGIN_HTTPS_PORT TLS_CERT_FILE TLS_KEY_FILE KEEP_RELEASES; do
+    printf -v value '%q' "${!setting}"
+    assignments+="$setting=$value "
+  done
+  printf -v value '%q' "$REMOTE_LOCK_TOKEN"
+  remote_root "$assignments LOCK_TOKEN=$value SH_REMOTE_ACTION=$remote_action" < "$ROOT_DIR/scripts/lib/deploy-sh-runtime.sh"
 }
 
 verify_target() {
@@ -237,6 +237,7 @@ init_release() {
   [[ -n "$VERSION" && "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || die "production deployment requires HEAD at an exact vX.Y.Z tag"
   [[ "$(git -C "$ROOT_DIR" branch --show-current)" == main ]] || die "production deployment requires branch main"
   [[ -z "$(git -C "$ROOT_DIR" status --porcelain)" ]] || die "production deployment requires a clean worktree"
+  [[ "$VERSION" == "v$(node -p 'require("./package.json").version')" ]] || die "release tag and root package version must match"
   CATALOG_RELEASE="$(node -e 'const x=require(process.argv[1]); process.stdout.write(x.release)' "$catalog_lock")"
   CATALOG_SHA256="$(node -e 'const x=require(process.argv[1]); process.stdout.write(x.archive_sha256)' "$catalog_lock")"
   CATALOG_PART_COUNT="$(node -e 'const x=require(process.argv[1]); process.stdout.write(String(x.part_count))' "$catalog_manifest")"
@@ -291,6 +292,7 @@ package_web() {
   fi
   log "packaging Web source"
   COPYFILE_DISABLE=1 tar --no-xattrs -cf "$BUILD_TMP/web-source.tar" \
+    --exclude='.env' --exclude='.env.*' --exclude='.envrc' \
     --exclude='.DS_Store' --exclude='node_modules' --exclude='.next' \
     --exclude='.turbo' --exclude='*.tsbuildinfo' --exclude='test-results' \
     -C "$ROOT_DIR" \
@@ -300,16 +302,17 @@ package_web() {
 }
 
 upload_artifacts() {
-  local backend_sha web_sha ldraw_sha=""
+  local backend_sha web_sha runtime_sha ldraw_sha=""
   backend_sha="$(sha256_file "$BUILD_TMP/backend.tar.gz")"
   web_sha="$(sha256_file "$BUILD_TMP/web-source.tar.gz")"
+  runtime_sha="$(sha256_file "$ROOT_DIR/scripts/lib/deploy-sh-runtime.sh")"
   [[ -z "$LDRAW_ARCHIVE" ]] || ldraw_sha="$CATALOG_SHA256"
   remote_user "install -d -m 0700 '$REMOTE_UPLOAD'"
-  scp_push "$BUILD_TMP/backend.tar.gz" "$BUILD_TMP/web-source.tar.gz"
+  scp_push "$BUILD_TMP/backend.tar.gz" "$BUILD_TMP/web-source.tar.gz" "$ROOT_DIR/scripts/lib/deploy-sh-runtime.sh"
   if [[ -n "$LDRAW_ARCHIVE" ]]; then
     scp "${SSH_ARGS[@]}" "$LDRAW_ARCHIVE" "$SSH_HOST:$REMOTE_UPLOAD/ldraw-complete.zip"
   fi
-  remote_root "REMOTE_UPLOAD='$REMOTE_UPLOAD' REMOTE_ROOT='$REMOTE_ROOT' RELEASE_ID='$RELEASE_ID' BACKEND_SHA='$backend_sha' WEB_SHA='$web_sha' LDRAW_SHA='$ldraw_sha'" <<'REMOTE'
+  remote_root "REMOTE_UPLOAD='$REMOTE_UPLOAD' REMOTE_ROOT='$REMOTE_ROOT' RELEASE_ID='$RELEASE_ID' BACKEND_SHA='$backend_sha' WEB_SHA='$web_sha' LDRAW_SHA='$ldraw_sha' RUNTIME_SHA='$runtime_sha'" <<'REMOTE'
 set -euo pipefail
 incoming="$REMOTE_ROOT/incoming/$RELEASE_ID"
 install -d -m 0700 "$incoming"
@@ -317,6 +320,8 @@ test "$(sha256sum "$REMOTE_UPLOAD/backend.tar.gz" | awk '{print $1}')" = "$BACKE
 test "$(sha256sum "$REMOTE_UPLOAD/web-source.tar.gz" | awk '{print $1}')" = "$WEB_SHA"
 install -m 0600 "$REMOTE_UPLOAD/backend.tar.gz" "$incoming/backend.tar.gz"
 install -m 0600 "$REMOTE_UPLOAD/web-source.tar.gz" "$incoming/web-source.tar.gz"
+test "$(sha256sum "$REMOTE_UPLOAD/deploy-sh-runtime.sh" | awk '{print $1}')" = "$RUNTIME_SHA"
+install -m 0700 "$REMOTE_UPLOAD/deploy-sh-runtime.sh" "$incoming/deploy-sh-runtime.sh"
 if [[ -n "$LDRAW_SHA" ]]; then
   test "$(sha256sum "$REMOTE_UPLOAD/ldraw-complete.zip" | awk '{print $1}')" = "$LDRAW_SHA"
   install -m 0600 "$REMOTE_UPLOAD/ldraw-complete.zip" "$incoming/ldraw-complete.zip"
@@ -474,7 +479,7 @@ REMOTE
 prepare_candidate() {
   local candidate_db="chimii_candidate_$(printf '%s' "$RELEASE_ID" | cut -c1-16 | tr -cd '0-9')"
   [[ "$candidate_db" =~ ^[a-z_][a-z0-9_]*$ ]] || die "invalid candidate database name"
-  remote_root "REMOTE_ROOT='$REMOTE_ROOT' RELEASE_ID='$RELEASE_ID' VERSION='$VERSION' APP_USER='$APP_USER' DB_NAME='$DB_NAME' DB_USER='$DB_USER' CANDIDATE_DB='$candidate_db' PRIMARY_DOMAIN='$PRIMARY_DOMAIN' CANDIDATE_BACKEND_PORT='$CANDIDATE_BACKEND_PORT' CANDIDATE_WEB_PORT='$CANDIDATE_WEB_PORT' ALLOW_SIGNUP='$ALLOW_SIGNUP' CATALOG_RELEASE='$CATALOG_RELEASE' CATALOG_SHA256='$CATALOG_SHA256' CATALOG_PART_COUNT='$CATALOG_PART_COUNT' CATALOG_VERSION='$CATALOG_VERSION'" <<'REMOTE'
+  remote_root "DEPLOY_KIND='$ACTION' REMOTE_ROOT='$REMOTE_ROOT' RELEASE_ID='$RELEASE_ID' VERSION='$VERSION' APP_USER='$APP_USER' DB_NAME='$DB_NAME' DB_USER='$DB_USER' CANDIDATE_DB='$candidate_db' PRIMARY_DOMAIN='$PRIMARY_DOMAIN' CANDIDATE_BACKEND_PORT='$CANDIDATE_BACKEND_PORT' CANDIDATE_WEB_PORT='$CANDIDATE_WEB_PORT' ALLOW_SIGNUP='$ALLOW_SIGNUP' CATALOG_RELEASE='$CATALOG_RELEASE' CATALOG_SHA256='$CATALOG_SHA256' CATALOG_PART_COUNT='$CATALOG_PART_COUNT' CATALOG_VERSION='$CATALOG_VERSION'" <<'REMOTE'
 set -euo pipefail
 backend="$REMOTE_ROOT/releases/backend/$RELEASE_ID"
 web="$REMOTE_ROOT/releases/web/$RELEASE_ID"
@@ -488,12 +493,20 @@ fi
 candidate_url="postgres://$DB_USER:$db_password@127.0.0.1:5432/$CANDIDATE_DB?sslmode=disable"
 
 umask 077
-cat > /etc/chimii/v2-candidate-backend.env <<EOF
+# systemd-run's EnvironmentFile property takes one filename. Merge server-only
+# secrets first, then override all production routing and storage coordinates.
+if [[ -f /etc/chimii/secrets/runtime.env ]]; then
+  cp /etc/chimii/secrets/runtime.env /etc/chimii/v2-candidate-backend.env
+  printf '\n' >> /etc/chimii/v2-candidate-backend.env
+else
+  : > /etc/chimii/v2-candidate-backend.env
+fi
+cat >> /etc/chimii/v2-candidate-backend.env <<EOF
 APP_ENV=production
 DATABASE_URL=$candidate_url
 DATABASE_MAX_CONNS=10
 DATABASE_MIN_CONNS=2
-REDIS_URL=redis://127.0.0.1:6379/0
+REDIS_URL=
 PORT=$CANDIDATE_BACKEND_PORT
 CHIMII_BIND_HOST=127.0.0.1
 BACKEND_PORT=$CANDIDATE_BACKEND_PORT
@@ -508,11 +521,11 @@ RATE_LIMIT_TRUSTED_PROXIES=127.0.0.1/32
 ALLOW_SIGNUP=$ALLOW_SIGNUP
 COOKIE_DOMAIN=
 JWT_SECRET=$jwt_secret
-LOCAL_UPLOAD_DIR=/var/lib/chimii/uploads
+LOCAL_UPLOAD_DIR=/var/lib/chimii/candidate-uploads
 LOCAL_UPLOAD_BASE_URL=https://$PRIMARY_DOMAIN
 GOOGLE_REDIRECT_URI=https://$PRIMARY_DOMAIN/auth/callback
 CHIMII_VCS_INTEGRATION_ENABLED=true
-CHIMII_LDRAW_CATALOG_SYNC_ENABLED=true
+CHIMII_LDRAW_CATALOG_SYNC_ENABLED=false
 CHIMII_VCS_SECRET_KEY=$vcs_secret
 EOF
 cat > /etc/chimii/v2-candidate-web.env <<EOF
@@ -578,8 +591,8 @@ if [[ -f "$uploaded_archive" ]]; then
   install -o "$APP_USER" -g "$APP_USER" -m 0400 "$uploaded_archive" "$cached_archive"
   sync_args+=(--archive "$cached_archive")
 fi
-if ! runuser -u "$APP_USER" -- env DATABASE_URL="$candidate_url" "$backend/ldraw_catalog_sync" "${sync_args[@]}"; then
-  echo "pinned LDraw download unavailable; validating and copying the exact catalog from $DB_NAME" >&2
+if [[ "$DEPLOY_KIND" == deploy ]] || ! runuser -u "$APP_USER" -- env DATABASE_URL="$candidate_url" "$backend/ldraw_catalog_sync" "${sync_args[@]}"; then
+  echo "validating and copying the exact pinned catalog from $DB_NAME" >&2
   expected_counts="1|$CATALOG_PART_COUNT|$CATALOG_PART_COUNT|$CATALOG_PART_COUNT|1|100|0|0"
   source_counts="$(runuser -u postgres -- psql -d "$DB_NAME" -X -Atqc "
 SELECT
@@ -603,7 +616,7 @@ SELECT
     -t part_catalog_revision -t kit_profile -t kit_profile_part > "$transfer"
   runuser -u postgres -- psql -d "$CANDIDATE_DB" -X -v ON_ERROR_STOP=1 -c \
     'TRUNCATE ldraw_catalog_release, ldraw_part_revision, part_definition, part_catalog_revision, kit_profile, kit_profile_part' >/dev/null
-  runuser -u postgres -- pg_restore --exit-on-error --data-only --no-owner -d "$CANDIDATE_DB" "$transfer"
+  runuser -u postgres -- pg_restore --exit-on-error --data-only --no-owner -d "$CANDIDATE_DB" < "$transfer"
   rm -f -- "$transfer"
   candidate_fingerprint="$(catalog_fingerprint "$CANDIDATE_DB")"
   [[ "$candidate_fingerprint" = "$source_fingerprint" ]] || {
@@ -626,7 +639,8 @@ backend_unit="chimii-candidate-backend-${RELEASE_ID//./-}"
 web_unit="chimii-candidate-web-${RELEASE_ID//./-}"
 systemctl stop "$backend_unit.service" "$web_unit.service" 2>/dev/null || true
 systemctl reset-failed "$backend_unit.service" "$web_unit.service" 2>/dev/null || true
-systemd-run --quiet --unit="$backend_unit" --property=Type=simple --property="User=$APP_USER" --property="Group=$APP_USER" --property="WorkingDirectory=$backend" --property=EnvironmentFile=/etc/chimii/v2-candidate-backend.env "$backend/server"
+install -d -o "$APP_USER" -g "$APP_USER" -m 0700 /var/lib/chimii/candidate-uploads
+systemd-run --quiet --unit="$backend_unit" --property=Type=simple --property="User=$APP_USER" --property="Group=$APP_USER" --property="WorkingDirectory=$backend" --property=EnvironmentFile=/etc/chimii/v2-candidate-backend.env --property=IPAddressDeny=any --property=IPAddressAllow=localhost "$backend/server"
 for _ in $(seq 1 90); do curl -fsS "http://127.0.0.1:$CANDIDATE_BACKEND_PORT/readyz" >/dev/null 2>&1 && break; sleep 1; done
 curl -fsS "http://127.0.0.1:$CANDIDATE_BACKEND_PORT/readyz"
 
@@ -697,6 +711,7 @@ User=$APP_USER
 Group=$APP_USER
 WorkingDirectory=$REMOTE_ROOT/current-backend
 EnvironmentFile=/etc/chimii/backend.env
+EnvironmentFile=-/etc/chimii/secrets/runtime.env
 ExecStart=$REMOTE_ROOT/current-backend/server
 Restart=on-failure
 RestartSec=5s
@@ -784,26 +799,10 @@ REMOTE
 }
 
 configure_caddy() {
-  local apply_caddy="${1:-true}" block
+  local apply_caddy="${1:-true}"
   [[ "$apply_caddy" == true || "$apply_caddy" == false ]] || die "invalid Caddy apply mode"
-  block="$(render_caddy_block)"
-  remote_root "REMOTE_ROOT='$REMOTE_ROOT' LOCK_TOKEN='$REMOTE_LOCK_TOKEN' APPLY_CADDY='$apply_caddy' PUBLIC_ROUTE='$PUBLIC_ROUTE' PRIMARY_DOMAIN='$PRIMARY_DOMAIN' BACKEND_PORT='$BACKEND_PORT' WEB_PORT='$WEB_PORT'" <<REMOTE
-set -euo pipefail
-test "\$(cat "\$REMOTE_ROOT/.deploy-lock/token")" = "\$LOCK_TOKEN"
-source=/etc/caddy/Caddyfile
-tmp="\$(mktemp /etc/caddy/Caddyfile.chimii.XXXXXX)"
-trap 'rm -f "\$tmp"' EXIT
-cp "\$source" "\$tmp"
-perl -0777 -i -pe 's/^ai\.52tuan\.com \{.*?^\}\n?//ms; s/^# BEGIN aurocreator\.com origin on 32443.*?^# END aurocreator\.com origin on 32443\n?//ms; s/^# BEGIN CHIMII-SH MANAGED.*?^# END CHIMII-SH MANAGED\n?//ms' "\$tmp"
-cat >> "\$tmp" <<'CADDY'
-$block
-CADDY
-caddy validate --config "\$tmp"
-if [[ "\$APPLY_CADDY" = true ]]; then
-  install -o root -g root -m 0644 "\$tmp" "\$source"
-  systemctl reload caddy
-fi
-REMOTE
+  [[ "$PUBLIC_ROUTE" == true ]] || die "this production entrypoint requires PUBLIC_ROUTE=true"
+  if [[ "$apply_caddy" == true ]]; then daily_remote config-apply; else daily_remote config-prepare; fi
 }
 
 stop_retired_services() {
@@ -924,10 +923,58 @@ printf 'release=%s\nversion=%s\nbackend=%s\nweb=%s\ndatabase=%s\npublic_route=%s
   "$(readlink -f "$REMOTE_ROOT/current-backend")" \
   "$(readlink -f "$REMOTE_ROOT/current-web")" "$DB_NAME" "$PUBLIC_ROUTE"
 REMOTE
+  daily_remote origin-check
+  daily_remote firewall-check
+  local checked_version
+  checked_version="$(remote_user "sudo -n sed -n 's/^VERSION=//p' '$REMOTE_ROOT/state/current.env'")"
+  VERSION="$checked_version" daily_remote public-check
+}
+
+deploy_daily() {
+  init_release
+  daily_remote preflight
+  acquire_remote_lock "$RELEASE_ID"
+  local deployed_commit
+  deployed_commit="$(remote_user "sudo -n sed -n 's/^SOURCE_COMMIT=//p' '$REMOTE_ROOT/state/current.env'")"
+  if [[ "$deployed_commit" == "$SOURCE_COMMIT" && "$FORCE_DEPLOY" == false ]]; then
+    verify_deployment
+    ok "this commit is already deployed; verification passed"
+    return 0
+  fi
+  if [[ "$SKIP_LOCAL_CHECKS" == false ]]; then
+    bash "$ROOT_DIR/scripts/deploy-sh.test.sh"
+    bash "$ROOT_DIR/scripts/test-go.sh"
+  fi
+  build_backend
+  package_web
+  upload_artifacts
+  install_backend_release
+  build_web_remote
+  daily_remote rehearse
+  # Smoke-test an empty business database, so cloned jobs cannot contact providers.
+  prepare_candidate
+  cleanup_candidate_units
+  daily_remote start-cutover
+  local job_state deadline
+  deadline=$(( $(date +%s) + 3600 ))
+  while (( $(date +%s) < deadline )); do
+    job_state="$(remote_user "sudo -n bash -c 'file=$REMOTE_ROOT/state/deployments/$RELEASE_ID/exit-code; if test -f \"\$file\"; then printf done:; cat \"\$file\"; elif systemctl is-active --quiet chimii-sh-cutover-${RELEASE_ID//./-}.service; then echo running; else echo unknown; fi'" 2>/dev/null || true)"
+    case "$job_state" in
+      done:0) break ;;
+      done:*) die "cutover failed; inspect $REMOTE_ROOT/state/deployments/$RELEASE_ID and journalctl -u chimii-sh-cutover-${RELEASE_ID//./-}" ;;
+      *) log "cutover $RELEASE_ID: ${job_state:-SSH unavailable}; server continues independently" ;;
+    esac
+    sleep 15
+  done
+  [[ "$job_state" == done:0 ]] || die "cutover status uncertain; server retains the lock until it finishes"
+  verify_deployment
+  daily_remote prune
+  ok "deployed $VERSION to https://$PRIMARY_DOMAIN (origin $ORIGIN_HTTPS_PORT)"
 }
 
 replace_legacy() {
   [[ "${CONFIRM_REPLACE_LEGACY:-}" == replace-chimii ]] || die "set CONFIRM_REPLACE_LEGACY=replace-chimii for the one-time replacement"
+  remote_user "sudo -n test ! -f '$REMOTE_ROOT/state/current.env' -a ! -f '$REMOTE_ROOT/state/bootstrap.complete'" || die "bootstrap already completed; use scripts/deploy-sh.sh for daily deployments"
   init_release
   acquire_remote_lock "$RELEASE_ID"
   build_backend
@@ -944,8 +991,8 @@ replace_legacy() {
   stop_retired_services || rc=$?
   (( rc != 0 )) || switch_databases || rc=$?
   (( rc != 0 )) || write_final_units_and_env || rc=$?
-  (( rc != 0 )) || configure_caddy || rc=$?
   (( rc != 0 )) || activate_release || rc=$?
+  (( rc != 0 )) || configure_caddy || rc=$?
   (( rc != 0 )) || verify_deployment || rc=$?
   set -e
   if (( rc != 0 )); then
@@ -954,6 +1001,7 @@ replace_legacy() {
     return "$rc"
   fi
   ok "legacy installation replaced; rollback snapshot retained under $REMOTE_ROOT/state/legacy/$RELEASE_ID"
+  remote_user "sudo -n touch '$REMOTE_ROOT/state/bootstrap.complete'"
 }
 
 rollback_legacy() {
@@ -1021,7 +1069,8 @@ REMOTE
 plan() {
   verify_target
   remote_user "sudo -n bash -c 'printf \"disk: \"; df -h / | tail -n 1; printf \"memory: \"; free -h | sed -n \"2p\"; printf \"services:\\n\"; systemctl is-active caddy postgresql chimii-backend chimii-web chimii-daemon chimii-public-sales-runtime chimii-public-sales-egress 2>/dev/null || true; printf \"ports:\\n\"; ss -lnt | grep -E \"127.0.0.1:(3000|3100|8080|9443|13000|18080)|:80 |:443 \" || true'"
-  printf 'target=%s root=%s database=%s backend=%s web=%s domain=%s public_route=%s\n' "$SSH_HOST" "$REMOTE_ROOT" "$DB_NAME" "$BACKEND_PORT" "$WEB_PORT" "$PRIMARY_DOMAIN" "$PUBLIC_ROUTE"
+  printf 'target=%s root=%s database=%s backend=%s web=%s domain=%s origin_https_port=%s public_route=%s\n' "$SSH_HOST" "$REMOTE_ROOT" "$DB_NAME" "$BACKEND_PORT" "$WEB_PORT" "$PRIMARY_DOMAIN" "$ORIGIN_HTTPS_PORT" "$PUBLIC_ROUTE"
+  daily_remote preflight
 }
 
 main() {
@@ -1030,7 +1079,12 @@ main() {
   cd "$ROOT_DIR"
   case "$ACTION" in
     plan) plan ;;
-    replace)
+    deploy)
+      acquire_local_lock
+      verify_target
+      deploy_daily
+      ;;
+    bootstrap)
       acquire_local_lock
       verify_target
       replace_legacy
@@ -1047,6 +1101,14 @@ main() {
       configure_caddy
       verify_deployment
       ;;
+    rollback)
+      acquire_local_lock
+      verify_target
+      RELEASE_ID="rollback-$(date -u +%Y%m%dT%H%M%SZ)"
+      acquire_remote_lock "$RELEASE_ID"
+      daily_remote rollback
+      verify_deployment
+      ;;
     rollback-legacy)
       acquire_local_lock
       verify_target
@@ -1056,7 +1118,8 @@ main() {
       acquire_remote_lock "$RELEASE_ID"
       rollback_legacy "$target_release"
       ;;
-    *) die "usage: $0 [plan|replace|verify|config|rollback-legacy]" ;;
+    help|--help|-h) printf 'usage: %s [deploy|plan|verify|config|rollback|bootstrap|rollback-legacy]\nNo argument deploys the current tagged main checkout to sh.\n' "$0" ;;
+    *) die "usage: $0 [deploy|plan|verify|config|rollback|bootstrap|rollback-legacy]" ;;
   esac
 }
 

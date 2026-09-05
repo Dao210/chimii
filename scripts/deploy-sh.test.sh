@@ -1,35 +1,116 @@
 #!/usr/bin/env bash
-
 set -euo pipefail
-
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=deploy-sh.sh
+# Sourcing the entrypoint must never run a deployment.
 source "$SCRIPT_DIR/deploy-sh.sh"
 
+if [[ "${1:-}" == failure-fixture ]]; then
+  REMOTE_ROOT="$2"
+  RELEASE_ID=20260905T010000Z-0.2.8-123456abcdef
+  LOCK_TOKEN="$RELEASE_ID"
+  deploy_dir="$REMOTE_ROOT/state/deployments/$RELEASE_ID"
+  deploy_stage=migration
+  traffic_paused=true
+  migration_started=true
+  schema_changed="$3"
+  systemctl() { printf 'systemctl %s\n' "$*" >> "$REMOTE_ROOT/events"; }
+  install() { printf 'install %s\n' "$*" >> "$REMOTE_ROOT/events"; }
+  sh_restore_apps() { echo restored >> "$REMOTE_ROOT/events"; }
+  trap sh_finish_cutover EXIT
+  exit 37
+fi
+
 validate_config
-[[ "$SSH_HOST" == sh ]]
-[[ "$REMOTE_ROOT" == /opt/chimii ]]
-[[ "$DB_NAME" == chimii ]]
-[[ "$BACKEND_PORT" == 8080 ]]
-[[ "$WEB_PORT" == 3000 ]]
-[[ "$PUBLIC_ROUTE" == false ]]
-[[ -z "$(render_caddy_block)" ]]
+[[ "$ACTION" == deploy && "$SSH_HOST" == sh && "$REMOTE_ROOT" == /opt/chimii ]]
+[[ "$DB_NAME" == chimii && "$BACKEND_PORT" == 8080 && "$WEB_PORT" == 3000 ]]
+[[ "$PUBLIC_ROUTE" == true && "$ORIGIN_HTTPS_PORT" == 32443 ]]
 
-PUBLIC_ROUTE=true
-block="$(render_caddy_block)"
-grep -F 'chimii.com {' <<< "$block" >/dev/null
-grep -F 'reverse_proxy 127.0.0.1:8080' <<< "$block" >/dev/null
-grep -F 'reverse_proxy 127.0.0.1:3000' <<< "$block" >/dev/null
+fixture_dir="$(mktemp -d)"
+trap 'rm -rf -- "$fixture_dir"' EXIT
+# Existing manual 32443 + managed 443 must converge to one managed block.
+printf '%s\n' \
+  'other.example.com {' ' reverse_proxy 127.0.0.1:9900' '}' \
+  '# BEGIN CHIMII-SH MANAGED' 'chimii.com {' ' respond "old"' '}' '# END CHIMII-SH MANAGED' \
+  '# Cloudflare proxies public HTTPS 443 to this origin port.' \
+  'https://chimii.com:32443 {' ' handle {' '  respond "manual"' ' }' '}' > "$fixture_dir/Caddyfile"
+sh_strip_caddy "$fixture_dir/Caddyfile" > "$fixture_dir/first"
+render_caddy_block >> "$fixture_dir/first"
+sh_strip_caddy "$fixture_dir/first" > "$fixture_dir/second"
+render_caddy_block >> "$fixture_dir/second"
+cmp "$fixture_dir/first" "$fixture_dir/second"
+[[ "$(grep -c '^https://chimii.com:32443 {' "$fixture_dir/second")" == 1 ]]
+grep -Fx 'other.example.com {' "$fixture_dir/second" >/dev/null
+grep -F 'reverse_proxy 127.0.0.1:9900' "$fixture_dir/second" >/dev/null
+grep -F 'tls /etc/caddy/certs/chimii.com.pem /etc/caddy/certs/chimii.com.key' "$fixture_dir/second" >/dev/null
+grep -F 'reverse_proxy 127.0.0.1:8080' "$fixture_dir/second" >/dev/null
+grep -F 'reverse_proxy 127.0.0.1:3000' "$fixture_dir/second" >/dev/null
+! grep -q 'respond "manual"\|respond "old"' "$fixture_dir/second"
 
-release_id='20260904T043730Z-0.2.5-f58191142b9f'
-db_suffix="$(printf '%s' "$release_id" | cut -c1-16 | tr -cd '0-9')"
-[[ "$db_suffix" == 20260904043730 ]]
-[[ "chimii_candidate_$db_suffix" =~ ^chimii_candidate_[0-9]+$ ]]
-[[ "chimii_legacy_$db_suffix" =~ ^chimii_legacy_[0-9]+$ ]]
+if (BACKEND_PORT=32443; validate_config) 2>/dev/null; then echo 'accepted colliding ports' >&2; exit 1; fi
+if (ORIGIN_HTTPS_PORT=99999; validate_config) 2>/dev/null; then echo 'accepted invalid port' >&2; exit 1; fi
+if (REMOTE_ROOT=/; validate_config) 2>/dev/null; then echo 'accepted broad deployment root' >&2; exit 1; fi
 
-grep -F "process_pwd=\"\$(tr '\\0' '\\n'" "$SCRIPT_DIR/deploy-sh.sh" >/dev/null
-grep -F "retired listener remains on port 3100 or 9443" "$SCRIPT_DIR/deploy-sh.sh" >/dev/null
-grep -F "an unfiled or retired public route is still present in Caddy" "$SCRIPT_DIR/deploy-sh.sh" >/dev/null
-grep -F "for legacy_link in current server-current web-current daemon-current chimii-cli backend-current" "$SCRIPT_DIR/deploy-sh.sh" >/dev/null
+# Recovery callers run under conditionals, where Bash disables implicit errexit.
+(
+  systemctl() { return 19; }
+  if sh_start_apps; then exit 1; fi
+)
 
-printf 'deploy-sh tests passed\n'
+# A partial migration retains the lock and never restarts old code.
+for changed in true false; do
+  fixture_root="$fixture_dir/$changed"
+  fixture_release=20260905T010000Z-0.2.8-123456abcdef
+  mkdir -p "$fixture_root/state/deployments/$fixture_release" "$fixture_root/.deploy-lock"
+  printf '%s\n' "$fixture_release" > "$fixture_root/.deploy-lock/token"
+  : > "$fixture_root/.deploy-lock/started-at"
+  fixture_rc=0
+  bash "$0" failure-fixture "$fixture_root" "$changed" > "$fixture_root/log" 2>&1 || fixture_rc=$?
+  [[ "$fixture_rc" == 37 ]]
+  [[ "$(< "$fixture_root/state/deployments/$fixture_release/exit-code")" == 37 ]]
+  if [[ "$changed" == true ]]; then
+    test -f "$fixture_root/state/deployments/$fixture_release/needs-recovery"
+    test -f "$fixture_root/.deploy-lock/token"
+    ! grep -q '^restored$' "$fixture_root/events"
+  else
+    grep -Fx restored "$fixture_root/events" >/dev/null
+    test ! -d "$fixture_root/.deploy-lock"
+  fi
+done
+
+# Default dispatch must use daily deploy, never the legacy replacement.
+(
+  cleanup() { :; }
+  acquire_local_lock() { :; }
+  verify_target() { :; }
+  deploy_daily() { echo daily > "$fixture_dir/dispatch"; }
+  replace_legacy() { exit 99; }
+  main
+)
+[[ "$(< "$fixture_dir/dispatch")" == daily ]]
+
+# A failed rehearsal stops before candidate startup or production cutover.
+(
+  SKIP_LOCAL_CHECKS=true
+  SOURCE_COMMIT=new-commit
+  FORCE_DEPLOY=false
+  init_release() { :; }
+  acquire_remote_lock() { :; }
+  build_backend() { :; }
+  package_web() { :; }
+  upload_artifacts() { :; }
+  install_backend_release() { :; }
+  build_web_remote() { :; }
+  remote_user() { echo previous-commit; }
+  daily_remote() {
+    printf '%s\n' "$1" >> "$fixture_dir/stages"
+    [[ "$1" != rehearse ]] || exit 47
+  }
+  prepare_candidate() { echo unsafe >> "$fixture_dir/stages"; }
+  export fixture_dir SKIP_LOCAL_CHECKS SOURCE_COMMIT FORCE_DEPLOY
+  export -f deploy_daily init_release acquire_remote_lock build_backend package_web upload_artifacts install_backend_release build_web_remote daily_remote prepare_candidate remote_user
+  bash -e -c deploy_daily
+) && fixture_rc=0 || fixture_rc=$?
+[[ "$fixture_rc" == 47 ]]
+[[ "$(< "$fixture_dir/stages")" == $'preflight\nrehearse' ]]
+
+printf 'deploy-sh tests passed: dispatch, Caddy convergence, ports, recovery, migration gating\n'

@@ -1,0 +1,83 @@
+# Deploying Chimii to `sh`
+
+From the repository root, run:
+
+```bash
+scripts/deploy-sh.sh
+```
+
+The default action is `deploy`. It requires a clean `main` checkout at an exact
+`vX.Y.Z` tag matching the root package version. Create and push the release tag
+before deployment, as required by `CLAUDE.md`. The script does not create commits,
+tags, or pushes. Repeating the command for the deployed commit verifies it without
+rebuilding; `FORCE_DEPLOY=true scripts/deploy-sh.sh` forces another deployment.
+
+| Command | Behavior |
+| --- | --- |
+| `scripts/deploy-sh.sh` or `deploy` | Build and deploy both applications |
+| `scripts/deploy-sh.sh plan` | Read-only server, certificate and capacity checks |
+| `scripts/deploy-sh.sh verify` | Application, origin TLS, firewall and public checks |
+| `scripts/deploy-sh.sh config` | Converge the Caddy configuration; keep credentials |
+| `scripts/deploy-sh.sh rollback` | Previous application release, only with the same migration set |
+| `scripts/deploy-sh.sh bootstrap` | One-time replacement; refuses an initialized production installation |
+
+The target is SSH alias `sh`, verified as `106.54.235.89` / `VM-0-8-ubuntu`.
+Cloudflare proxies `https://chimii.com` to Caddy at `32443`. Its Origin Rule must
+rewrite the destination port to `32443`, with proxied DNS and Full (strict) TLS.
+The existing UFW policy permits only Cloudflare address ranges on this port.
+The script audits that policy; it does not change Cloudflare or firewall rules.
+
+The application uses `/opt/chimii`, the existing `chimii` database, and loopback
+ports `8080` (backend) / `3000` (web). Caddy loads
+`/etc/caddy/certs/chimii.com.pem` and `/etc/caddy/certs/chimii.com.key`.
+Only the Chimii site blocks in `/etc/caddy/Caddyfile` are managed. The old manual
+32443 block and managed 443 block converge to one managed 32443 block.
+
+Runtime environment files remain on the server:
+
+```text
+/etc/chimii/backend.env
+/etc/chimii/web.env
+/etc/chimii/secrets/runtime.env
+```
+
+All three require mode `0600`. The systemd backend reads the runtime secrets as
+an override. Deployments never upload local `.env` files or regenerate production
+database, JWT, VCS or provider credentials. `config` updates Caddy only; application
+units already reference stable release links, and deploy ensures the secrets
+drop-in is present. Certificates and secrets must be provisioned before bootstrap.
+
+Deployment builds before interrupting traffic. It restores a production dump into
+a temporary database and runs migration rehearsal without starting any server or
+workers on that clone. A separate empty business database tests the candidate
+backend on `18080` and web on `13000`; candidate egress is restricted to loopback,
+Redis is isolated by using the in-memory implementation, and uploads use a separate
+directory. Applied migration files must remain unchanged.
+
+The cutover runs as a server-side systemd job named
+`chimii-sh-cutover-<release-id>.service`, surviving an SSH disconnect. It serves a
+503 maintenance response, stops application writers, backs up `chimii`, migrates
+that same database, switches release links and starts the new applications. Local
+checks precede reopening traffic. Public endpoint/version checks precede recording
+the successful release. The database OID is compared before and after migration.
+
+Backups and progress are stored under
+`/opt/chimii/state/deployments/<release-id>/`. An `exit-code` of `0` records success.
+The `chimii.dump` file and checksum are retained. Application artifacts keep the
+current and previous releases and any artifacts referenced by legacy snapshots;
+eligible older successful releases are pruned according to `KEEP_RELEASES` (2).
+
+If a cutover fails without schema changes, the previous application links and
+Caddy configuration are restored. PostgreSQL migrations run outside a transaction
+to support concurrent indexes. If a migration may have changed the schema, the
+script retains maintenance mode, stopped applications, the backup and deployment
+lock, and creates `needs-recovery`. It never automatically restores a database
+over potentially newer writes or starts old code on an unknown schema. Inspect
+the job log and backup before deciding how to recover. An application-only
+`rollback` refuses a different migration set and never rolls the database back.
+
+`bootstrap` retains the old destructive replacement workflow behind
+`CONFIRM_REPLACE_LEGACY=replace-chimii`; it is rejected once `state/current.env`
+or `state/bootstrap.complete` exists. `replace` is no longer a supported action.
+`rollback-legacy` is an explicit disaster-recovery operation requiring
+`CONFIRM_ROLLBACK_LEGACY=rollback-chimii`, not a daily rollback command.
