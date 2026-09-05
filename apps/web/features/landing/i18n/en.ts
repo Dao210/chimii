@@ -464,6 +464,8 @@ export function createEnDict(allowSignup: boolean): LandingDict {
       formatDeb: ".deb",
       formatRpm: ".rpm",
       unavailable: "Not available",
+      unsignedMacWarning:
+        "The macOS installers are not signed with an Apple Developer ID or notarized. macOS may block the first launch; download only from this site or the official GitHub Release.",
     },
     cli: {
       title: "Prefer the CLI?",

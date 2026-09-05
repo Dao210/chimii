@@ -453,6 +453,8 @@ export function createJaDict(allowSignup: boolean): LandingDict {
         formatDeb: ".deb",
         formatRpm: ".rpm",
         unavailable: "利用不可",
+        unsignedMacWarning:
+          "macOS インストーラーは Apple Developer ID で署名または公証されていません。初回起動時に macOS にブロックされる場合があります。公式サイトまたは公式 GitHub Release からのみダウンロードしてください。",
       },
       cli: {
         title: "CLI をお使いですか?",

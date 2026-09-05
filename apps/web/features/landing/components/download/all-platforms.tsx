@@ -35,6 +35,12 @@ export function AllPlatforms({
           {d.title}
         </h2>
 
+        {hasMacInstaller(assets) ? (
+          <p className="mt-5 max-w-[760px] rounded-xl border border-amber-500/30 bg-amber-50 px-4 py-3 text-[13px] leading-6 text-amber-950">
+            {d.unsignedMacWarning}
+          </p>
+        ) : null}
+
         <div className="mt-10 overflow-hidden rounded-2xl border border-[#0a0d12]/10">
           <Row
             icon={<AppleIcon className="text-[#0a0d12]" />}
@@ -200,4 +206,13 @@ function Row({ icon, label, formats, unavailable, isLast }: RowProps) {
 
 function isFallbackNeeded(assets: DownloadAssets): boolean {
   return !hasCompleteDesktopAssetSet(assets);
+}
+
+function hasMacInstaller(assets: DownloadAssets): boolean {
+  return Boolean(
+    assets.macArm64Dmg ||
+      assets.macArm64Zip ||
+      assets.macX64Dmg ||
+      assets.macX64Zip,
+  );
 }

@@ -453,6 +453,8 @@ export function createKoDict(allowSignup: boolean): LandingDict {
         formatDeb: ".deb",
         formatRpm: ".rpm",
         unavailable: "사용 불가",
+        unsignedMacWarning:
+          "macOS 설치 파일은 Apple Developer ID로 서명되거나 공증되지 않았습니다. 처음 실행할 때 macOS에서 차단될 수 있으므로 공식 사이트 또는 공식 GitHub Release에서만 다운로드하세요.",
       },
       cli: {
         title: "CLI를 원하시나요?",

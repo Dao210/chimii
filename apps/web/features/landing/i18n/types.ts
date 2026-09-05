@@ -234,6 +234,7 @@ export type LandingDict = {
       formatDeb: string;
       formatRpm: string;
       unavailable: string;
+      unsignedMacWarning: string;
     };
     cli: {
       title: string;

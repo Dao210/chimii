@@ -464,6 +464,8 @@ export function createZhDict(allowSignup: boolean): LandingDict {
       formatDeb: ".deb",
       formatRpm: ".rpm",
       unavailable: "暂不可用",
+      unsignedMacWarning:
+        "macOS 安装包未经 Apple Developer ID 签名或公证。首次打开可能被系统拦截；请仅从本站或官方 GitHub Release 下载。",
     },
     cli: {
       title: "想用 CLI?",

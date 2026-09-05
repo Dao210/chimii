@@ -12,6 +12,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          - os: macos-latest
+            target: mac
           - os: ubuntu-latest
             target: linux
           - os: windows-latest

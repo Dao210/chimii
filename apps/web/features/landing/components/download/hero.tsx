@@ -72,6 +72,12 @@ export function DownloadHero({
           </p>
         ) : null}
 
+        {detected?.os === "mac" && hasMacInstaller(assets) ? (
+          <p className="mx-auto mt-5 max-w-[620px] rounded-xl border border-amber-300/25 bg-amber-300/10 px-4 py-3 text-[12px] leading-5 text-amber-100">
+            {t.download.allPlatforms.unsignedMacWarning}
+          </p>
+        ) : null}
+
         {releaseStatus !== "ready" ? (
           <p className="mx-auto mt-6 max-w-[520px] text-[12px] uppercase tracking-[0.14em] text-white/50">
             {releaseStatus === "incomplete"
@@ -100,6 +106,15 @@ interface HeroContent {
   };
   alt?: { href: string; label: string };
   hint?: string;
+}
+
+function hasMacInstaller(assets: DownloadAssets): boolean {
+  return Boolean(
+    assets.macArm64Dmg ||
+      assets.macArm64Zip ||
+      assets.macX64Dmg ||
+      assets.macX64Zip,
+  );
 }
 
 type HeroDict = ReturnType<typeof useLocale>["t"]["download"]["hero"];

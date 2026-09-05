@@ -21,6 +21,7 @@ vi.mock("../../i18n", () => ({
           formatDeb: ".deb",
           formatRpm: ".rpm",
           unavailable: "Not available",
+          unsignedMacWarning: "macOS installers are unsigned and not notarized.",
         },
         footer: { allReleases: "View all releases" },
       },
@@ -53,5 +54,8 @@ describe("AllPlatforms", () => {
       "href",
       "https://downloads.test/mac-x64.zip",
     );
+    expect(
+      screen.getByText("macOS installers are unsigned and not notarized."),
+    ).toBeInTheDocument();
   });
 });

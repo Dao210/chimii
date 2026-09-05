@@ -78,15 +78,18 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  # Build the Desktop installers for Linux and Windows and upload them to
-  # the GitHub Release that the release job above just published. macOS
-  # Desktop continues to ship through the signed/notarized manual flow.
+  # Build the Desktop installers and upload them to the GitHub Release that
+  # the release job above just published. Until Apple signing credentials are
+  # configured, macOS artifacts are ad-hoc signed and not notarized; the
+  # download page labels that limitation explicitly.
   desktop:
     needs: release
     strategy:
       fail-fast: false
       matrix:
         include:
+          - os: macos-latest
+            target: mac
           - os: ubuntu-latest
             target: linux
           - os: windows-latest
@@ -155,6 +158,10 @@ jobs:
             "chimii-cli-${version}-linux-arm64.tar.gz"
             "chimii-cli-${version}-windows-amd64.zip"
             "chimii-cli-${version}-windows-arm64.zip"
+            "chimii-desktop-${version}-mac-arm64.dmg"
+            "chimii-desktop-${version}-mac-arm64.zip"
+            "chimii-desktop-${version}-mac-x64.dmg"
+            "chimii-desktop-${version}-mac-x64.zip"
             "chimii-desktop-${version}-windows-x64.exe"
             "chimii-desktop-${version}-windows-arm64.exe"
             "chimii-desktop-${version}-linux-x86_64.AppImage"
