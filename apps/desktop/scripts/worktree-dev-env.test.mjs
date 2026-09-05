@@ -41,10 +41,10 @@ describe("worktree-dev-env", () => {
   });
 
   it("never reuses 5173 even when the offset is 0", () => {
-    // POSIX cksum("/tmp/chimii-3494") === 1189739000, % 1000 === 0
-    expect(offsetForPath("/tmp/chimii-3494")).toBe(0);
-    expect(rendererPortForPath("/tmp/chimii-3494")).toBe(5174);
-    expect(rendererPortForPath("/tmp/chimii-3494")).not.toBe(5173);
+    // POSIX cksum("/tmp/chimii-1709") === 2275198000, % 1000 === 0
+    expect(offsetForPath("/tmp/chimii-1709")).toBe(0);
+    expect(rendererPortForPath("/tmp/chimii-1709")).toBe(5174);
+    expect(rendererPortForPath("/tmp/chimii-1709")).not.toBe(5173);
   });
 
   it("suffix is '<folder>-<offset>' so it stays recognizable and unique", () => {

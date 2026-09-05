@@ -288,6 +288,7 @@ describe("runtime list CLI column", () => {
       makeRow(
         makeRuntime({
           runtime_mode: "cloud",
+          execution_type: "cloud",
           metadata: { version: "2.1.5 (Claude Code)" },
         }),
       ),

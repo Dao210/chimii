@@ -65,7 +65,7 @@ function LoginPageContent() {
   // `next` carries a protected URL the user was originally headed to
   // (e.g. /invite/{id}). With URL-driven workspaces there is no legacy
   // global default — if `next` is absent we resolve the user's workspace and
-  // enter its /build studio. Sanitize first so a crafted `?next=https://evil`
+  // enter its /creations page. Sanitize first so a crafted `?next=https://evil`
   // cannot bounce the user off-origin after a successful login.
   const nextUrl = sanitizeNextUrl(searchParams.get("next"));
 

@@ -32,8 +32,8 @@ jobs:
         id: filter
         uses: dorny/paths-filter@v3
         with:
-          # apps/docs is excluded from the frontend turbo run, so a
-          # docs-only change does not need this job. apps/mobile has its
+          # Documentation outside the app/package graph does not need
+          # this job. apps/mobile has its
           # own mobile-verify workflow. Everything else the frontend job
           # touches is listed here; bias toward over-matching since a
           # missed path silently skips validation.
@@ -158,7 +158,7 @@ jobs:
         # ~50s of expo-lint + tsc to every web/desktop PR. Keep this
         # filter in sync with the root package.json scripts, which also
         # exclude @chimii/mobile.
-        run: pnpm exec turbo build typecheck lint --filter='!@chimii/docs' --filter='!@chimii/mobile'
+        run: pnpm exec turbo build typecheck lint --filter='!@chimii/mobile'
 
   frontend-test:
     needs: changes
@@ -209,7 +209,7 @@ jobs:
         # job's responsibility -- frontend-build owns the `typecheck` task.
         # `test` reaches dependency sources through the hash-only
         # `^cache-inputs` edge (see turbo.json), so no `tsc` runs here.
-        run: pnpm exec turbo test --filter='!@chimii/docs' --filter='!@chimii/mobile'
+        run: pnpm exec turbo test --filter='!@chimii/mobile'
 
   # Aggregate gate. `frontend` is the status-check name the repository's
   # branch rules refer to, so it has to survive the split above: this job

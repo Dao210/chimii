@@ -37,7 +37,9 @@ beforeEach(() => {
   overlay.overlay = null;
   auth.logout.mockReset();
   useTabStore.getState().reset();
-  useTabStore.getState().switchWorkspace("acme"); // default tab /acme/issues
+  useTabStore.getState().switchWorkspace("acme");
+  // These adapter tests start on issues independently of the workspace default.
+  useTabStore.getState().navigateActiveSession("/acme/issues", { replace: true });
   Object.defineProperty(window, "desktopAPI", {
     configurable: true,
     value: {

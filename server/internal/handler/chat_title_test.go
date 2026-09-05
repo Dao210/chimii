@@ -2,64 +2,74 @@ package handler
 
 import (
 	"context"
+	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
 
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/chimii-ai/chimii/server/internal/events"
 	db "github.com/chimii-ai/chimii/server/pkg/db/generated"
 	"github.com/chimii-ai/chimii/server/pkg/llm"
 	"github.com/chimii-ai/chimii/server/pkg/protocol"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 // ---------------------------------------------------------------------------
 // Test helpers for LLM chat auto-titling (MUL-4295)
 // ---------------------------------------------------------------------------
 
-// stubLLMCompletion returns an httptest server that mimics the OpenAI
-// chat-completions endpoint, replying with `content` as the assistant message.
-// When status != 200 it returns that status (with an error-ish body) so callers
-// can exercise the upstream-failure fallback.
-func stubLLMCompletion(t *testing.T, status int, content string) *httptest.Server {
+// stubLLMMessage mimics the Anthropic Messages endpoint used by the client.
+// Non-200 responses exercise the upstream-failure fallback.
+func stubLLMMessage(t *testing.T, status int, content string) *httptest.Server {
 	t.Helper()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost || r.URL.Path != "/v1/messages" {
+			t.Errorf("unexpected LLM request: %s %s", r.Method, r.URL.Path)
+			http.Error(w, "unexpected endpoint", http.StatusBadRequest)
+			return
+		}
+		var request struct {
+			Model  string `json:"model"`
+			System []struct {
+				Type string `json:"type"`
+				Text string `json:"text"`
+			} `json:"system"`
+			Messages []struct {
+				Role    string `json:"role"`
+				Content []struct {
+					Type string `json:"type"`
+					Text string `json:"text"`
+				} `json:"content"`
+			} `json:"messages"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+			t.Errorf("decode LLM request: %v", err)
+			http.Error(w, "invalid request", http.StatusBadRequest)
+			return
+		}
+		if request.Model != llm.FallbackModel || len(request.System) != 1 || request.System[0].Text != chatTitleSystemPrompt || len(request.Messages) != 1 || request.Messages[0].Role != "user" || len(request.Messages[0].Content) != 1 || request.Messages[0].Content[0].Type != "text" || request.Messages[0].Content[0].Text == "" {
+			t.Error("unexpected title-generation request body")
+			http.Error(w, "invalid request", http.StatusBadRequest)
+			return
+		}
 		if status != http.StatusOK {
 			w.WriteHeader(status)
 			_, _ = io.WriteString(w, `{"error":{"message":"stub upstream error"}}`)
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
-		body := `{"id":"cmpl-1","object":"chat.completion","choices":[{"index":0,"message":{"role":"assistant","content":` + jsonString(content) + `},"finish_reason":"stop"}]}`
-		_, _ = io.WriteString(w, body)
+		if err := json.NewEncoder(w).Encode(map[string]any{
+			"id": "msg-1", "type": "message", "role": "assistant",
+			"model": request.Model, "stop_reason": "end_turn",
+			"content": []map[string]string{{"type": "text", "text": content}},
+		}); err != nil {
+			t.Errorf("encode LLM response: %v", err)
+		}
 	}))
 	t.Cleanup(srv.Close)
 	return srv
-}
-
-// jsonString escapes s into a JSON string literal (including surrounding
-// quotes) so titles containing quotes/newlines embed cleanly in the stub body.
-func jsonString(s string) string {
-	b := make([]byte, 0, len(s)+2)
-	b = append(b, '"')
-	for _, r := range s {
-		switch r {
-		case '"':
-			b = append(b, '\\', '"')
-		case '\\':
-			b = append(b, '\\', '\\')
-		case '\n':
-			b = append(b, '\\', 'n')
-		case '\t':
-			b = append(b, '\\', 't')
-		default:
-			b = append(b, string(r)...)
-		}
-	}
-	b = append(b, '"')
-	return string(b)
 }
 
 // withStubLLM points testHandler.LLM at a client backed by srv for the duration
@@ -127,7 +137,7 @@ func requireDB(t *testing.T) {
 
 func TestChatTitle_GeneratesSemanticTitleWhenConfigured(t *testing.T) {
 	requireDB(t)
-	withStubLLM(t, stubLLMCompletion(t, http.StatusOK, "修复登录跳转死循环"))
+	withStubLLM(t, stubLLMMessage(t, http.StatusOK, "修复登录跳转死循环"))
 
 	original := "帮我看下为什么登录之后一直在几个页面之间来回跳转根本进不去首页"
 	session := newChatTitleTestSession(t, original)
@@ -186,7 +196,7 @@ func TestChatTitle_FallsBackWhenLLMDisabled(t *testing.T) {
 
 func TestChatTitle_SilentFallbackOnUpstreamError(t *testing.T) {
 	requireDB(t)
-	withStubLLM(t, stubLLMCompletion(t, http.StatusInternalServerError, ""))
+	withStubLLM(t, stubLLMMessage(t, http.StatusInternalServerError, ""))
 
 	original := "why does my query return duplicate rows"
 	session := newChatTitleTestSession(t, original)
@@ -209,7 +219,7 @@ func TestChatTitle_SilentFallbackOnUpstreamError(t *testing.T) {
 
 func TestChatTitle_DoesNotClobberManualRename(t *testing.T) {
 	requireDB(t)
-	withStubLLM(t, stubLLMCompletion(t, http.StatusOK, "Generated Title"))
+	withStubLLM(t, stubLLMMessage(t, http.StatusOK, "Generated Title"))
 
 	original := "original auto title"
 	session := newChatTitleTestSession(t, original)
@@ -244,7 +254,7 @@ func TestChatTitle_DoesNotClobberManualRename(t *testing.T) {
 func TestChatTitle_FallsBackOnEmptyModelOutput(t *testing.T) {
 	requireDB(t)
 	// Model replies with only quotes + punctuation → sanitizes to "".
-	withStubLLM(t, stubLLMCompletion(t, http.StatusOK, `"。"`))
+	withStubLLM(t, stubLLMMessage(t, http.StatusOK, `"。"`))
 
 	original := "some opening message"
 	session := newChatTitleTestSession(t, original)
@@ -267,7 +277,7 @@ func TestChatTitle_FallsBackOnEmptyModelOutput(t *testing.T) {
 
 func TestChatTitle_AutoTitlesOnlyOnce(t *testing.T) {
 	requireDB(t)
-	withStubLLM(t, stubLLMCompletion(t, http.StatusOK, "First Generated Title"))
+	withStubLLM(t, stubLLMMessage(t, http.StatusOK, "First Generated Title"))
 
 	original := "original title text"
 	session := newChatTitleTestSession(t, original)
@@ -303,7 +313,7 @@ func TestChatTitle_AutoTitlesOnlyOnce(t *testing.T) {
 
 func TestChatTitle_AsyncPublishesSessionUpdated(t *testing.T) {
 	requireDB(t)
-	withStubLLM(t, stubLLMCompletion(t, http.StatusOK, "Async Semantic Title"))
+	withStubLLM(t, stubLLMMessage(t, http.StatusOK, "Async Semantic Title"))
 
 	original := "async trigger original title"
 	session := newChatTitleTestSession(t, original)
