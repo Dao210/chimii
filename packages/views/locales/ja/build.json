@@ -250,5 +250,9 @@
   "conversation_full": "組み立てガイドを開く",
   "conversation_empty": "アイデアがここで形に",
   "conversation_empty_hint": "検証に通った作品の材料、組み立て手順、保存した進み具合を表示します。",
-  "conversation_continue": "会話を続ける"
+  "conversation_continue": "会話を続ける",
+  "open_circuit": "電子ブロック工房",
+  "start_brick": "ブロックで作り始める",
+  "domain_history_title": "作品に合った工房で続けましょう",
+  "domain_history_hint": "このリンクや会話には別の種類の作品が含まれています。履歴や各バージョンは引き続き開けます。編集は対応する作品から、または新しい制作として始めてください。"
 }

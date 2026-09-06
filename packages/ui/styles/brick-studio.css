@@ -1,0 +1,20 @@
+/* Original brick workshop palette, scoped to the dedicated route. */
+.brick-studio {
+  --brick-ink: #1d241f;
+  --brick-accent: #3767bb;
+  --brick-label: #39715a;
+  --brick-body: #59615b;
+  --brick-muted: #687068;
+  --brick-caption: #77766f;
+  --brick-placeholder: #8f887b;
+  --brick-outline: #9c9079;
+  --brick-mint: #a8dfc2;
+  --brick-grid: #bfae8d;
+  --brick-action-hover: #df483c;
+  --brick-action: #ef5c4f;
+  --brick-paper: #f4ead5;
+  --brick-input: #f7efde;
+  --brick-yellow: #ffd85a;
+  --brick-chip: #fffaf0;
+  --brick-card: #fffdf7;
+}

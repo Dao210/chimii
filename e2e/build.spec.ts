@@ -20,20 +20,21 @@ test("build planning clarification, free text, cancellation and saved result", a
   );
   await api.markUserOnboarded();
   const errors: string[] = [];
+  const electronicRequests: string[] = [];
+  page.on("request", (request) => {
+    if (/\/api\/circuit\/(kits|catalog|inventory)/.test(request.url()))
+      electronicRequests.push(request.url());
+  });
   page.on("pageerror", (error) => errors.push(error.message));
   try {
-    await page
-      .context()
-      .addCookies(
-        api
-          .getAuthCookies()
-          .map((cookie) => ({
-            ...cookie,
-            url: baseURL!,
-            httpOnly: cookie.name === "chimii_auth",
-            sameSite: "Lax" as const,
-          })),
-      );
+    await page.context().addCookies(
+      api.getAuthCookies().map((cookie) => ({
+        ...cookie,
+        url: baseURL!,
+        httpOnly: cookie.name === "chimii_auth",
+        sameSite: "Lax" as const,
+      })),
+    );
     await page
       .context()
       .addCookies([{ name: "chimii-locale", value: "zh-Hans", url: baseURL! }]);
@@ -45,23 +46,30 @@ test("build planning clarification, free text, cancellation and saved result", a
     await page.goto(`/${workspace.slug}/build`, {
       waitUntil: "domcontentloaded",
     });
-    const idea = page.getByRole("textbox", { name: "消息" });
+    const idea = page.getByRole("textbox", { name: "我的发明想法" });
     await expect(idea).toBeVisible({ timeout: 60_000 });
-    await page.getByRole("button", { name: "积木", exact: true }).click();
-    await idea.fill("我想做一个积木朋友");
-    await page
-      .getByRole("region", { name: "对话", exact: true })
-      .getByRole("button", { name: "发送", exact: true })
-      .click();
     await expect(
-      page.getByText("你想做怎样的积木朋友？", { exact: true }),
+      page.getByRole("heading", { name: "一句话积木工坊" }),
+    ).toBeVisible();
+    await expect(page.getByRole("combobox")).toHaveCount(0);
+    await page.screenshot({
+      path: testInfo.outputPath("brick-home-desktop.png"),
+      fullPage: true,
+    });
+    await idea.fill("我想做一个积木朋友");
+    await page.getByRole("button", { name: "开始创造", exact: true }).click();
+    await expect(
+      page.getByRole("heading", {
+        name: "你想做怎样的积木朋友？",
+        exact: true,
+      }),
     ).toBeVisible({ timeout: 30_000 });
     await page.screenshot({
       path: testInfo.outputPath("clarification-desktop.png"),
       fullPage: true,
     });
     await page.setViewportSize({ width: 390, height: 844 });
-    await expect(page.getByRole("textbox", { name: "消息" })).toBeVisible();
+    await expect(page.locator("#build-answer")).toBeVisible();
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= window.innerWidth,
@@ -71,22 +79,18 @@ test("build planning clarification, free text, cancellation and saved result", a
       path: testInfo.outputPath("clarification-mobile.png"),
       fullPage: true,
     });
-    await page.getByRole("button", { name: "取消本轮", exact: true }).click();
+    await page.getByRole("button", { name: "修改想法", exact: true }).click();
     await expect(idea).toBeEnabled();
     await idea.fill("我想做一个积木朋友");
-    await page
-      .getByRole("region", { name: "对话", exact: true })
-      .getByRole("button", { name: "发送", exact: true })
-      .click();
+    await page.getByRole("button", { name: "开始创造", exact: true }).click();
     await expect(
-      page.getByText("你想做怎样的积木朋友？", { exact: true }),
-    ).toHaveCount(2);
-    await page.getByRole("textbox", { name: "消息" }).fill("一个站着的机器人");
-    await page
-      .getByRole("region", { name: "对话", exact: true })
-      .getByRole("button", { name: "发送", exact: true })
-      .click();
-    await page.getByRole("button", { name: "作品", exact: true }).click();
+      page.getByRole("heading", {
+        name: "你想做怎样的积木朋友？",
+        exact: true,
+      }),
+    ).toBeVisible();
+    await page.locator("#build-answer").fill("一个站着的机器人");
+    await page.getByRole("button", { name: "继续创造", exact: true }).click();
     await expect(page.getByText("搭建验证通过", { exact: true })).toBeVisible({
       timeout: 30_000,
     });
@@ -137,16 +141,21 @@ test("build planning clarification, free text, cancellation and saved result", a
     await page.goto(`/${workspace.slug}/build`, {
       waitUntil: "domcontentloaded",
     });
-    await page.getByRole("button", { name: "积木", exact: true }).click();
-    await idea.fill("做一个能真的飞起来的飞机");
-    await page
-      .getByRole("region", { name: "对话", exact: true })
-      .getByRole("button", { name: "发送", exact: true })
-      .click();
     await expect(
-      page.getByText("当前还不能制作真正飞起来的机构。", { exact: true }),
+      page.getByRole("heading", { name: "一句话积木工坊" }),
+    ).toBeVisible();
+    await expect(page.getByRole("combobox")).toHaveCount(0);
+    await page.screenshot({
+      path: testInfo.outputPath("brick-home-mobile.png"),
+      fullPage: true,
+    });
+    await idea.fill("做一个能真的飞起来的飞机");
+    await page.getByRole("button", { name: "开始创造", exact: true }).click();
+    await expect(
+      page.getByText("当前还不能制作真正飞起来的机构。", { exact: true }).filter({ visible: true }),
     ).toBeVisible({ timeout: 30_000 });
     expect(errors).toEqual([]);
+    expect(electronicRequests).toEqual([]);
   } finally {
     await api.deleteWorkspace();
     await api.cleanup();

@@ -19,18 +19,14 @@ test("one saved conversation produces independent circuit versions and a shared 
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   try {
-    await page
-      .context()
-      .addCookies(
-        api
-          .getAuthCookies()
-          .map((cookie) => ({
-            ...cookie,
-            url: baseURL!,
-            sameSite: "Lax" as const,
-            httpOnly: cookie.name === "chimii_auth",
-          })),
-      );
+    await page.context().addCookies(
+      api.getAuthCookies().map((cookie) => ({
+        ...cookie,
+        url: baseURL!,
+        sameSite: "Lax" as const,
+        httpOnly: cookie.name === "chimii_auth",
+      })),
+    );
     await page
       .context()
       .addCookies([{ name: "chimii-locale", value: "en", url: baseURL! }]);
@@ -40,14 +36,17 @@ test("one saved conversation produces independent circuit versions and a shared 
     await page.setViewportSize({ width: 1440, height: 1080 });
     await page.goto(`/${ws.slug}/circuit`);
     await expect(
-      page.getByRole("heading", { name: "Creation studio" }),
+      page.getByRole("heading", { name: "Electronic blocks studio" }),
     ).toBeVisible();
     await page.getByRole("button", { name: /I have this kit/ }).click();
     await page.getByRole("checkbox", { name: /I checked the model/ }).check();
     await page.getByRole("button", { name: "Save parts box" }).click();
-    await expect(page.getByText("Parts box saved.")).toBeVisible();
+    await expect(page.getByText(/My parts box · Parts checked/)).toBeVisible();
     await page
       .getByRole("button", { name: "My tabletop radio", exact: true })
+      .click();
+    await page
+      .getByRole("button", { name: "Start this project", exact: true })
       .click();
     await expect(page).toHaveURL(/\/circuit\?conversation=/);
     await expect(page.getByText("STEP 1 / 23")).toBeVisible({ timeout: 30000 });
@@ -78,7 +77,11 @@ test("one saved conversation produces independent circuit versions and a shared 
     await page.reload();
     await expect(page.getByText("STEP 2 / 23")).toBeVisible();
     await page.getByRole("button", { name: "Complete layout" }).click();
-    await expect(page.locator("[data-placement]")).toHaveCount(23);
+    await expect(
+      page
+        .getByRole("region", { name: "Creation", exact: true })
+        .locator("[data-placement]"),
+    ).toHaveCount(23);
     const download = page.waitForEvent("download");
     await page.getByRole("button", { name: "Download design" }).click();
     expect((await download).suggestedFilename()).toMatch(/\.json$/);
@@ -93,8 +96,12 @@ test("one saved conversation produces independent circuit versions and a shared 
     const lamp = catalog.catalog.projects.find(
       (p: { id: string }) => p.id === "switch-light",
     );
+    await page.getByText("Reference projects", { exact: true }).click();
     await page
       .getByRole("button", { name: lamp.title.en, exact: true })
+      .click();
+    await page
+      .getByRole("button", { name: "Start this project", exact: true })
       .click();
     await expect
       .poll(async () => (await readConversation()).messages.length, {
@@ -110,19 +117,19 @@ test("one saved conversation produces independent circuit versions and a shared 
     expect(untouched.document).toEqual(original.document);
     expect(untouched.current_step).toBe(1);
     await expect(
-      page.getByRole("heading", { name: lamp.title.en, exact: true }),
+      page.getByRole("heading", { name: lamp.title.en, exact: true, level: 1 }),
     ).toBeVisible();
     await page.reload();
     await expect(
-      page.getByRole("heading", { name: lamp.title.en, exact: true }),
+      page.getByRole("heading", { name: lamp.title.en, exact: true, level: 1 }),
     ).toBeVisible();
+    await page.getByText("Conversation history", { exact: true }).click();
     await expect(
-      page.getByRole("button", { name: "Open this version" }),
+      page.getByRole("link", { name: "Open this version" }),
     ).toHaveCount(2);
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.getByRole("button", { name: "Creation", exact: true }).click();
     await expect(
-      page.getByRole("heading", { name: lamp.title.en, exact: true }),
+      page.getByRole("heading", { name: lamp.title.en, exact: true, level: 1 }),
     ).toBeVisible();
     expect(
       await page.evaluate(
@@ -147,9 +154,8 @@ test("one saved conversation produces independent circuit versions and a shared 
       .addCookies([{ name: "chimii-locale", value: "zh-Hans", url: baseURL! }]);
     await page.reload();
     await expect(
-      page.getByRole("heading", { name: "创作工作室" }),
+      page.getByRole("heading", { name: "电子积木工坊" }),
     ).toBeVisible();
-    await page.getByRole("button", { name: "作品", exact: true }).click();
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= innerWidth,
@@ -222,7 +228,7 @@ test("one saved conversation produces independent circuit versions and a shared 
       page.getByRole("heading", { name: "Small blue base" }),
     ).toBeVisible();
     await expect(
-      page.getByRole("heading", { name: lamp.title.en, exact: true }),
+      page.getByRole("heading", { name: lamp.title.en, exact: true, level: 2 }),
     ).toBeVisible();
     await page.screenshot({
       path: testInfo.outputPath("conversation-shared-gallery.png"),
@@ -256,7 +262,7 @@ test("one saved conversation produces independent circuit versions and a shared 
     ).toBe(403);
     await page.goto(`/${ws.slug}/circuit`);
     await expect(
-      page.getByRole("heading", { name: "创作工作室" }),
+      page.getByRole("heading", { name: "电子积木工坊" }),
     ).toBeVisible();
     await expect(
       page.getByRole("button", { name: "修改已保存数量" }),
@@ -264,9 +270,10 @@ test("one saved conversation produces independent circuit versions and a shared 
     await page
       .getByRole("button", { name: lamp.title.zh, exact: true })
       .click();
+    await page.getByRole("button", { name: "开始搭这个", exact: true }).click();
     await expect(page).toHaveURL(/conversation=/);
     await expect(
-      page.getByRole("heading", { name: lamp.title.zh, exact: true }),
+      page.getByRole("heading", { name: lamp.title.zh, exact: true, level: 1 }),
     ).toBeVisible({ timeout: 30000 });
     expect(errors).toEqual([]);
   } finally {

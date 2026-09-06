@@ -1,6 +1,6 @@
 {
   "eyebrow": "MAKE • CONNECT • DISCOVER",
-  "title": "Build a little wonder",
+  "title": "Electronic blocks studio",
   "subtitle": "Choose a project, find your parts, and follow one clear step at a time.",
   "bricks": "Brick studio",
   "kit": "My supported kit",
@@ -90,5 +90,7 @@
   "trial_saved": "Trial saved as a family report.",
   "trial_finish": "Save progress through the final step before recording a trial.",
   "trial_count": "{{count}} recent trials (up to 50)",
-  "trial_download": "Export design and trial notes"
+  "trial_download": "Export design and trial notes",
+  "new_circuit": "New circuit",
+  "discuss": "Discuss this circuit"
 }

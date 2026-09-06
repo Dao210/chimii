@@ -29,18 +29,14 @@ test("generic clock generation, editable revision and retained original", async 
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   try {
-    await page
-      .context()
-      .addCookies(
-        api
-          .getAuthCookies()
-          .map((cookie) => ({
-            ...cookie,
-            url: baseURL!,
-            httpOnly: cookie.name === "chimii_auth",
-            sameSite: "Lax" as const,
-          })),
-      );
+    await page.context().addCookies(
+      api.getAuthCookies().map((cookie) => ({
+        ...cookie,
+        url: baseURL!,
+        httpOnly: cookie.name === "chimii_auth",
+        sameSite: "Lax" as const,
+      })),
+    );
     await page
       .context()
       .addCookies([{ name: "chimii-locale", value: "zh-Hans", url: baseURL! }]);
@@ -52,14 +48,10 @@ test("generic clock generation, editable revision and retained original", async 
     await page.goto(`/${workspace.slug}/build`, {
       waitUntil: "domcontentloaded",
     });
-    await page.getByRole("button", { name: "积木", exact: true }).click();
     await page
-      .getByRole("textbox", { name: "消息" })
+      .getByRole("textbox", { name: "我的发明想法" })
       .fill("做一个有钟面、两根静态指针和刻度的时钟造型");
-    await page
-      .getByRole("region", { name: "对话", exact: true })
-      .getByRole("button", { name: "发送", exact: true })
-      .click();
+    await page.getByRole("button", { name: "开始创造", exact: true }).click();
     await expect(page.getByText("搭建验证通过", { exact: true })).toBeVisible({
       timeout: 40_000,
     });
@@ -88,7 +80,6 @@ test("generic clock generation, editable revision and retained original", async 
     await editor.getByRole("button", { name: "重做修改" }).click();
     await expect(editor.getByLabel("颜色", { exact: true })).toHaveValue("2");
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.getByRole("button", { name: "作品", exact: true }).click();
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= window.innerWidth,

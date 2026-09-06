@@ -250,5 +250,9 @@
   "conversation_full": "打开完整搭建指南",
   "conversation_empty": "你的想法将在这里成形",
   "conversation_empty_hint": "项目通过检查后，这里会显示材料、搭建步骤和已保存的进度。",
-  "conversation_continue": "继续讨论"
+  "conversation_continue": "继续讨论",
+  "open_circuit": "电子积木工坊",
+  "start_brick": "开始积木创作",
+  "domain_history_title": "到对应的工坊继续创作",
+  "domain_history_hint": "这条旧链接或对话包含另一种作品。你仍可查看记录和每个版本，继续修改时请打开对应作品，或在对应工坊开始新创作。"
 }

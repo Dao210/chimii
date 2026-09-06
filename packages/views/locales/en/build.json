@@ -250,5 +250,9 @@
   "conversation_full": "Open full guide",
   "conversation_empty": "Your idea takes shape here",
   "conversation_empty_hint": "The materials, assembly guide and saved progress will appear here after a project passes its checks.",
-  "conversation_continue": "Continue discussing"
+  "conversation_continue": "Continue discussing",
+  "open_circuit": "Electronic blocks studio",
+  "start_brick": "Start a brick creation",
+  "domain_history_title": "Continue in the right studio",
+  "domain_history_hint": "This saved link or conversation includes another kind of creation. You can still read its history and open every version. Start a new creation in the matching studio to continue."
 }

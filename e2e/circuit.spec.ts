@@ -34,24 +34,26 @@ test("builds and resumes a radio from real saved circuit data", async ({
       waitUntil: "domcontentloaded",
     });
     await expect(
-      page.getByRole("heading", { name: "Creation studio" }),
+      page.getByRole("heading", { name: "Electronic blocks studio" }),
     ).toBeVisible({ timeout: 20_000 });
+    await page.getByRole("button", { name: "My tabletop radio", exact: true }).click();
     await page.getByRole("button", { name: /I have this kit/ }).click();
     await page.getByRole("spinbutton", { name: /^FM/ }).fill("0");
     await page.getByRole("checkbox", { name: /I checked the model/ }).check();
     await page.getByRole("button", { name: "Save parts box" }).click();
-    await expect(page.getByText("Parts box saved.")).toBeVisible();
+    await expect(page.getByText(/My parts box · Parts checked/)).toBeVisible();
     await expect(
-      page.getByRole("button", { name: "My tabletop radio", exact: true }),
+      page.getByRole("button", { name: "Start this project", exact: true }),
     ).toBeDisabled();
     await expect(
       page.getByText(/Some parts are missing/).first(),
     ).toBeVisible();
+    await page.getByText(/My parts box · Parts checked/).click();
     await page.getByRole("button", { name: "Edit saved quantities" }).click();
     await page.getByRole("spinbutton", { name: /^FM/ }).fill("1");
     await page.getByRole("checkbox", { name: /I checked the model/ }).check();
     await page.getByRole("button", { name: "Save parts box" }).click();
-    await expect(page.getByText("Parts box saved.")).toBeVisible();
+    await expect(page.getByText(/My parts box · Parts checked/)).toBeVisible();
     await page.screenshot({
       path: testInfo.outputPath("circuit-home.png"),
       fullPage: true,
@@ -59,10 +61,14 @@ test("builds and resumes a radio from real saved circuit data", async ({
     await page
       .getByRole("button", { name: "My tabletop radio", exact: true })
       .click();
+    await page
+      .getByRole("button", { name: "Start this project", exact: true })
+      .click();
     await expect(page.getByText("STEP 1 / 23")).toBeVisible({ timeout: 30000 });
     await page.getByRole("link", { name: "Open full guide" }).click();
     await expect(page).toHaveURL(
       new RegExp(`/${workspace.slug}/circuit/[^/?]+$`),
+      { timeout: 30_000 },
     );
     const parentCreationID = new URL(page.url()).pathname.split("/").at(-1)!;
     await expect(page.getByText("STEP 1 / 23")).toBeVisible();
@@ -129,7 +135,7 @@ test("builds and resumes a radio from real saved circuit data", async ({
       waitUntil: "domcontentloaded",
     });
     await expect(
-      page.getByRole("heading", { name: "Creation studio" }),
+      page.getByRole("heading", { name: "Electronic blocks studio" }),
     ).toBeVisible({ timeout: 20_000 });
     const denied = await page.request.get(
       `/api/circuit/creations/${parentCreationID}`,
@@ -139,11 +145,12 @@ test("builds and resumes a radio from real saved circuit data", async ({
     await page
       .getByRole("button", { name: "A light of my own", exact: true })
       .click();
-    await page.getByRole("button", { name: "Creation", exact: true }).click();
+    await page.getByRole("button", { name: "Start this project", exact: true }).click();
     await expect(page.getByText("STEP 1 / 8")).toBeVisible({ timeout: 30000 });
     await page.getByRole("link", { name: "Open full guide" }).click();
     await expect(page).toHaveURL(
       new RegExp(`/${workspace.slug}/circuit/[^/?]+$`),
+      { timeout: 30_000 },
     );
     expect(errors).toEqual([]);
   } finally {
@@ -187,13 +194,15 @@ test("saves a BOSON box, follows keyed connections and records a separate family
     await page.getByRole("button", { name: /I have this kit/ }).click();
     await page.getByRole("checkbox", { name: /I checked the model/ }).check();
     await page.getByRole("button", { name: "Save parts box" }).click();
-    await expect(page.getByText("Parts box saved.")).toBeVisible();
+    await expect(page.getByText(/My parts box · Parts checked/)).toBeVisible();
     await page.reload();
     await page.locator("#circuit-kit").selectOption("dfrobot-edu0080-en");
     await expect(
       page.getByRole("button", { name: "Press to light", exact: true }),
     ).toBeEnabled();
-    await expect(page.getByText("Parts checked · revision 1")).toBeVisible();
+    await expect(
+      page.getByText(/My parts box · Parts checked · revision 1/),
+    ).toBeVisible();
     await page.screenshot({
       path: testInfo.outputPath("boson-home.png"),
       fullPage: true,
@@ -201,10 +210,14 @@ test("saves a BOSON box, follows keyed connections and records a separate family
     await page
       .getByRole("button", { name: "Two clues for a fan", exact: true })
       .click();
+    await page
+      .getByRole("button", { name: "Start this project", exact: true })
+      .click();
     await expect(page.getByText("STEP 1 / 10")).toBeVisible({ timeout: 30000 });
     await page.getByRole("link", { name: "Open full guide" }).click();
     await expect(page).toHaveURL(
       new RegExp(`/${workspace.slug}/circuit/[^/?]+$`),
+      { timeout: 30_000 },
     );
     const id = new URL(page.url()).pathname.split("/").at(-1)!;
     await page.getByRole("button", { name: "Complete layout" }).click();
@@ -334,6 +347,9 @@ test("saves a BOSON box, follows keyed connections and records a separate family
     expect(privateTrials.status()).toBe(404);
     await page
       .getByRole("button", { name: "Press to light", exact: true })
+      .click();
+    await page
+      .getByRole("button", { name: "Start this project", exact: true })
       .click();
     await expect(page.getByText("STEP 1 / 6")).toBeVisible();
     expect(errors).toEqual([]);

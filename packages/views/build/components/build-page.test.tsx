@@ -49,7 +49,18 @@ vi.mock("../../navigation", () => ({
 }));
 vi.mock("./child-mode-controls", () => ({ ChildModeLauncher: () => null }));
 vi.mock("./build-result", () => ({
-  BuildResult: () => <div>Brick result</div>,
+  BuildResult: ({
+    onDiscuss,
+  }: {
+    onDiscuss: (prompt: string) => Promise<boolean>;
+  }) => (
+    <div>
+      Brick result
+      <button onClick={() => void onDiscuss("Lower it, keep the doorway")}>
+        Edit brick
+      </button>
+    </div>
+  ),
 }));
 vi.mock("../../circuit/circuit-workbench", () => ({
   CircuitWorkbench: () => <div>Circuit result</div>,
@@ -99,13 +110,13 @@ vi.mock("@chimii/core/api", () => ({
 }));
 let client: QueryClient;
 let unmount: () => void;
-function renderStudio(kind: "auto" | "circuit" = "auto") {
+function renderStudio() {
   client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
   const view = renderWithI18n(
     <QueryClientProvider client={client}>
-      <BuildPage initialKind={kind} />
+      <BuildPage />
     </QueryClientProvider>,
   );
   unmount = view.unmount;
@@ -138,19 +149,20 @@ afterEach(() => {
   unmount?.();
   client?.clear();
 });
-describe("unified creation conversation", () => {
+describe("dedicated brick studio", () => {
   it("keeps a failed message and retries the exact request after a lost response", async () => {
     mocks.send.mockRejectedValueOnce(new Error("connection lost"));
     renderStudio();
-    await screen.findByText("Parts box");
-    fireEvent.change(screen.getByRole("textbox", { name: "Message" }), {
+    fireEvent.change(screen.getByRole("textbox"), {
       target: { value: "Build a tower" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+    fireEvent.click(screen.getByRole("button", { name: "Start creating" }));
     await screen.findByRole("button", { name: "Retry message" });
     expect(mocks.replace).not.toHaveBeenCalled();
     const original = mocks.send.mock.calls[0]?.[0];
     expect(original.client_request_id).toBeTruthy();
+    expect(original.kind).toBe("brick");
+    expect(original.circuit).toBeUndefined();
     fireEvent.click(screen.getByRole("button", { name: "Retry message" }));
     await waitFor(() => expect(mocks.send).toHaveBeenCalledTimes(2));
     expect(mocks.send.mock.calls[1]?.[0]).toEqual(original);
@@ -187,7 +199,7 @@ describe("unified creation conversation", () => {
       next_cursor: "",
     });
     renderStudio();
-    await screen.findByText("Which shape?");
+    await screen.findByRole("heading", { name: "Which shape?" });
     fireEvent.click(screen.getByRole("button", { name: "Round" }));
     await waitFor(() =>
       expect(mocks.send).toHaveBeenCalledWith(
@@ -201,24 +213,35 @@ describe("unified creation conversation", () => {
       ),
     );
   });
-  it("keeps fixed circuit projects available without a model", async () => {
-    mocks.available = false;
-    renderStudio("circuit");
-    await screen.findByRole("button", { name: "My radio" });
-    expect(screen.getByRole("button", { name: "Send" })).toBeDisabled();
-    fireEvent.click(screen.getByRole("button", { name: "My radio" }));
+  it("keeps the original brick entry without mode controls or electronic material requests", async () => {
+    renderStudio();
     await waitFor(() =>
-      expect(mocks.send).toHaveBeenCalledWith(
-        expect.objectContaining({
-          kind: "circuit",
-          circuit: expect.objectContaining({
-            project_id: "fm-radio",
-            inventory_revision: 3,
-          }),
-        }),
-        undefined,
-      ),
+      expect(
+        screen.getByRole("button", { name: "Start creating" }),
+      ).toBeVisible(),
     );
+    expect(screen.queryByText("Parts box")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Choose for me" }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
+  });
+  it("keeps an old electronic link out of the brick planner", () => {
+    mocks.params = "conversation=old-circuit&mode=circuit";
+    renderStudio();
+    expect(
+      screen.getByRole("heading", { name: "Continue in the right studio" }),
+    ).toBeVisible();
+    expect(
+      screen
+        .getAllByRole("link", { name: "Electronic blocks studio" })
+        .some(
+          (link) =>
+            link.getAttribute("href") ===
+            "/acme/circuit?conversation=old-circuit",
+        ),
+    ).toBe(true);
+    expect(mocks.send).not.toHaveBeenCalled();
   });
   it("uses the displayed immutable version as the source of a new run", async () => {
     mocks.params = "conversation=run-1";
@@ -230,10 +253,7 @@ describe("unified creation conversation", () => {
     });
     renderStudio();
     await screen.findByText("Brick result");
-    fireEvent.change(screen.getByRole("textbox", { name: "Message" }), {
-      target: { value: "Lower it, keep the doorway" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+    fireEvent.click(screen.getByRole("button", { name: "Edit brick" }));
     await waitFor(() =>
       expect(mocks.send).toHaveBeenCalledWith(
         expect.objectContaining({

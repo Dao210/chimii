@@ -13,7 +13,7 @@ import { useWorkspacePaths } from "@chimii/core/paths";
 import { AppLink } from "../../navigation";
 import { useT } from "../../i18n";
 
-export function BuildDesignEditor({ creation, onClose }: { creation: BuildCreation; onClose: () => void }) {
+export function BuildDesignEditor({ creation, onClose, onDiscuss, discussDisabled = false }: { creation: BuildCreation; onClose: () => void; onDiscuss?: (prompt: string) => Promise<boolean>; discussDisabled?: boolean }) {
   const { t } = useT("build");
   const wsId = useWorkspaceId();
   const workspacePaths = useWorkspacePaths();
@@ -43,6 +43,10 @@ export function BuildDesignEditor({ creation, onClose }: { creation: BuildCreati
   const submit = async (naturalLanguage: boolean) => {
     if (locked || (naturalLanguage ? !prompt.trim() : !dirty)) return;
     setError("");
+    if (naturalLanguage && onDiscuss) {
+      if (!discussDisabled && await onDiscuss(prompt.trim())) setPrompt("");
+      return;
+    }
     try {
       const nextRequestId = session?.status === "failed" || session?.status === "completed" ? generateUUID() : requestId;
       setRequestId(nextRequestId);
@@ -135,7 +139,7 @@ export function BuildDesignEditor({ creation, onClose }: { creation: BuildCreati
         <label className="block text-sm font-bold" htmlFor={`design-prompt-${creation.id}`}>{t($ => $.editor_describe)}</label>
         <Textarea id={`design-prompt-${creation.id}`} value={prompt} maxLength={280} rows={4} placeholder={t($ => $.editor_prompt_placeholder)} onChange={e => { setPrompt(e.target.value); changed(); }} />
         <p className="text-xs text-muted-foreground">{t($ => $.editor_describe_hint)}</p>
-        <Button variant="outline" disabled={working || !prompt.trim() || dirty} onClick={() => void submit(true)}>{t($ => $.editor_generate)}</Button>
+        <Button variant="outline" disabled={working || discussDisabled || !prompt.trim() || dirty} onClick={() => void submit(true)}>{t($ => $.editor_generate)}</Button>
       </fieldset>
     </div>
     {(error || sessionError || session?.status === "failed") && <div role="alert" className="mt-4 space-y-2 text-sm text-destructive">

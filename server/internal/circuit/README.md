@@ -213,13 +213,29 @@ for exact parts, reviewed sources, source hashes, acquisition limitations and
 physical test steps. No kit was purchased or physically assembled in this run.
 
 
-## Shared creation conversations
+## Separate studios, shared conversation execution
 
-The `/circuit` entry now uses the same conversational container and durable Build
-queue as `/build`. Circuit documents, family inventories, progress and trial
+The `/build` entry retains its original brick workshop landing page, question
+cards, full-width result and design editor. `/circuit` has an independent module
+workbench with kit selection, project previews, material checks, diagrams and
+discussion. The routes always submit `brick` and `circuit` respectively; there
+is no automatic mode selector. Opening the brick studio does not fetch electronic
+kits, catalogues or inventories.
+
+Both pages use the headless `useBuildConversation` hook for message persistence,
+retries, cancellation, polling and history, and share the existing durable Build
+queue. Circuit documents, family inventories, progress and trial
 reports remain in their existing independent tables. The worker dispatches before
 loading any brick catalogue. `compileCircuitDocument` and `saveCircuitDocument`
 are shared by the legacy circuit endpoint and queued conversation generation.
+The pages keep their own domain data queries and result components. Web and
+Desktop use these shared business views through their existing route adapters.
+No additional service, workflow framework or database migration is needed.
+
+Old cross-domain links offer the matching studio. Mixed historical conversations
+remain readable, with links to every recorded version; continuing from a saved
+artifact creates a domain-specific conversation with its source ID and hash.
+Neither route silently converts an electronic function into a brick shape.
 
 A model may select a reviewed project, ask a necessary question, explain a listed
 project, or report an unsupported request. Explanations use reviewed catalogue
@@ -227,3 +243,13 @@ text; no model-authored wiring is rendered as an assembly guide. Fixed projects
 still work without a model. New versions do not inherit old progress or family
 trial evidence. See `docs/plans/2026-09-05-conversation-build-circuit.md` at the
 repository root for the API, migration and verification record.
+
+Local acceptance on 2026-09-06 passed 47 relevant TypeScript tests, all five
+browser scenarios, scoped ESLint, and type checks for all five packages including
+Web and Desktop. Browser checks cover the restored brick entry, clarification,
+editing, cancellation, circuit inventory restrictions, saved instructions,
+independent versions, Chinese/mobile layouts and child permissions. They use
+the local deterministic model fixture with the real API, worker and database;
+they do not constitute another live-model run, deployment or physical assembly
+verification. Headless Chromium used the existing SVG fallback when WebGL was
+unavailable.

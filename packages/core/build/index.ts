@@ -3,3 +3,4 @@ export * from "./schemas";
 export * from "./queries";
 export * from "./mutations";
 export * from "./design-commands";
+export * from "./use-build-conversation";

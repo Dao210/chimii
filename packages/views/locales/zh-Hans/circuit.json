@@ -1,6 +1,6 @@
 {
   "eyebrow": "动手搭建 · 连接发现",
-  "title": "把想法，接成小发明",
+  "title": "电子积木工坊",
   "subtitle": "选一个喜欢的作品，找齐手里的元件，一步一步搭出来。",
   "bricks": "乐高搭建",
   "kit": "当前适配套件",
@@ -90,5 +90,7 @@
   "trial_saved": "本次试搭已作为家庭反馈保存。",
   "trial_finish": "请先将搭建进度保存到最后一步，再记录实物试搭。",
   "trial_count": "最近 {{count}} 条试搭记录（最多显示 50 条）",
-  "trial_download": "导出设计和试搭记录"
+  "trial_download": "导出设计和试搭记录",
+  "new_circuit": "新建电路",
+  "discuss": "继续聊聊这个电路"
 }

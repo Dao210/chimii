@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { CheckCircle2, ChevronLeft, ChevronRight, Download, PackageCheck, RotateCcw } from "lucide-react";
 import { Button } from "@chimii/ui/components/ui/button";
 import { Slider } from "@chimii/ui/components/ui/slider";
+import { Textarea } from "@chimii/ui/components/ui/textarea";
 import { toast } from "sonner";
 import { api } from "@chimii/core/api";
 import { buildProgressOptions, useSaveBuildProgress, type BuildCreation } from "@chimii/core/build";
@@ -13,14 +14,15 @@ import { BuildModelViewer } from "./build-model-viewer";
 import { useT } from "../../i18n";
 import { BuildDesignEditor } from "./build-design-editor";
 
-export function BuildResult({ creation, onAgain, embedded = false }: { creation: BuildCreation; onAgain?: () => void; embedded?: boolean }) {
+export function BuildResult({ creation, onAgain, embedded = false, onDiscuss, discussDisabled = false, initialEditing = false }: { creation: BuildCreation; onAgain?: () => void; embedded?: boolean; onDiscuss?: (prompt: string) => Promise<boolean>; discussDisabled?: boolean; initialEditing?: boolean }) {
   const { t } = useT("build");
   const wsId = useWorkspaceId();
   const progressQuery = useQuery(buildProgressOptions(wsId, creation.id));
   const save = useSaveBuildProgress(wsId, creation.id);
   const progress = progressQuery.data;
   const [building, setBuilding] = useState(false);
-  const [editing, setEditing] = useState(false);
+  const [editing, setEditing] = useState(initialEditing);
+  const [discussion, setDiscussion] = useState("");
   const [previewStep, setPreviewStep] = useState(creation.validation.step_count);
   const step = building ? Math.max(1, progress?.current_step ?? 1) : previewStep;
   const busy = save.isPending || progressQuery.isFetching;
@@ -179,7 +181,40 @@ export function BuildResult({ creation, onAgain, embedded = false }: { creation:
           </p>
         </div>
       </aside>
-      {editing && creation.build_plan.document?.design?.shapes?.length ? <BuildDesignEditor key={creation.id} creation={creation} onClose={() => setEditing(false)} /> : null}
+      {editing && creation.build_plan.document?.design?.shapes?.length ? <BuildDesignEditor key={creation.id} creation={creation} onClose={() => setEditing(false)} onDiscuss={onDiscuss} discussDisabled={discussDisabled} /> : null}
+      {onDiscuss && !creation.build_plan.document?.design?.shapes?.length && (
+        <details
+          open={initialEditing}
+          className="col-span-full rounded-2xl border border-border bg-card p-5 text-foreground"
+        >
+          <summary className="cursor-pointer font-bold">
+            {t(($) => $.conversation_continue)}
+          </summary>
+          <label
+            htmlFor={`build-discussion-${creation.id}`}
+            className="mt-4 block text-sm font-bold"
+          >
+            {t(($) => $.editor_describe)}
+          </label>
+          <Textarea
+            id={`build-discussion-${creation.id}`}
+            className="mt-3"
+            value={discussion}
+            maxLength={280}
+            disabled={discussDisabled || building}
+            onChange={(e) => setDiscussion(e.target.value)}
+          />
+          <Button
+            className="mt-3"
+            disabled={discussDisabled || building || !discussion.trim()}
+            onClick={async () => {
+              if (await onDiscuss(discussion)) setDiscussion("");
+            }}
+          >
+            {t(($) => $.conversation_send)}
+          </Button>
+        </details>
+      )}
     </div>
   );
 }

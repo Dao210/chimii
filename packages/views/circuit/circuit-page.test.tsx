@@ -115,10 +115,11 @@ describe("electronic construction flow", () => {
   it("offers the documented projects without AI and blocks missing parts", async () => {
     renderPage();
     const start = await screen.findByRole("button", {
-      name: "A light of my own",
+      name: "Start this project",
     });
     expect(start).toBeEnabled();
     expect(screen.getByRole("button", { name: "Send" })).toBeDisabled();
+    fireEvent.click(screen.getByText(/My parts box ·/));
     fireEvent.click(screen.getByText("Edit saved quantities"));
     fireEvent.change(screen.getByRole("spinbutton", { name: /B1/ }), {
       target: { value: "0" },
@@ -142,7 +143,7 @@ describe("electronic construction flow", () => {
       });
     renderPage();
     fireEvent.click(
-      await screen.findByRole("button", { name: "A light of my own" }),
+      await screen.findByRole("button", { name: "Start this project" }),
     );
     await screen.findByRole("alert");
     expect(push).not.toHaveBeenCalled();
@@ -233,7 +234,7 @@ describe("electronic construction flow", () => {
     mockApi.saveCircuitInventory.mockRejectedValueOnce(new Error("offline"));
     renderPage();
     const start = await screen.findByRole("button", {
-      name: "A light of my own",
+      name: "Start this project",
     });
     expect(start).toBeDisabled();
     fireEvent.click(screen.getByRole("button", { name: /I have this kit/ }));
@@ -265,11 +266,12 @@ describe("electronic construction flow", () => {
     });
     renderPage();
     expect(
-      await screen.findByRole("button", { name: "A light of my own" }),
+      await screen.findByRole("button", { name: "Start this project" }),
     ).toBeEnabled();
     expect(
       screen.queryByRole("button", { name: "Edit saved quantities" }),
     ).not.toBeInTheDocument();
+    fireEvent.click(screen.getByText(/My parts box ·/));
     expect(screen.getByText(/A parent can update the parts box/)).toBeVisible();
   });
 
