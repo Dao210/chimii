@@ -5,14 +5,19 @@
 SELECT pg_advisory_xact_lock(hashtextextended(@actor_key::text, 0));
 
 -- name: CreateBuildSession :one
+WITH new_session AS (SELECT gen_random_uuid() AS id)
 INSERT INTO build_session (
+    id, conversation_id, kind, request_hash,
     workspace_id, creator_user_id, child_profile_id, client_request_id, prompt, status, question, answers,
     inventory_snapshot, recipe, phase
-) VALUES (
-    @workspace_id, @creator_user_id, sqlc.narg(child_profile_id), @client_request_id, @prompt, @status,
-    sqlc.narg(question), COALESCE(sqlc.narg(answers), '{}'::jsonb), @inventory_snapshot,
-    sqlc.narg(recipe), CASE WHEN @direct_compile::boolean THEN 'compiling' ELSE 'planning' END
-)
+) SELECT id, COALESCE(sqlc.narg(conversation_id)::uuid, id) AS conversation_id,
+    COALESCE(NULLIF(@kind::text, ''), 'brick') AS kind, @request_hash::text AS request_hash,
+    @workspace_id::uuid AS workspace_id, @creator_user_id::uuid AS creator_user_id,
+    sqlc.narg(child_profile_id)::uuid AS child_profile_id, @client_request_id::uuid AS client_request_id,
+    @prompt::text AS prompt, @status::text AS status, sqlc.narg(question)::jsonb AS question,
+    COALESCE(sqlc.narg(answers)::jsonb, '{}'::jsonb) AS answers, @inventory_snapshot::jsonb AS inventory_snapshot,
+    sqlc.narg(recipe)::jsonb AS recipe, CASE WHEN @direct_compile::boolean THEN 'compiling' ELSE 'planning' END AS phase
+FROM new_session
 ON CONFLICT (
     workspace_id,
     creator_user_id,
@@ -20,7 +25,7 @@ ON CONFLICT (
     (COALESCE(child_profile_id, '00000000-0000-0000-0000-000000000000'::uuid))
 )
 DO UPDATE SET updated_at = build_session.updated_at
-RETURNING *;
+RETURNING build_session.*;
 
 -- name: GetBuildSessionByClientRequest :one
 SELECT * FROM build_session

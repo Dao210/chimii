@@ -272,6 +272,13 @@ func TestCircuitCleanupIncludesBoxesAndTrials(t *testing.T) {
 				t.Fatal(err)
 			}
 			q := testHandler.Queries.WithTx(tx)
+			session, err := q.CreateBuildSession(ctx, db.CreateBuildSessionParams{WorkspaceID: parseUUID(testWorkspaceID), CreatorUserID: parseUUID(testUserID), ClientRequestID: parseUUID(uuid.NewString()), Prompt: "cleanup fixture", Status: "queued", InventorySnapshot: []byte(`{}`)})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err = appendBuildUserMessage(ctx, q, session, "cleanup fixture", "fixture", "fixture"); err != nil {
+				t.Fatal(err)
+			}
 			if scope == "parent" {
 				err = q.DeleteBuildAndChildDataForParentInWorkspace(ctx, db.DeleteBuildAndChildDataForParentInWorkspaceParams{WorkspaceID: parseUUID(testWorkspaceID), ParentUserID: parseUUID(testUserID)})
 			} else {
@@ -279,6 +286,10 @@ func TestCircuitCleanupIncludesBoxesAndTrials(t *testing.T) {
 			}
 			if err != nil {
 				t.Fatal(err)
+			}
+			var remainingMessages int
+			if err := tx.QueryRow(ctx, "SELECT count(*) FROM build_message WHERE conversation_id=$1", session.ConversationID).Scan(&remainingMessages); err != nil || remainingMessages != 0 {
+				t.Fatal("cleanup left conversation messages", remainingMessages, err)
 			}
 			for _, table := range []string{"circuit_inventory", "circuit_trial"} {
 				var count int

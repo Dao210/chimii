@@ -4,6 +4,7 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { api } from "../api";
+import { buildKeys } from "../build/queries";
 import type {
   CreateCircuitInput,
   CircuitProgressInput,
@@ -111,16 +112,34 @@ export function useCircuitProgress(wsId: string, id: string) {
     mutationFn: (input: CircuitProgressInput) =>
       api.updateCircuitProgress(id, input),
     onSuccess: async (v) => {
+      void client.invalidateQueries({ queryKey: buildKeys.inventions(wsId) });
       await Promise.all([
-        client.cancelQueries({ queryKey: circuitKeys.creation(wsId, id), exact: true }),
-        client.cancelQueries({ queryKey: circuitKeys.creations(wsId), exact: true }),
+        client.cancelQueries({
+          queryKey: circuitKeys.creation(wsId, id),
+          exact: true,
+        }),
+        client.cancelQueries({
+          queryKey: circuitKeys.creations(wsId),
+          exact: true,
+        }),
       ]);
       client.setQueryData(circuitKeys.creation(wsId, id), v);
-      client.setQueryData<import("./schemas").CircuitList>(circuitKeys.creations(wsId), old => old && ({
-        ...old, creations: old.creations.map(item => item.id === id ? {
-          ...item, current_step: v.current_step, observation: v.observation,
-        } : item),
-      }));
+      client.setQueryData<import("./schemas").CircuitList>(
+        circuitKeys.creations(wsId),
+        (old) =>
+          old && {
+            ...old,
+            creations: old.creations.map((item) =>
+              item.id === id
+                ? {
+                    ...item,
+                    current_step: v.current_step,
+                    observation: v.observation,
+                  }
+                : item,
+            ),
+          },
+      );
     },
     onError: () => {
       void client.invalidateQueries({

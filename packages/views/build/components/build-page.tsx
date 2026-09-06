@@ -1,262 +1,693 @@
 "use client";
 
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { ArrowRight, Blocks, Lightbulb, LoaderCircle, Sparkles, Wrench } from "lucide-react";
-import { motion } from "motion/react";
+import { useRef, useState } from "react";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import {
+  ArrowRight,
+  Blocks,
+  Lightbulb,
+  LoaderCircle,
+  MessageCircle,
+  Plus,
+  Send,
+  Zap,
+} from "lucide-react";
 import { Button } from "@chimii/ui/components/ui/button";
 import { Textarea } from "@chimii/ui/components/ui/textarea";
 import { useWorkspaceId } from "@chimii/core/hooks";
 import { useWorkspacePaths } from "@chimii/core/paths";
+import { generateUUID } from "@chimii/core/utils";
+import { useConfigStore } from "@chimii/core/config";
 import {
+  buildConversationOptions,
   buildCreationOptions,
-  buildSessionOptions,
-  useCreateBuildSession,
-  useSubmitBuildAnswers,
+  useSendBuildMessage,
   useCancelBuildSession,
+  type BuildKind,
+  type BuildMessageInput,
 } from "@chimii/core/build";
-import { AppLink } from "../../navigation";
+import {
+  circuitKitsOptions,
+  circuitCatalogOptions,
+  circuitInventoryOptions,
+  circuitCreationOptions,
+  circuitText,
+  circuitMaterials,
+} from "@chimii/core/circuit";
+import { AppLink, useNavigation } from "../../navigation";
+import { useT } from "../../i18n";
+import { CircuitInventoryPanel } from "../../circuit/circuit-inventory";
+import { CircuitWorkbench } from "../../circuit/circuit-workbench";
 import { BuildResult } from "./build-result";
 import { ChildModeLauncher } from "./child-mode-controls";
-import { useConfigStore } from "@chimii/core/config";
-import { generateUUID } from "@chimii/core/utils";
-import { useT } from "../../i18n";
 
-export function BuildPage() {
-  const { t } = useT("build");
-  const workspaceId = useWorkspaceId();
-  const workspacePaths = useWorkspacePaths();
-  const createSession = useCreateBuildSession();
-  const submitAnswers = useSubmitBuildAnswers();
-  const cancelSession = useCancelBuildSession();
-  const [answer, setAnswer] = useState("");
-  const [prompt, setPrompt] = useState("");
-  const [clientRequestId, setClientRequestId] = useState(() => generateUUID());
-  const [sessionId, setSessionId] = useState("");
-  const [friendlyError, setFriendlyError] = useState("");
+type ResultRef = { kind: "brick" | "circuit"; id: string };
+export function BuildPage({
+  initialKind = "auto",
+}: {
+  initialKind?: BuildKind;
+}) {
+  const wsId = useWorkspaceId();
+  const navigation = useNavigation();
+  return (
+    <ConversationStudio
+      key={`${wsId}:${navigation.searchParams.toString()}`}
+      initialKind={initialKind}
+    />
+  );
+}
+function ConversationStudio({ initialKind }: { initialKind: BuildKind }) {
+  const { t, i18n } = useT("build");
+  const { t: ct } = useT("circuit");
+  const wsId = useWorkspaceId();
+  const paths = useWorkspacePaths();
+  const navigation = useNavigation();
+  const conversationId = navigation.searchParams.get("conversation") || "";
+  const sourceId = navigation.searchParams.get("source_id") || "";
+  const sourceKind = navigation.searchParams.get("source_kind");
+  const sourceHash = navigation.searchParams.get("source_hash") || "";
+  const history = useInfiniteQuery(
+    buildConversationOptions(wsId, conversationId),
+  );
+  const session = history.data?.pages[0]?.session;
+  const messages =
+    history.data?.pages
+      .slice()
+      .reverse()
+      .flatMap((page) => page.messages) || [];
+  const routeMode = navigation.searchParams.get("mode");
+  const [mode, setMode] = useState<BuildKind | null>(
+    routeMode === "auto" || routeMode === "brick" || routeMode === "circuit"
+      ? routeMode
+      : sourceKind === "brick" || sourceKind === "circuit"
+        ? sourceKind
+        : null,
+  );
+  const preferredMode = mode ?? initialKind;
+  const kind =
+    session?.status === "clarifying" && session.kind !== "auto"
+      ? (session.kind ?? preferredMode)
+      : preferredMode;
+  const [draft, setDraft] = useState("");
+  const [selectedKit, setSelectedKit] = useState("");
+  const [selectedResult, setSelectedResult] = useState<ResultRef | null>(null);
+  const [pane, setPane] = useState<"chat" | "result">("chat");
+  const send = useSendBuildMessage(wsId, conversationId || undefined);
+  const cancel = useCancelBuildSession();
+  const inFlight = useRef(false);
+  const sourceCircuit = useQuery(
+    circuitCreationOptions(wsId, sourceKind === "circuit" ? sourceId : ""),
+  );
+  const kits = useQuery(circuitKitsOptions(wsId));
+  const kitId =
+    selectedKit ||
+    session?.circuit?.kit_id ||
+    history.data?.pages[0]?.result?.circuit?.kit_id ||
+    sourceCircuit.data?.document.kit_id ||
+    kits.data?.kits[0]?.kit_id ||
+    "";
+  const catalog = useQuery({
+    ...circuitCatalogOptions(wsId, kitId),
+    enabled: !!wsId && !!kitId,
+  });
+  const inventory = useQuery(circuitInventoryOptions(wsId, kitId));
   const buildAvailable = useConfigStore((state) => state.buildAvailable);
-  const buildConfigLoaded = useConfigStore((state) => state.buildConfigLoaded);
-  const sessionQuery = useQuery(buildSessionOptions(workspaceId, sessionId));
-  const session = sessionQuery.data;
-  const creationId = session?.creation_id ?? "";
-  const creationQuery = useQuery(buildCreationOptions(workspaceId, creationId));
-
-  const isWorking = session?.status === "queued" || session?.status === "generating";
-  const creationIsPending = creationQuery.isPending || creationQuery.isFetching;
-  const creationIsUnavailable = creationQuery.isError || (!creationIsPending && !creationQuery.data?.id);
-  const ideaStarters = [t($ => $.starter_car), t($ => $.starter_dragon), t($ => $.starter_robot)];
-  const statusCopy = session?.status === "generating"
-    ? (session.phase === "planning" ? t($ => $.understanding) : t($ => $.generating)) : t($ => $.queued);
-	const failedDescription = session?.error === "BUILD_SEARCH_LIMIT" ? t($ => $.failed_search_limit)
-    : session?.error === "BUILD_UNSUPPORTED" ? t($ => $.failed_unsupported)
-    : session?.error === "BUILD_REQUIREMENTS_UNMET" ? t($ => $.failed_requirements)
-    : session?.error === "BUILD_CANCELLED" ? t($ => $.cancelled)
-    : session?.error === "BUILD_INSUFFICIENT_INVENTORY"
-		? t($ => $.failed_inventory)
-		: session?.error === "BUILD_COUNT_UNSUPPORTED"
-			? t($ => $.failed_count)
-			: session?.error === "BUILD_STRUCTURE_INVALID"
-				? t($ => $.failed_structure)
-				: t($ => $.failed_description);
-
-  const start = async () => {
-    if (!prompt.trim()) return;
-    setFriendlyError("");
+  const configLoaded = useConfigStore((state) => state.buildConfigLoaded);
+  const resultMessage =
+    history.data?.pages[0]?.result ||
+    [...messages]
+      .reverse()
+      .find(
+        (message) =>
+          message.metadata.creation_id || message.metadata.circuit_creation_id,
+      )?.metadata;
+  const newest: ResultRef | null = session?.creation_id
+    ? { kind: "brick", id: session.creation_id }
+    : session?.circuit_creation_id
+      ? { kind: "circuit", id: session.circuit_creation_id }
+      : resultMessage?.creation_id
+        ? { kind: "brick", id: resultMessage.creation_id }
+        : resultMessage?.circuit_creation_id
+          ? { kind: "circuit", id: resultMessage.circuit_creation_id }
+          : sourceId && (sourceKind === "brick" || sourceKind === "circuit")
+            ? { kind: sourceKind, id: sourceId }
+            : null;
+  const result = selectedResult || newest;
+  const brick = useQuery(
+    buildCreationOptions(wsId, result?.kind === "brick" ? result.id : ""),
+  );
+  const circuit = useQuery(
+    circuitCreationOptions(wsId, result?.kind === "circuit" ? result.id : ""),
+  );
+  const isWorking =
+    !session?.expired &&
+    (session?.status === "queued" || session?.status === "generating");
+  const isQuestion =
+    !session?.expired && session?.status === "clarifying" && !!session.question;
+  const disabled =
+    isWorking ||
+    send.isPending ||
+    cancel.isPending ||
+    (!!conversationId && !session);
+  const errorCopy = (code?: string) =>
+    code === "BUILD_CANCELLED"
+      ? t(($) => $.cancelled)
+      : code === "CIRCUIT_INVENTORY_CHANGED"
+        ? ct(($) => $.inventory_conflict)
+        : code === "CIRCUIT_CATALOG_CHANGED"
+          ? ct(($) => $.catalog_changed)
+          : code === "CIRCUIT_VALIDATION_FAILED"
+            ? ct(($) => $.validation_failed)
+            : code === "BUILD_INSUFFICIENT_INVENTORY"
+              ? t(($) => $.failed_inventory)
+              : code === "BUILD_UNSUPPORTED"
+                ? t(($) => $.failed_unsupported)
+                : code === "BUILD_REQUIREMENTS_UNMET"
+                  ? t(($) => $.failed_requirements)
+                  : t(($) => $.failed_description);
+  const submit = async (
+    value: string,
+    projectId?: string,
+    retry?: BuildMessageInput,
+  ) => {
+    if (inFlight.current || (!retry && disabled) || !value.trim()) return;
+    inFlight.current = true;
+    const chosenKind = projectId ? "circuit" : kind;
+    const input: BuildMessageInput = retry || {
+      prompt: value.trim(),
+      client_request_id: generateUUID(),
+      kind: chosenKind,
+      circuit: {
+        kit_id: kitId,
+        catalog_version: catalog.data?.catalog.version || "",
+        inventory_revision: inventory.data?.revision || 0,
+        locale: i18n.language,
+        ...(projectId ? { project_id: projectId } : {}),
+      },
+      ...(session
+        ? {
+            expected_session_id: session.id,
+            expected_revision: session.revision,
+            ...(isQuestion ? { question_id: session.question?.id } : {}),
+          }
+        : {}),
+      ...(!isQuestion &&
+      result &&
+      (chosenKind === "auto" || result.kind === chosenKind)
+        ? {
+            source_creation_id: result.id,
+            source_kind: result.kind,
+            expected_content_hash:
+              result.kind === "brick"
+                ? brick.data?.build_plan.content_hash || sourceHash
+                : circuit.data?.document.content_hash || sourceHash,
+          }
+        : {}),
+    };
     try {
-      const next = await createSession.mutateAsync({ prompt: prompt.trim(), clientRequestId });
-      if (!next.id) throw new Error("Invalid session response");
-      setSessionId(next.id);
+      const next = await send.mutateAsync(input);
+      setDraft("");
+      setSelectedResult(null);
+      const params = new URLSearchParams({
+        conversation: next.conversation_id || next.id,
+      });
+      if (preferredMode !== initialKind) params.set("mode", preferredMode);
+      if (params.toString() !== navigation.searchParams.toString())
+        navigation.replace(`${navigation.pathname}?${params}`);
     } catch {
-      setFriendlyError(t($ => $.start_error));
+      /* Keep the exact request for safe retry after a lost response. */
+    } finally {
+      inFlight.current = false;
     }
   };
-
-  const reset = () => {
-    setPrompt("");
-    setClientRequestId(generateUUID());
-    setSessionId("");
-    setAnswer("");
-    setFriendlyError("");
-  };
-
-  const sendAnswer = async (value: string) => {
-    if (!session?.question || !value.trim()) return;
-    setFriendlyError("");
-    try {
-      const next = await submitAnswers.mutateAsync({ sessionId: session.id, revision: session.revision, answers: { [session.question.id]: value.trim() } });
-      if (!next.id) throw new Error("Invalid answer response");
-      setAnswer("");
-    } catch { setFriendlyError(t($ => $.answer_error)); }
-  };
-
-  const editIdea = async () => {
-    setFriendlyError("");
-    try {
-      if (session && session.status !== "failed" && session.status !== "completed") {
-        const next = await cancelSession.mutateAsync({ sessionId: session.id, revision: session.revision ?? 1 });
-        if (!next.id) throw new Error("Invalid cancellation response");
-      }
-      setSessionId(""); setAnswer(""); setClientRequestId(generateUUID());
-      setPrompt(session?.prompt ?? prompt);
-    } catch { setFriendlyError(t($ => $.cancel_error)); }
-  };
-
+  const newConversation = () =>
+    navigation.push(kind === "circuit" ? paths.circuit() : paths.build());
   return (
-    <main className="h-full overflow-y-auto bg-[#f4ead5] text-[#1d241f]">
-      <div className="pointer-events-none fixed inset-0 opacity-35 [background-image:radial-gradient(#bfae8d_1px,transparent_1px)] [background-size:22px_22px]" />
-      <div className="relative mx-auto max-w-[1320px] px-5 py-6 md:px-8 md:py-8">
-        <header className="mb-7 flex flex-wrap items-center justify-between gap-4">
+    <main className="circuit-studio h-full overflow-y-auto bg-background text-foreground">
+      <div className="mx-auto max-w-[1600px] px-4 py-6 sm:px-7">
+        <header className="mb-6 flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="flex size-11 rotate-[-4deg] items-center justify-center rounded-2xl border-2 border-[#1d241f] bg-[#ffd85a] shadow-[3px_4px_0_#1d241f]">
-              <Blocks className="size-6" />
+            <div className="flex size-12 -rotate-3 items-center justify-center rounded-2xl border-2 border-foreground bg-primary/15">
+              <Lightbulb className="size-6" />
             </div>
             <div>
-              <p className="text-xs font-black uppercase tracking-[.2em] text-[#39715a]">{t($ => $.brand)}</p>
-              <h1 className="whitespace-nowrap text-xl font-black">{t($ => $.title)}</h1>
+              <p className="text-xs font-bold tracking-widest text-muted-foreground">
+                CHIMII
+              </p>
+              <h1 className="text-xl font-black">
+                {t(($) => $.conversation_title)}
+              </h1>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <ChildModeLauncher />
-            <Button nativeButton={false} variant="outline" className="rounded-full border-2 border-[#1d241f] bg-[#fffdf7] font-bold" render={<AppLink href={workspacePaths.creations()} />}>
-              {t($ => $.nav_creations)} <ArrowRight className="size-4" />
+            {conversationId && (
+              <Button variant="outline" onClick={newConversation}>
+                <Plus className="size-4" />
+                {t(($) => $.conversation_new)}
+              </Button>
+            )}
+            <Button
+              variant="outline"
+              nativeButton={false}
+              render={<AppLink href={paths.creations()} />}
+            >
+              {t(($) => $.nav_creations)}
+              <ArrowRight className="size-4" />
             </Button>
           </div>
         </header>
-
-        {!buildConfigLoaded ? (
-          <section className="mx-auto flex min-h-[560px] max-w-2xl flex-col items-center justify-center text-center" aria-live="polite">
-            <div className="flex size-20 items-center justify-center rounded-[1.8rem] border-2 border-[#1d241f] bg-[#a8dfc2] shadow-[6px_7px_0_#1d241f]"><LoaderCircle className="size-9 animate-spin" /></div>
-            <h2 className="mt-7 text-3xl font-black">{t($ => $.loading_studio)}</h2>
-          </section>
-        ) : !buildAvailable ? (
-          <section className="mx-auto flex min-h-[560px] max-w-2xl flex-col items-center justify-center text-center">
-            <div className="flex size-20 items-center justify-center rounded-[1.8rem] border-2 border-[#1d241f] bg-[#ffd85a] shadow-[6px_7px_0_#1d241f]"><Wrench className="size-9" /></div>
-            <p className="mt-7 text-xs font-black uppercase tracking-[.2em] text-[#39715a]">{t($ => $.config_label)}</p>
-            <h2 className="mt-3 text-3xl font-black md:text-5xl">{t($ => $.config_title)}</h2>
-            <p className="mt-4 max-w-xl font-medium leading-7 text-[#687068]">{t($ => $.config_description)}</p>
-          </section>
-        ) : creationQuery.data?.id ? (
-          <BuildResult key={creationQuery.data.id} creation={creationQuery.data} onAgain={reset} />
-        ) : session?.status === "completed" && creationId ? (
-          <section className="mx-auto flex min-h-[560px] max-w-2xl flex-col items-center justify-center text-center" aria-live="polite">
-            {creationIsUnavailable ? (
-              <>
-                <div className="flex size-20 items-center justify-center rounded-[1.8rem] border-2 border-[#1d241f] bg-[#ffd85a] shadow-[6px_7px_0_#1d241f]"><Wrench className="size-9" /></div>
-                <h2 className="mt-7 text-3xl font-black">{t($ => $.creation_fetch_title)}</h2>
-                <p className="mt-3 max-w-lg font-medium text-[#687068]">{t($ => $.creation_fetch_description)}</p>
-                <Button onClick={() => void creationQuery.refetch()} className="mt-6 rounded-xl bg-[#1d241f] font-black">{t($ => $.retry_fetch)}</Button>
-              </>
-            ) : (
-              <>
-                <div className="flex size-20 items-center justify-center rounded-[1.8rem] border-2 border-[#1d241f] bg-[#a8dfc2] shadow-[6px_7px_0_#1d241f]"><LoaderCircle className="size-9 animate-spin" /></div>
-                <h2 className="mt-7 text-3xl font-black">{t($ => $.opening_plan)}</h2>
-              </>
-            )}
-          </section>
-        ) : sessionId && !session ? (
-          <section className="mx-auto max-w-xl py-20 text-center" aria-live="polite">
-            <p>{sessionQuery.isError ? t($ => $.session_fetch_error) : t($ => $.understanding)}</p>
-            {sessionQuery.isError && <Button onClick={() => void sessionQuery.refetch()}>{t($ => $.retry_fetch)}</Button>}
-          </section>
-        ) : session?.status === "clarifying" && session.question ? (
-          <motion.section initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="mx-auto max-w-2xl pt-6 md:pt-10">
-            <div className="rounded-[2rem] border-2 border-[#1d241f] bg-[#fffdf7] p-7 shadow-[8px_9px_0_#1d241f] md:p-9">
-              <div className="mb-5 flex size-12 items-center justify-center rounded-2xl border-2 border-[#1d241f] bg-[#a8dfc2]">
-                <Lightbulb className="size-6" />
-              </div>
-              <p className="text-sm font-black text-[#39715a]">{t($ => $.clarify_label)}</p>
-              <p className="mt-3 break-words text-sm text-muted-foreground">{session.prompt}</p>
-              {session.summary && session.summary !== session.prompt && <p className="mt-2 break-words text-sm font-medium">{session.summary}</p>}
-              <h2 className="mt-2 text-3xl font-black tracking-tight">{session.question.prompt}</h2>
-              <div className="mt-7 grid gap-3">
-                {(session.question.choices?.length ? session.question.choices : session.question.options.map((label) => ({ id: label, label }))).map((choice) => (
-                  <button key={choice.id} type="button" disabled={submitAnswers.isPending || cancelSession.isPending}
-                    onClick={() => void sendAnswer(choice.id)}
-                    className="group flex min-h-14 items-center justify-between gap-3 rounded-2xl border-2 border-current bg-background px-5 py-3 text-left font-black transition hover:bg-accent disabled:opacity-50"
-                  >
-                    <span className="break-words">{choice.label}</span><ArrowRight className="size-5 shrink-0" />
-                  </button>
-                ))}
-              </div>
-              {session.question.allow_free_text !== false && (
-                <form key={session.question.id} onSubmit={(event) => { event.preventDefault(); void sendAnswer(answer); }} className="mt-5 space-y-3">
-                  <label htmlFor="build-answer" className="text-sm font-bold">{t($ => $.answer_label)}</label>
-                  <Textarea id="build-answer" value={answer} maxLength={120} onChange={(event) => setAnswer(event.target.value)} disabled={submitAnswers.isPending || cancelSession.isPending} className="min-h-24 bg-background" />
-                  <Button type="submit" disabled={!answer.trim() || submitAnswers.isPending || cancelSession.isPending}>{submitAnswers.isPending && <LoaderCircle className="size-4 animate-spin" />}{t($ => $.answer_submit)}</Button>
-                </form>
-              )}
-              <Button variant="ghost" onClick={() => void editIdea()} disabled={submitAnswers.isPending || cancelSession.isPending} className="mt-3">{t($ => $.edit_idea)}</Button>
-              {friendlyError && <p role="alert" className="mt-4 text-sm font-bold text-[#a33b32]">{friendlyError}</p>}
-            </div>
-          </motion.section>
-        ) : isWorking ? (
-          <section className="mx-auto flex min-h-[560px] max-w-3xl flex-col items-center justify-center text-center">
-            <motion.div
-              animate={{ rotate: [0, -6, 5, 0], y: [0, -8, 0] }}
-              transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
-              className="mb-7 flex size-24 items-center justify-center rounded-[2rem] border-2 border-[#1d241f] bg-[#ffd85a] shadow-[7px_8px_0_#1d241f]"
-            >
-              <LoaderCircle className="size-11 animate-spin" />
-            </motion.div>
-            <p className="text-xs font-black uppercase tracking-[.2em] text-[#39715a]">{t($ => $.checking_label)}</p>
-            <h2 className="mt-3 text-3xl font-black md:text-5xl">{statusCopy}</h2>
-            <p className="mt-4 max-w-lg font-medium text-[#687068]">{session.summary || t($ => $.checking_hint)}</p>
-            <Button variant="ghost" className="mt-5" disabled={cancelSession.isPending} onClick={() => void editIdea()}>{t($ => $.edit_idea)}</Button>
-            {friendlyError && <p role="alert">{friendlyError}</p>}
-          </section>
-        ) : session?.status === "failed" ? (
-          <section className="mx-auto max-w-xl pt-20 text-center">
-            <h2 className="text-3xl font-black">{t($ => $.failed_title)}</h2>
-			<p className="mt-3 text-[#687068]">{session.message || failedDescription}</p>
-            <Button onClick={() => void editIdea()} className="mt-6 rounded-xl bg-[#1d241f]">{t($ => $.edit_idea)}</Button>
-          </section>
-        ) : (
-          <section className="grid items-center gap-8 pt-5 lg:grid-cols-[minmax(0,1fr)_430px] lg:pt-14">
-            <div>
-              <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
-                <span className="inline-flex items-center gap-2 rounded-full border-2 border-[#1d241f] bg-[#a8dfc2] px-4 py-2 text-xs font-black uppercase tracking-[.12em] shadow-[3px_4px_0_#1d241f]">
-                  <Sparkles className="size-4" /> {t($ => $.hero_badge)}
+        <div
+          className="mb-4 flex gap-2 lg:hidden"
+          role="group"
+          aria-label={t(($) => $.conversation_view)}
+        >
+          <Button
+            variant={pane === "chat" ? "default" : "outline"}
+            onClick={() => setPane("chat")}
+          >
+            <MessageCircle className="size-4" />
+            {t(($) => $.conversation_chat)}
+          </Button>
+          <Button
+            variant={pane === "result" ? "default" : "outline"}
+            disabled={!result}
+            onClick={() => setPane("result")}
+          >
+            <Blocks className="size-4" />
+            {t(($) => $.conversation_result)}
+          </Button>
+        </div>
+        <div className="grid items-start gap-6 lg:grid-cols-[minmax(310px,.75fr)_minmax(0,1.5fr)]">
+          <section
+            aria-label={t(($) => $.conversation_chat)}
+            className={`${pane === "chat" ? "" : "hidden lg:block"} min-w-0 rounded-3xl border bg-card p-5 shadow-sm`}
+          >
+            {!conversationId && (
+              <div className="mb-6">
+                <span className="inline-flex rounded-full bg-primary/10 px-3 py-1 text-xs font-bold">
+                  {t(($) => $.conversation_badge)}
                 </span>
-                <h2 className="mt-7 max-w-3xl text-5xl font-black leading-[.98] tracking-[-.045em] sm:text-6xl xl:text-7xl">
-                  {t($ => $.hero_line_start)}<br /><span className="text-[#3767bb]">{t($ => $.hero_accent)}</span> {t($ => $.hero_line_end)}
+                <h2 className="mt-4 text-3xl font-black leading-tight">
+                  {t(($) => $.conversation_welcome)}
                 </h2>
-                <p className="mt-6 max-w-xl text-lg font-medium leading-8 text-[#59615b]">{t($ => $.hero_description)}</p>
-              </motion.div>
-              <div className="mt-8 flex flex-wrap gap-2">
-                {ideaStarters.map((idea) => (
-                  <button key={idea} type="button" onClick={() => { setPrompt(idea); setClientRequestId(generateUUID()); }} className="rounded-full border border-[#9c9079] bg-[#fffaf0] px-4 py-2 text-sm font-bold transition hover:-translate-y-0.5 hover:border-[#1d241f] hover:bg-[#ffd85a]">{idea}</button>
+                <p className="mt-3 text-sm leading-7 text-muted-foreground">
+                  {t(($) => $.conversation_hint)}
+                </p>
+              </div>
+            )}
+            {history.hasNextPage && (
+              <Button
+                variant="ghost"
+                disabled={history.isFetchingNextPage}
+                onClick={() => void history.fetchNextPage()}
+              >
+                {t(($) => $.conversation_older)}
+              </Button>
+            )}
+            {history.isError && (
+              <div role="alert">
+                <p>{t(($) => $.session_fetch_error)}</p>
+                <Button
+                  variant="outline"
+                  onClick={() => void history.refetch()}
+                >
+                  {t(($) => $.retry_fetch)}
+                </Button>
+              </div>
+            )}
+            {conversationId && history.isPending && (
+              <p role="status">{t(($) => $.understanding)}</p>
+            )}
+            {conversationId && session && messages.length === 0 && (
+              <p className="mb-4 whitespace-pre-wrap text-sm">
+                {session.prompt}
+              </p>
+            )}
+            <ol
+              className="space-y-4"
+              aria-label={t(($) => $.conversation_history)}
+            >
+              {messages.map((message) => (
+                <li
+                  key={message.id}
+                  className={`rounded-2xl p-4 ${message.role === "user" ? "ml-5 bg-primary/10" : "mr-3 border bg-background"}`}
+                >
+                  <p className="mb-2 text-xs font-bold text-muted-foreground">
+                    {message.role === "user"
+                      ? t(($) => $.conversation_you)
+                      : t(($) => $.conversation_assistant)}
+                  </p>
+                  <p className="whitespace-pre-wrap break-words text-sm leading-7">
+                    {message.kind === "error" && !message.metadata.message
+                      ? errorCopy(message.metadata.error)
+                      : message.content || t(($) => $.conversation_ready)}
+                  </p>
+                  {(message.metadata.creation_id ||
+                    message.metadata.circuit_creation_id) && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="mt-3"
+                      onClick={() => {
+                        setSelectedResult(
+                          message.metadata.creation_id
+                            ? {
+                                kind: "brick",
+                                id: message.metadata.creation_id,
+                              }
+                            : {
+                                kind: "circuit",
+                                id: message.metadata.circuit_creation_id!,
+                              },
+                        );
+                        setPane("result");
+                      }}
+                    >
+                      {t(($) => $.conversation_open)}
+                    </Button>
+                  )}
+                </li>
+              ))}
+            </ol>
+            {send.isPending && (
+              <p role="status" className="my-4 rounded-xl bg-muted p-3 text-sm">
+                {send.variables?.prompt} · {t(($) => $.conversation_sending)}
+              </p>
+            )}
+            {send.isError && (
+              <div
+                role="alert"
+                className="my-4 rounded-xl border border-destructive/40 p-4"
+              >
+                <p className="break-words text-sm">{send.variables?.prompt}</p>
+                <p className="mt-2 text-sm">
+                  {t(($) => $.conversation_send_error)}
+                </p>
+                <Button
+                  variant="outline"
+                  className="mt-3"
+                  onClick={() => {
+                    if (send.variables)
+                      void submit(
+                        send.variables.prompt,
+                        undefined,
+                        send.variables,
+                      );
+                  }}
+                >
+                  {t(($) => $.conversation_retry)}
+                </Button>
+              </div>
+            )}
+            {isWorking && (
+              <div
+                role="status"
+                className="my-5 flex items-center gap-2 text-sm"
+              >
+                <LoaderCircle className="size-4 animate-spin" />
+                {session.phase === "planning"
+                  ? t(($) => $.understanding)
+                  : t(($) => $.generating)}
+              </div>
+            )}
+            {(isWorking || isQuestion) && (
+              <Button
+                variant="ghost"
+                disabled={cancel.isPending || send.isPending}
+                className="my-3"
+                onClick={() => {
+                  if (session)
+                    void cancel
+                      .mutateAsync({
+                        sessionId: session.id,
+                        revision: session.revision || 1,
+                      })
+                      .catch(() => {});
+                }}
+              >
+                {t(($) => $.conversation_cancel)}
+              </Button>
+            )}
+            {cancel.isError && (
+              <p role="alert" className="text-sm">
+                {t(($) => $.cancel_error)}
+              </p>
+            )}
+            {isQuestion && (
+              <div className="mt-4 flex flex-wrap gap-2">
+                {session.question?.choices?.map((choice) => (
+                  <Button
+                    key={choice.id}
+                    variant="outline"
+                    disabled={disabled}
+                    onClick={() => void submit(choice.id)}
+                  >
+                    {choice.label}
+                  </Button>
                 ))}
               </div>
-            </div>
-
-            <motion.div initial={{ opacity: 0, rotate: 2, y: 20 }} animate={{ opacity: 1, rotate: -1, y: 0 }} className="rounded-[2rem] border-2 border-[#1d241f] bg-[#fffdf7] p-5 shadow-[10px_12px_0_#1d241f] md:p-6">
-              <div className="mb-4 flex items-center gap-2 text-sm font-black text-[#39715a]"><Lightbulb className="size-4" /> {t($ => $.idea_label)}</div>
+            )}
+            <div className="mt-6 border-t pt-5">
+              <fieldset
+                disabled={disabled || (isQuestion && session?.kind !== "auto")}
+                className="mb-4 flex flex-wrap gap-2"
+              >
+                <legend className="mb-2 text-xs font-bold text-muted-foreground">
+                  {t(($) => $.conversation_mode)}
+                </legend>
+                {(["auto", "brick", "circuit"] as const).map((value) => (
+                  <Button
+                    key={value}
+                    variant={kind === value ? "default" : "outline"}
+                    size="sm"
+                    aria-pressed={kind === value}
+                    onClick={() => {
+                      setMode(value);
+                      send.reset();
+                    }}
+                  >
+                    {value === "auto"
+                      ? t(($) => $.conversation_auto)
+                      : value === "brick"
+                        ? t(($) => $.conversation_brick)
+                        : t(($) => $.conversation_circuit)}
+                  </Button>
+                ))}
+              </fieldset>
+              <label htmlFor="creation-message" className="sr-only">
+                {t(($) => $.conversation_message)}
+              </label>
               <Textarea
-                value={prompt}
+                id="creation-message"
+                value={draft}
+                disabled={disabled}
+                maxLength={isQuestion ? 120 : 280}
                 onChange={(event) => {
-                  setPrompt(event.target.value.slice(0, 280));
-                  setClientRequestId(generateUUID());
+                  setDraft(event.target.value);
+                  send.reset();
                 }}
                 onKeyDown={(event) => {
-                  if ((event.metaKey || event.ctrlKey) && event.key === "Enter") void start();
+                  if (
+                    !event.nativeEvent.isComposing &&
+                    (event.metaKey || event.ctrlKey) &&
+                    event.key === "Enter"
+                  ) {
+                    event.preventDefault();
+                    void submit(draft);
+                  }
                 }}
-                placeholder={t($ => $.idea_placeholder)}
-                className="min-h-44 resize-none rounded-2xl border-2 border-[#1d241f] bg-[#f7efde] p-4 text-base font-semibold leading-7 placeholder:text-[#8f887b] focus-visible:ring-[#3767bb]"
-                autoFocus
+                placeholder={
+                  isQuestion
+                    ? t(($) => $.conversation_placeholder)
+                    : t(($) => $.conversation_placeholder)
+                }
+                className="min-h-28 resize-y rounded-xl text-base"
               />
-              <div className="mt-3 flex items-center justify-between text-xs font-semibold text-[#77766f]"><span>{t($ => $.shortcut)}</span><span>{prompt.length}/280</span></div>
-              <Button
-                onClick={() => void start()}
-                disabled={!prompt.trim() || createSession.isPending}
-                className="mt-5 h-14 w-full rounded-2xl border-2 border-[#1d241f] bg-[#ef5c4f] text-base font-black text-white shadow-[4px_5px_0_#1d241f] transition hover:-translate-y-0.5 hover:bg-[#df483c] hover:shadow-[6px_7px_0_#1d241f] active:translate-y-1 active:shadow-none"
-              >
-                {createSession.isPending ? <LoaderCircle className="size-5 animate-spin" /> : <Sparkles className="size-5" />}
-                {t($ => $.start)}
-              </Button>
-              {friendlyError && <p role="alert" className="mt-3 text-sm font-bold text-[#a33b32]">{friendlyError}</p>}
-            </motion.div>
+              <div className="mt-3 flex items-center justify-between gap-3">
+                <span className="text-xs text-muted-foreground">
+                  {t(($) => $.shortcut)}
+                </span>
+                <Button
+                  disabled={
+                    disabled ||
+                    !draft.trim() ||
+                    (configLoaded && !buildAvailable)
+                  }
+                  onClick={() => void submit(draft)}
+                >
+                  <Send className="size-4" />
+                  {t(($) => $.conversation_send)}
+                </Button>
+              </div>
+              {configLoaded && !buildAvailable && (
+                <p className="mt-3 text-xs leading-6 text-muted-foreground">
+                  {t(($) => $.conversation_no_ai)}
+                </p>
+              )}
+            </div>
+            {kind !== "brick" && (
+              <div className="mt-6 space-y-4 border-t pt-5">
+                <label
+                  htmlFor="circuit-kit"
+                  className="block text-xs font-bold"
+                >
+                  {ct(($) => $.kit)}
+                </label>
+                <select
+                  id="circuit-kit"
+                  value={kitId}
+                  disabled={disabled}
+                  onChange={(event) => {
+                    setSelectedKit(event.target.value);
+                    send.reset();
+                  }}
+                  className="w-full rounded-xl border bg-background px-3 py-3 text-sm"
+                >
+                  {kits.data?.kits.map((kit) => (
+                    <option key={kit.kit_id} value={kit.kit_id}>
+                      {kit.name}
+                    </option>
+                  ))}
+                </select>
+                {(kits.isError || catalog.isError || inventory.isError) && (
+                  <div role="alert">
+                    <p>{ct(($) => $.error)}</p>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        void kits.refetch();
+                        void catalog.refetch();
+                        void inventory.refetch();
+                      }}
+                    >
+                      {ct(($) => $.retry)}
+                    </Button>
+                  </div>
+                )}
+                {catalog.data && inventory.data && (
+                  <CircuitInventoryPanel
+                    key={kitId}
+                    wsId={wsId}
+                    catalog={catalog.data.catalog}
+                    saved={inventory.data}
+                  />
+                )}
+                <p className="text-xs font-bold">
+                  {t(($) => $.conversation_references)}
+                </p>
+                <div className="grid gap-2">
+                  {catalog.data?.catalog.projects.map((project) => {
+                    const confirmed =
+                      inventory.data?.confirmed === true &&
+                      inventory.data.catalog_version ===
+                        catalog.data.catalog.version;
+                    const missing = circuitMaterials(
+                      project,
+                      inventory.data?.quantities ?? {},
+                    ).filter((part) => part.missing > 0);
+                    return (
+                      <div key={project.id}>
+                        <Button
+                          variant="outline"
+                          className="h-auto w-full justify-start whitespace-normal py-3 text-left"
+                          disabled={
+                            disabled || !confirmed || missing.length > 0
+                          }
+                          onClick={() =>
+                            void submit(
+                              circuitText(project.title, i18n.language),
+                              project.id,
+                            )
+                          }
+                        >
+                          <Zap className="size-4 shrink-0" />
+                          {circuitText(project.title, i18n.language)}
+                        </Button>
+                        {confirmed && missing.length > 0 && (
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            {ct(($) => $.missing)} ·{" "}
+                            {missing
+                              .map(
+                                (part) =>
+                                  `${part.partId}: ${ct(($) => $.short_count, { count: part.missing })}`,
+                              )
+                              .join(" · ")}
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </section>
-        )}
+          <section
+            aria-label={t(($) => $.conversation_result)}
+            className={`${pane === "result" ? "" : "hidden lg:block"} min-w-0 rounded-3xl border bg-card p-4 sm:p-6`}
+          >
+            {result ? (
+              <>
+                <div className="mb-5 flex flex-wrap items-center justify-between gap-2">
+                  <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-bold">
+                    {result.kind === "brick"
+                      ? t(($) => $.conversation_brick)
+                      : t(($) => $.conversation_circuit)}
+                  </span>
+                  <AppLink
+                    className="text-xs underline underline-offset-4"
+                    href={
+                      result.kind === "brick"
+                        ? paths.creationDetail(result.id)
+                        : paths.circuitDetail(result.id)
+                    }
+                  >
+                    {t(($) => $.conversation_full)}
+                  </AppLink>
+                </div>
+                {(result.kind === "brick" ? brick.isError : circuit.isError) ? (
+                  <div role="alert">
+                    <p>{t(($) => $.creation_fetch_description)}</p>
+                    <Button
+                      onClick={() =>
+                        void (result.kind === "brick"
+                          ? brick.refetch()
+                          : circuit.refetch())
+                      }
+                    >
+                      {t(($) => $.retry_fetch)}
+                    </Button>
+                  </div>
+                ) : result.kind === "brick" && brick.data ? (
+                  <BuildResult
+                    key={brick.data.id}
+                    creation={brick.data}
+                    embedded
+                  />
+                ) : result.kind === "circuit" && circuit.data ? (
+                  <CircuitWorkbench
+                    key={circuit.data.id}
+                    wsId={wsId}
+                    creation={circuit.data}
+                    embedded
+                  />
+                ) : (
+                  <p role="status">{t(($) => $.opening_plan)}</p>
+                )}
+              </>
+            ) : (
+              <div className="flex min-h-96 flex-col items-center justify-center px-5 text-center">
+                <Blocks className="mb-5 size-16 text-primary/60" />
+                <h2 className="text-2xl font-black">
+                  {t(($) => $.conversation_empty)}
+                </h2>
+                <p className="mt-3 max-w-md text-sm leading-7 text-muted-foreground">
+                  {t(($) => $.conversation_empty_hint)}
+                </p>
+              </div>
+            )}
+          </section>
+        </div>
       </div>
     </main>
   );

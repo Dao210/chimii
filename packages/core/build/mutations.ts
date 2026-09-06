@@ -9,9 +9,20 @@ export function useCreateBuildSession() {
   const workspaceId = useWorkspaceId();
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ prompt, clientRequestId = generateUUID(), designInput }: { prompt: string; clientRequestId?: string; designInput?: import("./types").BuildDesignInput }) =>
-      api.createBuildSession(prompt, clientRequestId, designInput),
-    onSuccess: (session) => queryClient.setQueryData(buildKeys.session(workspaceId, session.id), session),
+    mutationFn: ({
+      prompt,
+      clientRequestId = generateUUID(),
+      designInput,
+    }: {
+      prompt: string;
+      clientRequestId?: string;
+      designInput?: import("./types").BuildDesignInput;
+    }) => api.createBuildSession(prompt, clientRequestId, designInput),
+    onSuccess: (session) =>
+      queryClient.setQueryData(
+        buildKeys.session(workspaceId, session.id),
+        session,
+      ),
   });
 }
 
@@ -19,10 +30,31 @@ export function useSubmitBuildAnswers() {
   const workspaceId = useWorkspaceId();
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ sessionId, answers, revision }: { sessionId: string; answers: Record<string, string>; revision?: number }) =>
-      api.submitBuildAnswers(sessionId, answers, revision),
-    onSuccess: (session) => queryClient.setQueryData(buildKeys.session(workspaceId, session.id), session),
-    onError: (_error, variables) => queryClient.invalidateQueries({ queryKey: buildKeys.session(workspaceId, variables.sessionId) }),
+    mutationFn: ({
+      sessionId,
+      answers,
+      revision,
+    }: {
+      sessionId: string;
+      answers: Record<string, string>;
+      revision?: number;
+    }) => api.submitBuildAnswers(sessionId, answers, revision),
+    onSuccess: (session) => {
+      queryClient.setQueryData(
+        buildKeys.session(workspaceId, session.id),
+        session,
+      );
+      void queryClient.invalidateQueries({
+        queryKey: buildKeys.conversation(
+          workspaceId,
+          session.conversation_id || session.id,
+        ),
+      });
+    },
+    onError: (_error, variables) =>
+      queryClient.invalidateQueries({
+        queryKey: buildKeys.session(workspaceId, variables.sessionId),
+      }),
   });
 }
 
@@ -30,9 +62,29 @@ export function useCancelBuildSession() {
   const workspaceId = useWorkspaceId();
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ sessionId, revision }: { sessionId: string; revision: number }) => api.cancelBuildSession(sessionId, revision),
-    onSuccess: (session) => queryClient.setQueryData(buildKeys.session(workspaceId, session.id), session),
-    onError: (_error, variables) => queryClient.invalidateQueries({ queryKey: buildKeys.session(workspaceId, variables.sessionId) }),
+    mutationFn: ({
+      sessionId,
+      revision,
+    }: {
+      sessionId: string;
+      revision: number;
+    }) => api.cancelBuildSession(sessionId, revision),
+    onSuccess: (session) => {
+      queryClient.setQueryData(
+        buildKeys.session(workspaceId, session.id),
+        session,
+      );
+      void queryClient.invalidateQueries({
+        queryKey: buildKeys.conversation(
+          workspaceId,
+          session.conversation_id || session.id,
+        ),
+      });
+    },
+    onError: (_error, variables) =>
+      queryClient.invalidateQueries({
+        queryKey: buildKeys.session(workspaceId, variables.sessionId),
+      }),
   });
 }
 
@@ -40,10 +92,19 @@ export function useSaveBrickInventory() {
   const workspaceId = useWorkspaceId();
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ expectedRevision, items }: { expectedRevision: number; items: BrickInventoryItem[] }) =>
-      api.saveBrickInventory(expectedRevision, items),
-    onSuccess: (inventory) => queryClient.setQueryData(buildKeys.inventory(workspaceId), inventory),
-    onError: () => queryClient.invalidateQueries({ queryKey: buildKeys.inventory(workspaceId) }),
+    mutationFn: ({
+      expectedRevision,
+      items,
+    }: {
+      expectedRevision: number;
+      items: BrickInventoryItem[];
+    }) => api.saveBrickInventory(expectedRevision, items),
+    onSuccess: (inventory) =>
+      queryClient.setQueryData(buildKeys.inventory(workspaceId), inventory),
+    onError: () =>
+      queryClient.invalidateQueries({
+        queryKey: buildKeys.inventory(workspaceId),
+      }),
   });
 }
 
@@ -51,9 +112,14 @@ export function useResetBrickInventory() {
   const workspaceId = useWorkspaceId();
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (expectedRevision: number) => api.resetBrickInventory(expectedRevision),
-    onSuccess: (inventory) => queryClient.setQueryData(buildKeys.inventory(workspaceId), inventory),
-    onError: () => queryClient.invalidateQueries({ queryKey: buildKeys.inventory(workspaceId) }),
+    mutationFn: (expectedRevision: number) =>
+      api.resetBrickInventory(expectedRevision),
+    onSuccess: (inventory) =>
+      queryClient.setQueryData(buildKeys.inventory(workspaceId), inventory),
+    onError: () =>
+      queryClient.invalidateQueries({
+        queryKey: buildKeys.inventory(workspaceId),
+      }),
   });
 }
 
@@ -62,25 +128,70 @@ export function useStartLDrawCatalogSync() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: () => api.startLDrawCatalogSync(),
-    onSuccess: (status) => queryClient.setQueryData(buildKeys.catalogSync(workspaceId), status),
-    onError: () => queryClient.invalidateQueries({ queryKey: buildKeys.catalogSync(workspaceId) }),
+    onSuccess: (status) =>
+      queryClient.setQueryData(buildKeys.catalogSync(workspaceId), status),
+    onError: () =>
+      queryClient.invalidateQueries({
+        queryKey: buildKeys.catalogSync(workspaceId),
+      }),
   });
 }
 
 export function useSaveBuildProgress(wsId: string, id: string) {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: (input: import("./schemas").BuildProgressInput) => api.updateBuildProgress(id, input),
+    mutationFn: (input: import("./schemas").BuildProgressInput) =>
+      api.updateBuildProgress(id, input),
     onSuccess: async (progress) => {
+      void client.invalidateQueries({ queryKey: buildKeys.inventions(wsId) });
       await Promise.all([
-        client.cancelQueries({ queryKey: buildKeys.progress(wsId, id), exact: true }),
-        client.cancelQueries({ queryKey: buildKeys.summaries(wsId), exact: true }),
+        client.cancelQueries({
+          queryKey: buildKeys.progress(wsId, id),
+          exact: true,
+        }),
+        client.cancelQueries({
+          queryKey: buildKeys.summaries(wsId),
+          exact: true,
+        }),
       ]);
       client.setQueryData(buildKeys.progress(wsId, id), progress);
-      client.setQueryData<{ creations: import("./schemas").BuildSummary[] }>(buildKeys.summaries(wsId), old => old && ({
-        ...old, creations: old.creations.map(item => item.id === id ? { ...item, progress } : item),
-      }));
+      client.setQueryData<{ creations: import("./schemas").BuildSummary[] }>(
+        buildKeys.summaries(wsId),
+        (old) =>
+          old && {
+            ...old,
+            creations: old.creations.map((item) =>
+              item.id === id ? { ...item, progress } : item,
+            ),
+          },
+      );
     },
-    onError: () => { void client.invalidateQueries({ queryKey: buildKeys.progress(wsId, id) }); },
+    onError: () => {
+      void client.invalidateQueries({ queryKey: buildKeys.progress(wsId, id) });
+    },
+  });
+}
+
+export function useSendBuildMessage(wsId: string, conversationId?: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (input: import("./types").BuildMessageInput) =>
+      api.sendBuildMessage(input, conversationId),
+    onSuccess: (session) => {
+      client.setQueryData(buildKeys.session(wsId, session.id), session);
+      void client.invalidateQueries({
+        queryKey: buildKeys.conversation(
+          wsId,
+          session.conversation_id || session.id,
+        ),
+      });
+      void client.invalidateQueries({ queryKey: buildKeys.inventions(wsId) });
+    },
+    onError: () => {
+      if (conversationId)
+        void client.invalidateQueries({
+          queryKey: buildKeys.conversation(wsId, conversationId),
+        });
+    },
   });
 }

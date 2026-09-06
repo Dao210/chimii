@@ -166,18 +166,10 @@ func (h *Handler) CreateCircuitCreation(w http.ResponseWriter, r *http.Request) 
 			title = p.Title.ZH
 		}
 	}
-	doc, err := circuit.Compile(c, req.ProjectID, req.Prompt, title, planner, req.Inventory)
+	doc, err := compileCircuitDocument(c, req, title, planner)
 	if err != nil {
 		writeJSON(w, 422, map[string]any{"error": "Circuit could not pass the reference checks", "code": "circuit_validation_failed", "validation": doc.Validation})
 		return
-	}
-	if req.InventoryRevision != nil {
-		doc.InventoryRevision = req.InventoryRevision
-		doc, err = circuit.SealDocument(doc)
-		if err != nil {
-			writeError(w, 500, "could not seal circuit")
-			return
-		}
 	}
 	data, err := json.Marshal(doc)
 	if err != nil {
@@ -195,18 +187,11 @@ func (h *Handler) CreateCircuitCreation(w http.ResponseWriter, r *http.Request) 
 		writeError(w, 404, "workspace membership not found")
 		return
 	}
-	if req.InventoryRevision != nil {
-		v, err := q.LockCircuitInventory(r.Context(), db.LockCircuitInventoryParams{WorkspaceID: ws, ParentUserID: user, KitID: req.KitID})
-		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-			writeError(w, 500, "could not check inventory")
-			return
-		}
-		if err != nil || !circuitInventoryMatches(v, req) {
-			writeCircuitInventoryConflict(w)
-			return
-		}
+	created, err := saveCircuitDocument(r.Context(), q, req, db.CreateCircuitCreationParams{WorkspaceID: ws, CreatorUserID: user, ChildProfileID: child, ActorKey: lookup.ActorKey, ClientRequestID: id, RequestHash: hash, Document: data})
+	if errors.Is(err, errCircuitInventoryChanged) {
+		writeCircuitInventoryConflict(w)
+		return
 	}
-	created, err := q.CreateCircuitCreation(r.Context(), db.CreateCircuitCreationParams{WorkspaceID: ws, CreatorUserID: user, ChildProfileID: child, ActorKey: lookup.ActorKey, ClientRequestID: id, RequestHash: hash, Document: data})
 	if errors.Is(err, pgx.ErrNoRows) {
 		existing, readErr := q.GetCircuitCreationByRequest(r.Context(), lookup)
 		if readErr != nil {

@@ -4,9 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	buildstudio "github.com/chimii-ai/chimii/server/internal/build"
 	"github.com/chimii-ai/chimii/server/internal/middleware"
@@ -26,8 +28,14 @@ type createBuildSessionRequest struct {
 	Prompt              string                  `json:"prompt"`
 	ClientRequestID     string                  `json:"client_request_id"`
 	Design              *buildstudio.DesignSpec `json:"design,omitempty"`
+	SourceKind          string                  `json:"source_kind,omitempty"`
 	SourceCreationID    string                  `json:"source_creation_id,omitempty"`
 	ExpectedContentHash string                  `json:"expected_content_hash,omitempty"`
+	Kind                string                  `json:"kind,omitempty"`
+	Circuit             *circuitBuildPlan       `json:"circuit,omitempty"`
+	ExpectedSessionID   string                  `json:"expected_session_id,omitempty"`
+	ExpectedRevision    int32                   `json:"expected_revision,omitempty"`
+	QuestionID          string                  `json:"question_id,omitempty"`
 }
 
 type submitBuildAnswersRequest struct {
@@ -36,19 +44,24 @@ type submitBuildAnswersRequest struct {
 }
 
 type buildSessionResponse struct {
-	ID         string                          `json:"id"`
-	Revision   int32                           `json:"revision"`
-	Phase      string                          `json:"phase"`
-	Summary    string                          `json:"summary,omitempty"`
-	Message    string                          `json:"message,omitempty"`
-	Prompt     string                          `json:"prompt"`
-	Status     string                          `json:"status"`
-	Question   *buildstudio.ClarifyingQuestion `json:"question,omitempty"`
-	Answers    map[string]string               `json:"answers"`
-	CreationID string                          `json:"creation_id,omitempty"`
-	Error      string                          `json:"error,omitempty"`
-	CreatedAt  string                          `json:"created_at"`
-	UpdatedAt  string                          `json:"updated_at"`
+	Expired           bool                            `json:"expired"`
+	ID                string                          `json:"id"`
+	ConversationID    string                          `json:"conversation_id"`
+	Kind              string                          `json:"kind"`
+	CircuitCreationID string                          `json:"circuit_creation_id,omitempty"`
+	Circuit           *circuitBuildPlan               `json:"circuit,omitempty"`
+	Revision          int32                           `json:"revision"`
+	Phase             string                          `json:"phase"`
+	Summary           string                          `json:"summary,omitempty"`
+	Message           string                          `json:"message,omitempty"`
+	Prompt            string                          `json:"prompt"`
+	Status            string                          `json:"status"`
+	Question          *buildstudio.ClarifyingQuestion `json:"question,omitempty"`
+	Answers           map[string]string               `json:"answers"`
+	CreationID        string                          `json:"creation_id,omitempty"`
+	Error             string                          `json:"error,omitempty"`
+	CreatedAt         string                          `json:"created_at"`
+	UpdatedAt         string                          `json:"updated_at"`
 }
 
 type buildCreationResponse struct {
@@ -69,9 +82,21 @@ func (h *Handler) CreateBuildSession(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
-	if req.Design == nil && (h.LLM == nil || !h.LLM.Enabled()) {
-		writeJSON(w, http.StatusServiceUnavailable, map[string]any{"error": "Build Studio requires an LLM configuration", "code": "build_unavailable", "reason": "llm_not_configured"})
+	if req.Kind == "" {
+		req.Kind = "brick"
+	}
+	if req.Kind != "auto" && req.Kind != "brick" && req.Kind != "circuit" {
+		writeError(w, 400, "invalid creation kind")
 		return
+	}
+	if req.Design != nil && req.Kind != "brick" {
+		writeError(w, 400, "design requires brick mode")
+		return
+	}
+
+	if req.Circuit != nil {
+		p := req.Circuit
+		req.Circuit = &circuitBuildPlan{KitID: p.KitID, CatalogVersion: p.CatalogVersion, InventoryRevision: p.InventoryRevision, ProjectID: p.ProjectID, Locale: p.Locale}
 	}
 	req.Prompt = strings.TrimSpace(req.Prompt)
 	if req.Prompt == "" {
@@ -91,6 +116,20 @@ func (h *Handler) CreateBuildSession(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "client_request_id must be a UUID")
 		return
 	}
+	if req.SourceCreationID != "" {
+		if req.SourceKind == "" && req.Kind != "auto" {
+			req.SourceKind = req.Kind
+		}
+		if req.SourceKind != "brick" && req.SourceKind != "circuit" {
+			writeError(w, 400, "source kind must be explicit")
+			return
+		}
+		if req.Kind != "auto" && req.Kind != req.SourceKind {
+			writeError(w, 400, "source kind does not match creation kind")
+			return
+		}
+	}
+	hash := buildRequestHash(req)
 	status := "queued"
 	tx, err := h.TxStarter.Begin(r.Context())
 	if err != nil {
@@ -115,10 +154,30 @@ func (h *Handler) CreateBuildSession(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "failed to check build capacity")
 		return
 	}
+	conversationID, latest, proceed := h.continueBuildRequest(w, r, qtx, req, workspaceID, userID, childProfileID, hash)
+	if !proceed {
+		return
+	}
+	if latest != nil && latest.Status == "clarifying" && latest.ExpiresAt.Time.After(time.Now()) {
+		h.answerBuildConversation(w, r, qtx, tx, req, *latest, hash)
+		return
+	}
+	if req.QuestionID != "" {
+		writeError(w, 409, "question is no longer current")
+		return
+	}
 	requestScope := db.GetBuildSessionByClientRequestParams{
 		WorkspaceID: workspaceID, CreatorUserID: userID, ClientRequestID: clientRequestID, ChildProfileID: childProfileID,
 	}
 	if existing, lookupErr := qtx.GetBuildSessionByClientRequest(r.Context(), requestScope); lookupErr == nil {
+		sameConversation := existing.ConversationID == existing.ID
+		if conversationID.Valid {
+			sameConversation = existing.ConversationID == conversationID
+		}
+		if existing.RequestHash != hash || !sameConversation {
+			writeError(w, 409, "request ID already used for different content")
+			return
+		}
 		writeJSON(w, http.StatusAccepted, toBuildSessionResponse(existing))
 		return
 	} else if !errors.Is(lookupErr, pgx.ErrNoRows) {
@@ -138,8 +197,26 @@ func (h *Handler) CreateBuildSession(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
+	if req.Design == nil && (h.LLM == nil || !h.LLM.Enabled()) && !(req.Kind == "circuit" && req.Circuit != nil && req.Circuit.ProjectID != "") {
+		writeJSON(w, 503, map[string]any{"error": "AI is unavailable; choose a reference circuit project", "code": "build_unavailable"})
+		return
+	}
+	var circuitRecipe []byte
+	if req.Kind == "circuit" || req.Kind == "auto" {
+		plan := req.Circuit
+		if plan == nil {
+			plan = &circuitBuildPlan{}
+		}
+		plan.SourceCreationID, plan.ExpectedContentHash, plan.SourceKind = req.SourceCreationID, req.ExpectedContentHash, req.SourceKind
+		if req.SourceCreationID != "" && req.SourceKind == "circuit" {
+			if !h.validateCircuitBuildSource(w, r, qtx, workspaceID, userID, childProfileID, plan) {
+				return
+			}
+		}
+		circuitRecipe = mustBuildJSON(plan)
+	}
 	var recipe *buildstudio.AssemblyRecipe
-	if req.SourceCreationID != "" {
+	if req.SourceKind == "brick" && req.SourceCreationID != "" {
 		sourceID, valid := parseUUIDOrBadRequest(w, req.SourceCreationID, "source_creation_id")
 		if !valid {
 			return
@@ -184,18 +261,22 @@ func (h *Handler) CreateBuildSession(w http.ResponseWriter, r *http.Request) {
 		recipe.Metadata["module_library_version"] = buildstudio.ModuleLibraryVersion
 		recipe.Metadata["shape_generator_version"] = buildstudio.ShapeGeneratorVersion
 	}
-	var recipeJSON []byte
-	if recipe != nil {
+	recipeJSON := circuitRecipe
+	if recipe != nil && req.Kind != "auto" {
 		recipeJSON = mustBuildJSON(recipe)
 	}
 
 	session, err := qtx.CreateBuildSession(r.Context(), db.CreateBuildSessionParams{
 		WorkspaceID: workspaceID, CreatorUserID: userID, ChildProfileID: childProfileID,
-		ClientRequestID: clientRequestID, Prompt: req.Prompt,
+		ClientRequestID: clientRequestID, Prompt: req.Prompt, ConversationID: conversationID, Kind: req.Kind, RequestHash: hash,
 		Status: status, Question: nil, Answers: []byte(`{}`), InventorySnapshot: []byte(`{}`), Recipe: recipeJSON, DirectCompile: req.Design != nil,
 	})
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to start build")
+		return
+	}
+	if err := appendBuildUserMessage(r.Context(), qtx, session, req.Prompt, "request:"+req.ClientRequestID, hash); err != nil {
+		writeError(w, 500, "could not save message")
 		return
 	}
 	if status == "queued" {
@@ -285,6 +366,10 @@ func (h *Handler) SubmitBuildAnswers(w http.ResponseWriter, r *http.Request) {
 	}
 	if _, err := qtx.EnqueueBuildJob(r.Context(), db.EnqueueBuildJobParams{WorkspaceID: wsUUID, SessionID: session.ID}); err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to queue build")
+		return
+	}
+	if err := appendBuildUserMessage(r.Context(), qtx, session, req.Answers[toBuildSessionResponse(current).Question.ID], fmt.Sprintf("answer:%s:%d", uuidToString(session.ID), current.Revision), buildRequestHash(req)); err != nil {
+		writeError(w, 500, "could not save message")
 		return
 	}
 	if err := tx.Commit(r.Context()); err != nil {
@@ -442,7 +527,7 @@ func lockWorkspaceMemberForScopedWrite(ctx context.Context, queries *db.Queries,
 }
 
 func toBuildSessionResponse(row db.BuildSession) buildSessionResponse {
-	response := buildSessionResponse{Revision: row.Revision, Phase: row.Phase, ID: uuidToString(row.ID), Prompt: row.Prompt, Status: row.Status, Answers: map[string]string{}, CreationID: uuidToString(row.CreationID)}
+	response := buildSessionResponse{Expired: row.ExpiresAt.Valid && !row.ExpiresAt.Time.After(time.Now()), ConversationID: uuidToString(row.ConversationID), Kind: row.Kind, CircuitCreationID: uuidToString(row.CircuitCreationID), Revision: row.Revision, Phase: row.Phase, ID: uuidToString(row.ID), Prompt: row.Prompt, Status: row.Status, Answers: map[string]string{}, CreationID: uuidToString(row.CreationID)}
 	if row.CreatedAt.Valid {
 		response.CreatedAt = row.CreatedAt.Time.UTC().Format("2006-01-02T15:04:05Z07:00")
 	}
@@ -454,15 +539,23 @@ func toBuildSessionResponse(row db.BuildSession) buildSessionResponse {
 		// responses expose only a stable product code and never raw LLM/upstream
 		// text, URLs, credentials, or stack details.
 		switch row.Error.String {
-		case buildstudio.BuildErrorSearchLimit, buildstudio.BuildErrorInsufficientInventory, buildstudio.BuildErrorCountUnsupported, buildstudio.BuildErrorStructureInvalid, buildstudio.BuildErrorUnsupported, buildstudio.BuildErrorRequirements, "BUILD_CANCELLED":
+		case "CIRCUIT_INVENTORY_CHANGED", "CIRCUIT_VALIDATION_FAILED", "CIRCUIT_CATALOG_CHANGED", buildstudio.BuildErrorSearchLimit, buildstudio.BuildErrorInsufficientInventory, buildstudio.BuildErrorCountUnsupported, buildstudio.BuildErrorStructureInvalid, buildstudio.BuildErrorUnsupported, buildstudio.BuildErrorRequirements, "BUILD_CANCELLED":
 			response.Error = row.Error.String
 		default:
 			response.Error = "BUILD_GENERATION_FAILED"
 		}
 	}
 
+	if (row.Kind == "auto" || row.Kind == "circuit") && len(row.Recipe) > 0 {
+		var plan circuitBuildPlan
+		if json.Unmarshal(row.Recipe, &plan) == nil {
+			response.Circuit = &plan
+		}
+	}
 	if len(row.Recipe) > 0 {
-		var recipe buildstudio.AssemblyRecipe
+		var recipe struct {
+			Summary string `json:"summary"`
+		}
 		if json.Unmarshal(row.Recipe, &recipe) == nil {
 			response.Summary = recipe.Summary
 			if response.Error == buildstudio.BuildErrorUnsupported {
@@ -542,6 +635,10 @@ func (h *Handler) CancelBuildSession(w http.ResponseWriter, r *http.Request) {
 	}
 	defer tx.Rollback(r.Context())
 	q := h.Queries.WithTx(tx)
+	if err = lockWorkspaceMemberForScopedWrite(r.Context(), q, ws, user); err != nil {
+		writeError(w, 404, "workspace membership not found")
+		return
+	}
 	session, err := q.LockBuildSessionForAnswer(r.Context(), db.LockBuildSessionForAnswerParams{ID: id, WorkspaceID: ws, CreatorUserID: user, ChildProfileID: child})
 	if err != nil {
 		writeError(w, http.StatusNotFound, "build session not found")
@@ -557,6 +654,9 @@ func (h *Handler) CancelBuildSession(w http.ResponseWriter, r *http.Request) {
 	}
 	if err = q.CancelBuildJob(r.Context(), id); err == nil {
 		err = q.FailBuildSession(r.Context(), db.FailBuildSessionParams{ID: id, Error: pgtype.Text{String: "BUILD_CANCELLED", Valid: true}})
+	}
+	if err == nil {
+		err = appendBuildOutcome(r.Context(), q, id)
 	}
 	if err == nil {
 		err = tx.Commit(r.Context())

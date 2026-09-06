@@ -138,6 +138,38 @@ func (w *BuildWorker) ProcessNext(ctx context.Context) (bool, error) {
 	if err = json.Unmarshal(session.Answers, &answers); err != nil {
 		return true, w.failPermanently(ctx, job, buildstudio.BuildErrorRequirements, err)
 	}
+	history, historyErr := w.conversationHistory(runCtx, session)
+	if historyErr != nil {
+		return true, w.retry(ctx, job, historyErr)
+	}
+	if session.Kind == "auto" {
+		decision, routeErr := w.routeBuild(runCtx, session, answers, history)
+		if routeErr != nil {
+			return true, w.retry(ctx, job, routeErr)
+		}
+		if decision.Kind == "clarify" {
+			if session.Revision > maxBuildClarifications {
+				return true, w.finishReply(ctx, job, session, decision.Question, true)
+			}
+			var plan circuitBuildPlan
+			_ = json.Unmarshal(session.Recipe, &plan)
+			return true, w.circuitQuestion(ctx, job, session, plan, decision.Question)
+		}
+		recipe, resolveErr := routedBuildRecipe(runCtx, w.h.Queries, session, decision.Kind)
+		if resolveErr != nil {
+			return true, w.failPermanently(ctx, job, buildstudio.BuildErrorRequirements, resolveErr)
+		}
+		if err = w.withLease(runCtx, job, func(q *db.Queries) error {
+			var e error
+			session, e = q.SetBuildSessionKind(runCtx, db.SetBuildSessionKindParams{ID: session.ID, Kind: decision.Kind, Recipe: recipe})
+			return e
+		}); err != nil {
+			return true, w.retry(ctx, job, err)
+		}
+	}
+	if session.Kind == "circuit" {
+		return true, w.processCircuit(runCtx, job, session, answers, history)
+	}
 	// Availability is read for this execution, not frozen at request creation.
 	// No inventory row lock, reservation or consumption is part of generation.
 	inventory, catalog, err := w.readAvailability(runCtx, session.WorkspaceID)
@@ -170,7 +202,7 @@ func (w *BuildWorker) ProcessNext(ctx context.Context) (bool, error) {
 			recipe.Design = base.Design
 		}
 		planStarted := time.Now()
-		decision, planErr := w.h.planBuildRecipe(runCtx, session.Prompt, answers, recipe, session.Revision, inventory, catalog)
+		decision, planErr := w.h.planBuildRecipe(runCtx, session.Prompt, answers, recipe, session.Revision, inventory, catalog, history)
 		slog.Info("build worker: planning", "session_id", uuidToString(session.ID), "revision", session.Revision, "elapsed_ms", time.Since(planStarted).Milliseconds(), "outcome", decision.Outcome)
 		if planErr != nil {
 			if code, ok := buildstudio.BuildErrorCode(planErr); ok {
@@ -181,6 +213,8 @@ func (w *BuildWorker) ProcessNext(ctx context.Context) (bool, error) {
 		switch decision.Outcome {
 		case "clarify":
 			return true, w.pause(ctx, job, session, decision)
+		case "reply":
+			return true, w.finishReply(ctx, job, session, decision.Message, false)
 		case "unsupported":
 			draft := buildstudio.AssemblyRecipe{Version: 2, Summary: decision.Message}
 			return true, w.finish(ctx, job, func(q *db.Queries) error {
@@ -299,6 +333,9 @@ func (w *BuildWorker) finish(ctx context.Context, job db.BuildJob, apply func(*d
 	if err = apply(q); err != nil {
 		return err
 	}
+	if err = appendBuildOutcome(ctx, q, job.SessionID); err != nil {
+		return err
+	}
 	return tx.Commit(ctx)
 }
 func (w *BuildWorker) pause(ctx context.Context, job db.BuildJob, session db.BuildSession, d buildPlanningDecision) error {
@@ -318,6 +355,13 @@ func (w *BuildWorker) failPermanently(ctx context.Context, job db.BuildJob, code
 	}
 	defer tx.Rollback(ctx)
 	q := w.h.Queries.WithTx(tx)
+	session, loadErr := q.GetBuildSessionForWorker(ctx, job.SessionID)
+	if loadErr != nil {
+		return loadErr
+	}
+	if err = lockWorkspaceMemberForScopedWrite(ctx, q, session.WorkspaceID, session.CreatorUserID); err != nil {
+		return err
+	}
 	if _, err = q.LockBuildSessionForWorker(ctx, job.SessionID); err != nil {
 		return err
 	}
@@ -327,6 +371,9 @@ func (w *BuildWorker) failPermanently(ctx context.Context, job db.BuildJob, code
 		return err
 	}
 	if err = q.FailBuildSession(ctx, db.FailBuildSessionParams{ID: job.SessionID, Error: pgtype.Text{String: code, Valid: true}}); err != nil {
+		return err
+	}
+	if err = appendBuildOutcome(ctx, q, job.SessionID); err != nil {
 		return err
 	}
 	if err = tx.Commit(ctx); err != nil {
@@ -342,6 +389,13 @@ func (w *BuildWorker) retry(ctx context.Context, job db.BuildJob, cause error) e
 	}
 	defer tx.Rollback(ctx)
 	q := w.h.Queries.WithTx(tx)
+	session, loadErr := q.GetBuildSessionForWorker(ctx, job.SessionID)
+	if loadErr != nil {
+		return loadErr
+	}
+	if err = lockWorkspaceMemberForScopedWrite(ctx, q, session.WorkspaceID, session.CreatorUserID); err != nil {
+		return err
+	}
 	if _, err = q.LockBuildSessionForWorker(ctx, job.SessionID); err != nil {
 		return err
 	}
@@ -354,6 +408,11 @@ func (w *BuildWorker) retry(ctx context.Context, job db.BuildJob, cause error) e
 	}
 	if updated.Status == "failed" {
 		if err = q.FailBuildSession(ctx, db.FailBuildSessionParams{ID: job.SessionID, Error: pgtype.Text{String: "BUILD_GENERATION_FAILED", Valid: true}}); err != nil {
+			return err
+		}
+	}
+	if updated.Status == "failed" {
+		if err = appendBuildOutcome(ctx, q, job.SessionID); err != nil {
 			return err
 		}
 	}

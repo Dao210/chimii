@@ -41,32 +41,127 @@ describe("LDrawCatalogSyncStatusSchema", () => {
   });
 });
 
-
 describe("BuildSessionSchema planning protocol", () => {
-  const session = { id: "s", prompt: "dog", status: "clarifying", answers: {}, created_at: "", updated_at: "" };
+  const session = {
+    id: "s",
+    prompt: "dog",
+    status: "clarifying",
+    answers: {},
+    created_at: "",
+    updated_at: "",
+  };
   it("supports old labels and new versioned free-text questions", () => {
-    const old = BuildSessionSchema.parse({ ...session, question: { id: "movement", prompt: "Move?", options: ["Run"] } });
+    const old = BuildSessionSchema.parse({
+      ...session,
+      question: { id: "movement", prompt: "Move?", options: ["Run"] },
+    });
     expect(old.question?.options).toEqual(["Run"]);
-    const next = BuildSessionSchema.parse({ ...session, revision: 2, phase: "planning", question: { id: "q2", prompt: "Which animal?", choices: [], allow_free_text: true } });
+    const next = BuildSessionSchema.parse({
+      ...session,
+      revision: 2,
+      phase: "planning",
+      question: {
+        id: "q2",
+        prompt: "Which animal?",
+        choices: [],
+        allow_free_text: true,
+      },
+    });
     expect(next.question?.allow_free_text).toBe(true);
     expect(next.question?.options).toEqual([]);
   });
   it("discards malformed optional choices without losing the session", () => {
-    const parsed = BuildSessionSchema.parse({ ...session, question: { id: "q1", prompt: "Which?", options: ["Dog"], choices: [{ label: "Dog" }], allow_free_text: "yes" } });
-    expect(parsed.id).toBe("s"); expect(parsed.question?.choices).toBeUndefined();
+    const parsed = BuildSessionSchema.parse({
+      ...session,
+      question: {
+        id: "q1",
+        prompt: "Which?",
+        options: ["Dog"],
+        choices: [{ label: "Dog" }],
+        allow_free_text: "yes",
+      },
+    });
+    expect(parsed.id).toBe("s");
+    expect(parsed.question?.choices).toBeUndefined();
     expect(parsed.question?.allow_free_text).toBeUndefined();
   });
   it("fails closed on a malformed revision or question", () => {
-    const parsed = parseWithFallback({ ...session, revision: "wrong", question: { prompt: "Which?" } }, BuildSessionSchema, EMPTY_BUILD_SESSION, { endpoint: "GET /api/build/sessions/{id}" });
+    const parsed = parseWithFallback(
+      { ...session, revision: "wrong", question: { prompt: "Which?" } },
+      BuildSessionSchema,
+      EMPTY_BUILD_SESSION,
+      { endpoint: "GET /api/build/sessions/{id}" },
+    );
     expect(parsed.status).toBe("failed");
   });
 });
 
 describe("build progress boundary", () => {
   it("rejects malformed or out-of-range progress instead of claiming completion", async () => {
-    const { BuildProgressSchema, BuildSummaryListSchema } = await import("./schemas");
-    expect(BuildProgressSchema.safeParse({ id: "c", current_step: 9, step_count: 3, revision: 1, completed_at: null }).success).toBe(false);
-    expect(BuildProgressSchema.safeParse({ id: "c", current_step: 1, step_count: 3, revision: "1", completed_at: null }).success).toBe(false);
-    expect(BuildSummaryListSchema.safeParse({ creations: null }).success).toBe(false);
+    const { BuildProgressSchema, BuildSummaryListSchema } = await import(
+      "./schemas"
+    );
+    expect(
+      BuildProgressSchema.safeParse({
+        id: "c",
+        current_step: 9,
+        step_count: 3,
+        revision: 1,
+        completed_at: null,
+      }).success,
+    ).toBe(false);
+    expect(
+      BuildProgressSchema.safeParse({
+        id: "c",
+        current_step: 1,
+        step_count: 3,
+        revision: "1",
+        completed_at: null,
+      }).success,
+    ).toBe(false);
+    expect(BuildSummaryListSchema.safeParse({ creations: null }).success).toBe(
+      false,
+    );
+  });
+});
+
+describe("conversation response boundary", () => {
+  it("keeps legacy sessions compatible and rejects malformed history or artifact kinds", async () => {
+    const { BuildConversationSchema, InventionListSchema } = await import(
+      "./schemas"
+    );
+    const session = {
+      id: "run",
+      prompt: "idea",
+      status: "completed",
+      answers: {},
+      created_at: "now",
+      updated_at: "now",
+    };
+    expect(BuildSessionSchema.safeParse(session).success).toBe(true);
+    expect(
+      BuildConversationSchema.safeParse({
+        id: "run",
+        session,
+        messages: [],
+        next_cursor: "",
+      }).success,
+    ).toBe(true);
+    expect(
+      BuildConversationSchema.safeParse({
+        id: "run",
+        session,
+        messages: [
+          { id: "m", sequence: "1", role: "assistant", content: "done" },
+        ],
+        next_cursor: "",
+      }).success,
+    ).toBe(false);
+    expect(
+      InventionListSchema.safeParse({
+        creations: [{ id: "x", kind: "unknown" }],
+        next_cursor: "",
+      }).success,
+    ).toBe(false);
   });
 });

@@ -50,7 +50,11 @@ export interface BuildPartSpec {
   occupancy?: BuildPartOccupancy;
 }
 
-export type BuildCatalogCapability = "all" | "auto_build" | "inventory" | "preview";
+export type BuildCatalogCapability =
+  | "all"
+  | "auto_build"
+  | "inventory"
+  | "preview";
 
 export interface BuildCatalogPartPage {
   kit_id: string;
@@ -179,7 +183,7 @@ export interface BuildValidationReport {
 }
 
 export interface BuildPlan {
-	 document?: BuildDocument;
+  document?: BuildDocument;
   version: number;
   kit_id: string;
   catalog_version: string;
@@ -212,11 +216,16 @@ export interface BuildModuleInstance {
 }
 
 export interface BuildRecipe {
-	 design?: BuildDesignSpec;
+  design?: BuildDesignSpec;
   subject?: string;
   summary?: string;
   requirements?: string[];
-  constraints?: { exact_colors: boolean; no_wheels: boolean; part_count: number; required_modules?: string[] };
+  constraints?: {
+    exact_colors: boolean;
+    no_wheels: boolean;
+    part_count: number;
+    required_modules?: string[];
+  };
   modules?: BuildModuleInstance[];
   version: number;
   archetype: string;
@@ -227,7 +236,11 @@ export interface BuildRecipe {
   metadata: Record<string, string>;
 }
 
-export interface BuildDesignVector { x: number; y: number; z: number }
+export interface BuildDesignVector {
+  x: number;
+  y: number;
+  z: number;
+}
 export interface BuildShapeNode {
   id: string;
   label: string;
@@ -239,14 +252,23 @@ export interface BuildShapeNode {
   points?: { x: number; z: number }[];
   repeat?: { count: number; offset: BuildDesignVector };
 }
-export interface BuildDesignSpec { version: number; mode: "static"; shapes: BuildShapeNode[] }
+export interface BuildDesignSpec {
+  version: number;
+  mode: "static";
+  shapes: BuildShapeNode[];
+}
 export interface BuildDocument {
   version: number;
   design: BuildDesignSpec;
   design_hash: string;
   parent_creation_id?: string;
   parent_hash?: string;
-  solver: { status: string; visited: number; target_cells: number; matched_cells: number };
+  solver: {
+    status: string;
+    visited: number;
+    target_cells: number;
+    matched_cells: number;
+  };
 }
 export interface BuildDesignInput {
   design?: BuildDesignSpec;
@@ -269,7 +291,32 @@ export type BuildSessionStatus =
   | "completed"
   | "failed";
 
+export type BuildKind = "auto" | "brick" | "circuit";
+export interface CircuitBuildInput {
+  kit_id: string;
+  catalog_version: string;
+  inventory_revision: number;
+  project_id?: string;
+  locale?: string;
+}
+export interface BuildMessageInput {
+  source_kind?: "brick" | "circuit";
+  prompt: string;
+  client_request_id: string;
+  kind: BuildKind;
+  circuit?: CircuitBuildInput;
+  source_creation_id?: string;
+  expected_content_hash?: string;
+  expected_session_id?: string;
+  expected_revision?: number;
+  question_id?: string;
+}
 export interface BuildSession {
+  expired?: boolean;
+  conversation_id?: string;
+  kind?: BuildKind;
+  circuit_creation_id?: string;
+  circuit?: CircuitBuildInput;
   id: string;
   prompt: string;
   status: BuildSessionStatus;

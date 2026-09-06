@@ -200,6 +200,8 @@ import {
   BuildCatalogPartPageSchema,
   LDrawCatalogSyncStatusSchema,
   BuildSessionSchema,
+  BuildConversationSchema,
+  InventionListSchema,
   BrickInventorySchema,
   EMPTY_BRICK_INVENTORY,
   EMPTY_BUILD_CATALOG,
@@ -3207,6 +3209,45 @@ export class ApiClient {
     return parseWithFallback(raw, BuildSessionSchema, EMPTY_BUILD_SESSION, {
       endpoint: "POST /api/build/sessions",
     });
+  }
+
+  async sendBuildMessage(
+    input: import("../build/types").BuildMessageInput,
+    conversationId?: string,
+  ): Promise<BuildSession> {
+    const endpoint = conversationId
+      ? `/api/build/conversations/${encodeURIComponent(conversationId)}/messages`
+      : "/api/build/sessions";
+    const raw = await this.fetch<unknown>(endpoint, {
+      method: "POST",
+      body: JSON.stringify(input),
+    });
+    const result = parseWithFallback<BuildSession | null>(
+      raw,
+      BuildSessionSchema.refine((value) => value.id.length > 0),
+      null,
+      { endpoint },
+    );
+    if (!result) throw new Error("Could not read creation response");
+    return result;
+  }
+  async getBuildConversation(id: string, before = "") {
+    const endpoint = `/api/build/conversations/${encodeURIComponent(id)}?before=${encodeURIComponent(before)}`;
+    const raw = await this.fetch<unknown>(endpoint);
+    const result = parseWithFallback<
+      import("../build/schemas").BuildConversation | null
+    >(raw, BuildConversationSchema, null, { endpoint });
+    if (!result) throw new Error("Could not read conversation");
+    return result;
+  }
+  async listInventions(before = "") {
+    const endpoint = `/api/build/inventions?before=${encodeURIComponent(before)}`;
+    const raw = await this.fetch<unknown>(endpoint);
+    const result = parseWithFallback<
+      import("../build/schemas").InventionList | null
+    >(raw, InventionListSchema, null, { endpoint });
+    if (!result) throw new Error("Could not read creations");
+    return result;
   }
 
   async getBuildSession(id: string): Promise<BuildSession> {

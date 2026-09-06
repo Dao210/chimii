@@ -1,18 +1,36 @@
-import { infiniteQueryOptions, keepPreviousData, queryOptions } from "@tanstack/react-query";
+import {
+  infiniteQueryOptions,
+  keepPreviousData,
+  queryOptions,
+} from "@tanstack/react-query";
 import { api } from "../api";
 import type { BuildCatalogPartFilters } from "./types";
 
 export const buildKeys = {
   all: (workspaceId: string) => ["build", workspaceId] as const,
-  catalog: (workspaceId: string) => [...buildKeys.all(workspaceId), "catalog"] as const,
-  catalogParts: (workspaceId: string, filters: Omit<BuildCatalogPartFilters, "cursor">) => [...buildKeys.catalog(workspaceId), "parts", filters] as const,
-  catalogSync: (workspaceId: string) => [...buildKeys.catalog(workspaceId), "sync"] as const,
-  inventory: (workspaceId: string) => [...buildKeys.all(workspaceId), "inventory"] as const,
-  session: (workspaceId: string, id: string) => [...buildKeys.all(workspaceId), "session", id] as const,
-  summaries: (workspaceId: string) => [...buildKeys.all(workspaceId), "summaries"] as const,
-  progress: (workspaceId: string, id: string) => [...buildKeys.all(workspaceId), "progress", id] as const,
-  creations: (workspaceId: string) => [...buildKeys.all(workspaceId), "creations"] as const,
-  creation: (workspaceId: string, id: string) => [...buildKeys.all(workspaceId), "creation", id] as const,
+  catalog: (workspaceId: string) =>
+    [...buildKeys.all(workspaceId), "catalog"] as const,
+  catalogParts: (
+    workspaceId: string,
+    filters: Omit<BuildCatalogPartFilters, "cursor">,
+  ) => [...buildKeys.catalog(workspaceId), "parts", filters] as const,
+  catalogSync: (workspaceId: string) =>
+    [...buildKeys.catalog(workspaceId), "sync"] as const,
+  inventory: (workspaceId: string) =>
+    [...buildKeys.all(workspaceId), "inventory"] as const,
+  conversation: (wsId: string, id: string) =>
+    [...buildKeys.all(wsId), "conversation", id] as const,
+  inventions: (wsId: string) => [...buildKeys.all(wsId), "inventions"] as const,
+  session: (workspaceId: string, id: string) =>
+    [...buildKeys.all(workspaceId), "session", id] as const,
+  summaries: (workspaceId: string) =>
+    [...buildKeys.all(workspaceId), "summaries"] as const,
+  progress: (workspaceId: string, id: string) =>
+    [...buildKeys.all(workspaceId), "progress", id] as const,
+  creations: (workspaceId: string) =>
+    [...buildKeys.all(workspaceId), "creations"] as const,
+  creation: (workspaceId: string, id: string) =>
+    [...buildKeys.all(workspaceId), "creation", id] as const,
 };
 
 export function buildCatalogOptions(workspaceId: string) {
@@ -29,7 +47,8 @@ export function buildCatalogPartsOptions(
 ) {
   return infiniteQueryOptions({
     queryKey: buildKeys.catalogParts(workspaceId, filters),
-    queryFn: ({ pageParam }) => api.listBuildCatalogParts({ ...filters, cursor: pageParam }),
+    queryFn: ({ pageParam }) =>
+      api.listBuildCatalogParts({ ...filters, cursor: pageParam }),
     initialPageParam: "",
     getNextPageParam: (lastPage) => lastPage.next_cursor,
     placeholderData: keepPreviousData,
@@ -65,7 +84,8 @@ export function buildSessionOptions(workspaceId: string, id: string) {
     refetchInterval: (query) => {
       const status = query.state.data?.status;
       return status === "queued" || status === "generating"
-        ? Math.min(1_000 + query.state.dataUpdateCount * 400, 3_000) : false;
+        ? Math.min(1_000 + query.state.dataUpdateCount * 400, 3_000)
+        : false;
     },
   });
 }
@@ -87,8 +107,39 @@ export function buildCreationOptions(workspaceId: string, id: string) {
 }
 
 export function buildSummariesOptions(wsId: string) {
-  return queryOptions({ queryKey: buildKeys.summaries(wsId), queryFn: () => api.listBuildSummaries(), enabled: !!wsId });
+  return queryOptions({
+    queryKey: buildKeys.summaries(wsId),
+    queryFn: () => api.listBuildSummaries(),
+    enabled: !!wsId,
+  });
 }
 export function buildProgressOptions(wsId: string, id: string) {
-  return queryOptions({ queryKey: buildKeys.progress(wsId, id), queryFn: () => api.getBuildProgress(id), enabled: !!wsId && !!id });
+  return queryOptions({
+    queryKey: buildKeys.progress(wsId, id),
+    queryFn: () => api.getBuildProgress(id),
+    enabled: !!wsId && !!id,
+  });
+}
+
+export function buildConversationOptions(wsId: string, id: string) {
+  return infiniteQueryOptions({
+    queryKey: buildKeys.conversation(wsId, id),
+    queryFn: ({ pageParam }) => api.getBuildConversation(id, pageParam),
+    initialPageParam: "",
+    getNextPageParam: (page) => page.next_cursor || undefined,
+    enabled: !!wsId && !!id,
+    refetchInterval: (query) => {
+      const status = query.state.data?.pages[0]?.session.status;
+      return status === "queued" || status === "generating" ? 1200 : false;
+    },
+  });
+}
+export function inventionListOptions(wsId: string) {
+  return infiniteQueryOptions({
+    queryKey: buildKeys.inventions(wsId),
+    queryFn: ({ pageParam }) => api.listInventions(pageParam),
+    initialPageParam: "",
+    getNextPageParam: (page) => page.next_cursor || undefined,
+    enabled: !!wsId,
+  });
 }

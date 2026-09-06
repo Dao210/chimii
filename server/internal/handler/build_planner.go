@@ -17,8 +17,9 @@ const maxBuildClarifications = 2
 
 const buildIntentSystemPrompt = `You plan real construction-toy models. Understand the user's idea, previous design and question/answer history. Prefer a complete static shape design; ask ONE question only for essential ambiguity. The supported object subjects are NOT a whitelist: clocks, furniture, letters, buildings, animals and new silhouettes can all be composed from generic target shapes.
 Return exactly one JSON object without markdown:
-{"outcome":"ready|clarify|unsupported","message":"","recipe":{"version":3,"subject":"requested subject","summary":"concise understanding in user's language","title":"short title","requirements":["explicit request"],"constraints":{"exact_colors":false,"no_wheels":false,"part_count":0,"required_modules":[]},"modules":[],"design":{"version":1,"mode":"static","shapes":[{"id":"base","label":"short label in user's language","kind":"box","operation":"add","position":{"x":0,"y":0,"z":0},"size":{"x":6,"y":6,"z":6},"color":1}]}},"question":{"prompt":"one question","choices":[{"id":"a","label":"relevant choice"}],"allow_free_text":true}}
+{"outcome":"ready|clarify|reply|unsupported","message":"","recipe":{"version":3,"subject":"requested subject","summary":"concise understanding in user's language","title":"short title","requirements":["explicit request"],"constraints":{"exact_colors":false,"no_wheels":false,"part_count":0,"required_modules":[]},"modules":[],"design":{"version":1,"mode":"static","shapes":[{"id":"base","label":"short label in user's language","kind":"box","operation":"add","position":{"x":0,"y":0,"z":0},"size":{"x":6,"y":6,"z":6},"color":1}]}},"question":{"prompt":"one question","choices":[{"id":"a","label":"relevant choice"}],"allow_free_text":true}}
 Rules:
+- For a discussion or explanation without a change request, return reply with only message (1-240 characters). Do not claim a new artifact was generated. Mixed electronic function plus a physical brick enclosure is not supported: clarify which independent product to make first.
 - For ready: recipe must be complete and question absent. For clarify: include an understood recipe draft and question, but omit design and use empty modules. For unsupported: give a clear message and omit question. An absent named module is NEVER a reason to reject a static shape.
 - A shape design uses version 3 and empty modules. Shapes are TARGET VOLUMES, not individual bricks. The compiler selects real parts. Use box, ellipse (elliptical X/Z footprint extruded in Y), or polygon (3-32 local X/Z points within size). Operation add unions/overwrites volume; subtract removes it. Subtraction can make holes, rings and arches. Every added shape must retain some volume. All coordinates/dimensions are integers: X/Z in studs, Y in plates (a brick is 3 plates). X/Z bounds -16..17, Y 0..48, at most 48 shapes and 8192 occupied cells. Keep typical designs within 12x12 studs and 200 parts.
 - A shape may use repeat:{count:2..24,offset:{x:...,y:...,z:...}} for equally spaced copies. Give every shape a stable unique id. Reuse the previous ids when editing; change only requested shapes, preserving the rest. Never shrink real bricks or invent catalog parts/connectors.
@@ -45,7 +46,7 @@ type buildPlanningQuestion struct {
 	AllowFreeText bool                         `json:"allow_free_text"`
 }
 
-func (h *Handler) planBuildRecipe(ctx context.Context, prompt string, answers map[string]string, draft *buildstudio.AssemblyRecipe, revision int32, inventory buildstudio.InventorySnapshot, catalog buildstudio.PartCatalog) (buildPlanningDecision, error) {
+func (h *Handler) planBuildRecipe(ctx context.Context, prompt string, answers map[string]string, draft *buildstudio.AssemblyRecipe, revision int32, inventory buildstudio.InventorySnapshot, catalog buildstudio.PartCatalog, conversation ...[]map[string]string) (buildPlanningDecision, error) {
 	if h.LLM == nil || !h.LLM.Enabled() {
 		return buildPlanningDecision{}, errors.New("build planner is not configured")
 	}
@@ -56,7 +57,8 @@ func (h *Handler) planBuildRecipe(ctx context.Context, prompt string, answers ma
 		QuestionsRemaining int                         `json:"questions_remaining"`
 		Capabilities       any                         `json:"capabilities"`
 		Colors             []int                       `json:"colors"`
-	}{prompt, answers, draft, max(0, maxBuildClarifications-int(revision)+1), buildstudio.Capabilities(buildstudio.UnlimitedInventory(), catalog), buildstudio.AllowedColorCodes()}
+		Conversation       [][]map[string]string       `json:"conversation"`
+	}{prompt, answers, draft, max(0, maxBuildClarifications-int(revision)+1), buildstudio.Capabilities(buildstudio.UnlimitedInventory(), catalog), buildstudio.AllowedColorCodes(), conversation}
 	rawInput, err := json.Marshal(input)
 	if err != nil {
 		return buildPlanningDecision{}, err
@@ -178,6 +180,10 @@ func parseBuildDecision(raw string) (buildPlanningDecision, error) {
 			labels[choice.Label] = true
 		}
 		d.Question.AllowFreeText = true
+	case "reply":
+		if d.Recipe != nil || d.Question != nil || !textValid(d.Message, 240) {
+			return d, errors.New("reply needs only a message")
+		}
 	case "unsupported":
 		if d.Question != nil || !textValid(d.Message, 240) {
 			return d, errors.New("unsupported decision needs explanation")

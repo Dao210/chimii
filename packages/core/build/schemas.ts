@@ -41,7 +41,9 @@ const PartSpecSchema = z.looseObject({
   name: z.string(),
   category: z.string().catch("brick"),
   popularity_rank: z.number().int().positive().optional(),
-  certification_level: z.enum(["asset_only", "basic", "advanced", "certified"]).optional(),
+  certification_level: z
+    .enum(["asset_only", "basic", "advanced", "certified"])
+    .optional(),
   auto_build_eligible: z.boolean().catch(false).optional(),
   inventory_eligible: z.boolean().catch(false).optional(),
   geometry_profile: z.string().optional(),
@@ -105,11 +107,13 @@ export const BuildCatalogSchema = z.looseObject({
   catalog_version: z.string(),
   catalog_source: CatalogSourceSchema,
   parts: z.array(PartSpecSchema),
-  colors: z.array(z.looseObject({
-    code: z.number().int(),
-    name: z.string(),
-    hex: z.string().regex(/^#[0-9a-fA-F]{6}$/),
-  })),
+  colors: z.array(
+    z.looseObject({
+      code: z.number().int(),
+      name: z.string(),
+      hex: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+    }),
+  ),
 });
 
 export const BuildCatalogPartPageSchema = z.looseObject({
@@ -157,11 +161,13 @@ export const BuildValidationSchema = z.looseObject({
   // A successful historical validation has no issues and was encoded as
   // null by Go. Consumers always receive an array after this boundary.
   issues: z
-    .array(z.looseObject({
-      code: z.string(),
-      message: z.string(),
-      placement_id: z.string().optional(),
-    }))
+    .array(
+      z.looseObject({
+        code: z.string(),
+        message: z.string(),
+        placement_id: z.string().optional(),
+      }),
+    )
     .nullish()
     .transform((issues) => issues ?? []),
   part_count: z.number().int().nonnegative(),
@@ -171,19 +177,51 @@ export const BuildValidationSchema = z.looseObject({
   used_parts: z.record(z.string(), z.number().int().nonnegative()),
 });
 
-const DesignVectorSchema = z.object({ x: z.number().int(), y: z.number().int(), z: z.number().int() });
-export const BuildShapeNodeSchema = z.object({
-  id: z.string().min(1).max(48), label: z.string().max(80), kind: z.enum(["box", "ellipse", "polygon"]), operation: z.enum(["add", "subtract"]),
-  position: DesignVectorSchema,
-  size: z.object({ x: z.number().int().min(1).max(32), y: z.number().int().min(1).max(48), z: z.number().int().min(1).max(32) }),
-  color: z.number().int(), points: z.array(z.object({ x: z.number().int(), z: z.number().int() })).max(32).optional(),
-  repeat: z.object({ count: z.number().int().min(1).max(24), offset: DesignVectorSchema }).optional(),
+const DesignVectorSchema = z.object({
+  x: z.number().int(),
+  y: z.number().int(),
+  z: z.number().int(),
 });
-export const BuildDesignSpecSchema = z.object({ version: z.literal(1), mode: z.literal("static"), shapes: z.array(BuildShapeNodeSchema).min(1).max(48) });
+export const BuildShapeNodeSchema = z.object({
+  id: z.string().min(1).max(48),
+  label: z.string().max(80),
+  kind: z.enum(["box", "ellipse", "polygon"]),
+  operation: z.enum(["add", "subtract"]),
+  position: DesignVectorSchema,
+  size: z.object({
+    x: z.number().int().min(1).max(32),
+    y: z.number().int().min(1).max(48),
+    z: z.number().int().min(1).max(32),
+  }),
+  color: z.number().int(),
+  points: z
+    .array(z.object({ x: z.number().int(), z: z.number().int() }))
+    .max(32)
+    .optional(),
+  repeat: z
+    .object({
+      count: z.number().int().min(1).max(24),
+      offset: DesignVectorSchema,
+    })
+    .optional(),
+});
+export const BuildDesignSpecSchema = z.object({
+  version: z.literal(1),
+  mode: z.literal("static"),
+  shapes: z.array(BuildShapeNodeSchema).min(1).max(48),
+});
 const BuildDocumentSchema = z.looseObject({
-  version: z.number().int().positive(), design: BuildDesignSpecSchema, design_hash: z.string().min(1),
-  parent_creation_id: z.string().optional(), parent_hash: z.string().optional(),
-  solver: z.looseObject({ status: z.string(), visited: z.number().int().nonnegative(), target_cells: z.number().int().nonnegative(), matched_cells: z.number().int().nonnegative() }),
+  version: z.number().int().positive(),
+  design: BuildDesignSpecSchema,
+  design_hash: z.string().min(1),
+  parent_creation_id: z.string().optional(),
+  parent_hash: z.string().optional(),
+  solver: z.looseObject({
+    status: z.string(),
+    visited: z.number().int().nonnegative(),
+    target_cells: z.number().int().nonnegative(),
+    matched_cells: z.number().int().nonnegative(),
+  }),
 });
 const BuildPlanSchema = z.looseObject({
   document: BuildDocumentSchema.optional().catch(undefined),
@@ -200,22 +238,26 @@ const BuildPlanSchema = z.looseObject({
   prompt: z.string(),
   archetype: z.string(),
   placements: z.array(PlacementSchema),
-  connections: z.array(z.looseObject({
-    id: z.string(),
-    a_placement_id: z.string(),
-    b_placement_id: z.string(),
-    a_connector_ids: z.array(z.string()).optional(),
-    b_connector_ids: z.array(z.string()).optional(),
-    kind: z.string(),
-    engaged_count: z.number().int().positive().optional(),
-    capacity_units: z.number().int().positive().optional(),
-  })),
-  steps: z.array(z.looseObject({
-    number: z.number().int().positive(),
-    added_placement_ids: z.array(z.string()),
-    camera_preset: z.string(),
-    instruction_key: z.string(),
-  })),
+  connections: z.array(
+    z.looseObject({
+      id: z.string(),
+      a_placement_id: z.string(),
+      b_placement_id: z.string(),
+      a_connector_ids: z.array(z.string()).optional(),
+      b_connector_ids: z.array(z.string()).optional(),
+      kind: z.string(),
+      engaged_count: z.number().int().positive().optional(),
+      capacity_units: z.number().int().positive().optional(),
+    }),
+  ),
+  steps: z.array(
+    z.looseObject({
+      number: z.number().int().positive(),
+      added_placement_ids: z.array(z.string()),
+      camera_preset: z.string(),
+      instruction_key: z.string(),
+    }),
+  ),
   parts: z.record(z.string(), PartSpecSchema),
   validation: BuildValidationSchema,
   inventory: BrickInventorySnapshotSchema.optional(),
@@ -225,9 +267,33 @@ const BuildPlanSchema = z.looseObject({
 
 const BuildRecipeSchema = z.looseObject({
   design: BuildDesignSpecSchema.optional().catch(undefined),
-  subject: z.string().optional(), summary: z.string().optional(), requirements: z.array(z.string()).optional(),
-  constraints: z.looseObject({ exact_colors: z.boolean(), no_wheels: z.boolean(), part_count: z.number().int().nonnegative(), required_modules: z.array(z.string()).nullable().transform((v) => v ?? []).optional() }).optional(),
-  modules: z.array(z.looseObject({ id: z.string(), kind: z.string(), parent: z.string().optional(), port: z.string().optional(), color: z.number().int(), alternative_ports: z.array(z.string()).optional() })).optional(),
+  subject: z.string().optional(),
+  summary: z.string().optional(),
+  requirements: z.array(z.string()).optional(),
+  constraints: z
+    .looseObject({
+      exact_colors: z.boolean(),
+      no_wheels: z.boolean(),
+      part_count: z.number().int().nonnegative(),
+      required_modules: z
+        .array(z.string())
+        .nullable()
+        .transform((v) => v ?? [])
+        .optional(),
+    })
+    .optional(),
+  modules: z
+    .array(
+      z.looseObject({
+        id: z.string(),
+        kind: z.string(),
+        parent: z.string().optional(),
+        port: z.string().optional(),
+        color: z.number().int(),
+        alternative_ports: z.array(z.string()).optional(),
+      }),
+    )
+    .optional(),
   version: z.number().int().positive(),
   archetype: z.string(),
   title: z.string(),
@@ -237,7 +303,19 @@ const BuildRecipeSchema = z.looseObject({
   metadata: z.record(z.string(), z.string()),
 });
 
+export const CircuitBuildInputSchema = z.object({
+  kit_id: z.string(),
+  catalog_version: z.string(),
+  inventory_revision: z.number().int(),
+  project_id: z.string().optional(),
+  locale: z.string().optional(),
+});
 export const BuildSessionSchema = z.looseObject({
+  expired: z.boolean().optional(),
+  conversation_id: z.string().optional(),
+  kind: z.enum(["auto", "brick", "circuit"]).optional(),
+  circuit_creation_id: z.string().optional(),
+  circuit: CircuitBuildInputSchema.optional(),
   id: z.string(),
   prompt: z.string(),
   status: z.enum(["clarifying", "queued", "generating", "completed", "failed"]),
@@ -245,11 +323,18 @@ export const BuildSessionSchema = z.looseObject({
   phase: z.string().optional(),
   summary: z.string().optional(),
   message: z.string().optional(),
-  question: z.looseObject({
-    id: z.string(), prompt: z.string(), options: z.array(z.string()).default([]),
-    choices: z.array(z.object({ id: z.string(), label: z.string() })).optional().catch(undefined),
-    allow_free_text: z.boolean().optional().catch(undefined),
-  }).optional(),
+  question: z
+    .looseObject({
+      id: z.string(),
+      prompt: z.string(),
+      options: z.array(z.string()).default([]),
+      choices: z
+        .array(z.object({ id: z.string(), label: z.string() }))
+        .optional()
+        .catch(undefined),
+      allow_free_text: z.boolean().optional().catch(undefined),
+    })
+    .optional(),
   answers: z.record(z.string(), z.string()),
   creation_id: z.string().optional(),
   error: z.string().optional(),
@@ -269,7 +354,9 @@ export const BuildCreationSchema = z.looseObject({
   created_at: z.string(),
 });
 
-export const BuildCreationListSchema = z.looseObject({ creations: z.array(BuildCreationSchema) });
+export const BuildCreationListSchema = z.looseObject({
+  creations: z.array(BuildCreationSchema),
+});
 
 export const EMPTY_BUILD_SESSION: BuildSession = {
   id: "",
@@ -281,7 +368,13 @@ export const EMPTY_BUILD_SESSION: BuildSession = {
   updated_at: "",
 };
 
-const emptyValidation = { buildable: false, issues: [], part_count: 0, step_count: 0, used_parts: {} };
+const emptyValidation = {
+  buildable: false,
+  issues: [],
+  part_count: 0,
+  step_count: 0,
+  used_parts: {},
+};
 
 export const EMPTY_BUILD_CREATION: BuildCreation = {
   id: "",
@@ -289,11 +382,32 @@ export const EMPTY_BUILD_CREATION: BuildCreation = {
   title: "",
   prompt: "",
   archetype: "",
-  recipe: { version: 1, archetype: "", title: "", prompt: "", palette: [], features: [], metadata: {} },
+  recipe: {
+    version: 1,
+    archetype: "",
+    title: "",
+    prompt: "",
+    palette: [],
+    features: [],
+    metadata: {},
+  },
   build_plan: {
-    version: 1, kit_id: "", catalog_version: "", module_library_version: "", compiler_version: "", validator_version: "",
-    title: "", prompt: "", archetype: "", placements: [], connections: [], steps: [], parts: {}, validation: emptyValidation,
-    content_hash: "", generated_at: "",
+    version: 1,
+    kit_id: "",
+    catalog_version: "",
+    module_library_version: "",
+    compiler_version: "",
+    validator_version: "",
+    title: "",
+    prompt: "",
+    archetype: "",
+    placements: [],
+    connections: [],
+    steps: [],
+    parts: {},
+    validation: emptyValidation,
+    content_hash: "",
+    generated_at: "",
   },
   validation: emptyValidation,
   created_at: "",
@@ -301,7 +415,11 @@ export const EMPTY_BUILD_CREATION: BuildCreation = {
 
 export const EMPTY_BUILD_CREATIONS: BuildCreationList = { creations: [] };
 
-export const EMPTY_BUILD_CATALOG: BuildCatalog = { catalog_version: "", parts: [], colors: [] };
+export const EMPTY_BUILD_CATALOG: BuildCatalog = {
+  catalog_version: "",
+  parts: [],
+  colors: [],
+};
 
 export const EMPTY_BUILD_CATALOG_PART_PAGE: BuildCatalogPartPage = {
   kit_id: "",
@@ -332,17 +450,69 @@ export const EMPTY_BRICK_INVENTORY: BrickInventory = {
   items: [],
 };
 
-export const BuildProgressSchema = z.object({
-  id: z.string().min(1), current_step: z.number().int().nonnegative(),
-  completed_at: z.string().nullable(), revision: z.number().int().nonnegative(),
-  step_count: z.number().int().positive(),
-}).refine(v => v.current_step <= v.step_count, "Invalid progress step");
+export const BuildProgressSchema = z
+  .object({
+    id: z.string().min(1),
+    current_step: z.number().int().nonnegative(),
+    completed_at: z.string().nullable(),
+    revision: z.number().int().nonnegative(),
+    step_count: z.number().int().positive(),
+  })
+  .refine((v) => v.current_step <= v.step_count, "Invalid progress step");
 export const BuildSummarySchema = z.object({
-  id: z.string().min(1), title: z.string(), prompt: z.string(), archetype: z.string(),
-  part_count: z.number().int().nonnegative(), step_count: z.number().int().positive(),
-  created_at: z.string(), progress: BuildProgressSchema,
+  id: z.string().min(1),
+  title: z.string(),
+  prompt: z.string(),
+  archetype: z.string(),
+  part_count: z.number().int().nonnegative(),
+  step_count: z.number().int().positive(),
+  created_at: z.string(),
+  progress: BuildProgressSchema,
 });
-export const BuildSummaryListSchema = z.object({ creations: z.array(BuildSummarySchema) });
+export const BuildSummaryListSchema = z.object({
+  creations: z.array(BuildSummarySchema),
+});
 export type BuildProgress = z.infer<typeof BuildProgressSchema>;
 export type BuildSummary = z.infer<typeof BuildSummarySchema>;
-export interface BuildProgressInput { current_step: number; expected_revision: number; completed?: boolean }
+export interface BuildProgressInput {
+  current_step: number;
+  expected_revision: number;
+  completed?: boolean;
+}
+
+export const BuildMessageSchema = z.object({
+  id: z.string().min(1),
+  sequence: z.number().int().positive(),
+  session_id: z.string().min(1),
+  role: z.enum(["user", "assistant"]),
+  kind: z.enum(["message", "question", "result", "error"]),
+  content: z.string(),
+  created_at: z.string(),
+  metadata: BuildSessionSchema.partial(),
+});
+export const BuildConversationSchema = z.object({
+  id: z.string().min(1),
+  session: BuildSessionSchema.extend({ id: z.string().min(1) }),
+  result: BuildSessionSchema.nullable().optional(),
+  messages: z.array(BuildMessageSchema),
+  next_cursor: z.string(),
+});
+export type BuildConversation = z.infer<typeof BuildConversationSchema>;
+export type BuildMessage = z.infer<typeof BuildMessageSchema>;
+export const InventionListSchema = z.object({
+  creations: z.array(
+    z.object({
+      id: z.string().min(1),
+      kind: z.enum(["brick", "circuit"]),
+      title: z.string(),
+      prompt: z.string(),
+      created_at: z.string(),
+      current_step: z.number().int(),
+      progress_revision: z.number().int(),
+      step_count: z.number().int().nonnegative(),
+      completed: z.boolean(),
+    }),
+  ),
+  next_cursor: z.string(),
+});
+export type InventionList = z.infer<typeof InventionListSchema>;

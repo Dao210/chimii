@@ -13,7 +13,7 @@ import { BuildModelViewer } from "./build-model-viewer";
 import { useT } from "../../i18n";
 import { BuildDesignEditor } from "./build-design-editor";
 
-export function BuildResult({ creation, onAgain }: { creation: BuildCreation; onAgain?: () => void }) {
+export function BuildResult({ creation, onAgain, embedded = false }: { creation: BuildCreation; onAgain?: () => void; embedded?: boolean }) {
   const { t } = useT("build");
   const wsId = useWorkspaceId();
   const progressQuery = useQuery(buildProgressOptions(wsId, creation.id));
@@ -68,7 +68,7 @@ export function BuildResult({ creation, onAgain }: { creation: BuildCreation; on
   };
 
   return (
-    <div className="grid gap-5 xl:grid-cols-[minmax(0,1.25fr)_minmax(320px,.75fr)]">
+    <div className={embedded ? "grid gap-5" : "grid gap-5 xl:grid-cols-[minmax(0,1.25fr)_minmax(320px,.75fr)]"}>
       <div className="space-y-4">
         <BuildModelViewer
           placements={creation.build_plan.placements}

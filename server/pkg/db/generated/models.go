@@ -317,6 +317,20 @@ type BuildJob struct {
 	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
 }
 
+type BuildMessage struct {
+	ID             pgtype.UUID        `json:"id"`
+	Sequence       int64              `json:"sequence"`
+	ConversationID pgtype.UUID        `json:"conversation_id"`
+	SessionID      pgtype.UUID        `json:"session_id"`
+	Role           string             `json:"role"`
+	Kind           string             `json:"kind"`
+	Content        string             `json:"content"`
+	EventKey       string             `json:"event_key"`
+	RequestHash    string             `json:"request_hash"`
+	Metadata       []byte             `json:"metadata"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+}
+
 type BuildSession struct {
 	ID                pgtype.UUID        `json:"id"`
 	WorkspaceID       pgtype.UUID        `json:"workspace_id"`
@@ -336,6 +350,10 @@ type BuildSession struct {
 	Revision          int32              `json:"revision"`
 	Phase             string             `json:"phase"`
 	Recipe            []byte             `json:"recipe"`
+	ConversationID    pgtype.UUID        `json:"conversation_id"`
+	Kind              string             `json:"kind"`
+	CircuitCreationID pgtype.UUID        `json:"circuit_creation_id"`
+	RequestHash       string             `json:"request_hash"`
 }
 
 type ChannelBindingToken struct {

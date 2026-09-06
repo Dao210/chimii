@@ -17,6 +17,7 @@ const { mockApi, push } = vi.hoisted(() => ({
     listCircuitCreations: vi.fn(),
     getCircuitCreation: vi.fn(),
     createCircuit: vi.fn(),
+    sendBuildMessage: vi.fn(),
     updateCircuitProgress: vi.fn(),
   },
   push: vi.fn(),
@@ -30,11 +31,18 @@ vi.mock("@chimii/core/paths", () => ({
   useWorkspacePaths: () => ({
     build: () => "/acme/build",
     circuit: () => "/acme/circuit",
+    creations: () => "/acme/creations",
+    creationDetail: (id: string) => `/acme/creations/${id}`,
     circuitDetail: (id: string) => `/acme/circuit/${id}`,
   }),
 }));
 vi.mock("../navigation", () => ({
-  useNavigation: () => ({ push }),
+  useNavigation: () => ({
+    push,
+    replace: push,
+    pathname: "/acme/circuit",
+    searchParams: new URLSearchParams(),
+  }),
   AppLink: ({
     children,
     href,
@@ -49,6 +57,13 @@ vi.mock("../navigation", () => ({
   ),
 }));
 
+vi.mock("../build/components/child-mode-controls", () => ({
+  ChildModeLauncher: () => null,
+}));
+vi.mock("@chimii/core/config", () => ({
+  useConfigStore: (select: (state: unknown) => unknown) =>
+    select({ buildAvailable: false, buildConfigLoaded: true }),
+}));
 import { CircuitPage, CircuitDetailPage } from "./circuit-page";
 
 function renderPage(detail = false) {
@@ -100,12 +115,10 @@ describe("electronic construction flow", () => {
   it("offers the documented projects without AI and blocks missing parts", async () => {
     renderPage();
     const start = await screen.findByRole("button", {
-      name: "Start this project",
+      name: "A light of my own",
     });
     expect(start).toBeEnabled();
-    expect(
-      screen.getByRole("button", { name: "Match my idea" }),
-    ).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Send" })).toBeDisabled();
     fireEvent.click(screen.getByText("Edit saved quantities"));
     fireEvent.change(screen.getByRole("spinbutton", { name: /B1/ }), {
       target: { value: "0" },
@@ -114,25 +127,31 @@ describe("electronic construction flow", () => {
     fireEvent.click(screen.getByRole("checkbox"));
     fireEvent.click(screen.getByRole("button", { name: "Save parts box" }));
     await waitFor(() => expect(start).toBeDisabled());
-    expect(screen.getByText("Some parts are missing")).toBeVisible();
+    expect(
+      screen.getAllByText(/Some parts are missing/).length,
+    ).toBeGreaterThan(0);
   });
 
   it("waits for persistence before navigation and retains the request ID on retry", async () => {
-    mockApi.createCircuit
+    mockApi.sendBuildMessage
       .mockRejectedValueOnce(new Error("offline"))
-      .mockResolvedValueOnce(circuitFixture().creation);
+      .mockResolvedValueOnce({
+        id: "run-1",
+        conversation_id: "run-1",
+        status: "queued",
+      });
     renderPage();
     fireEvent.click(
-      await screen.findByRole("button", { name: "Start this project" }),
+      await screen.findByRole("button", { name: "A light of my own" }),
     );
     await screen.findByRole("alert");
     expect(push).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("button", { name: "Start this project" }));
+    fireEvent.click(screen.getByRole("button", { name: "Retry message" }));
     await waitFor(() =>
-      expect(push).toHaveBeenCalledWith("/acme/circuit/circuit-1"),
+      expect(push).toHaveBeenCalledWith("/acme/circuit?conversation=run-1"),
     );
-    expect(mockApi.createCircuit.mock.calls[0]![0].client_request_id).toBe(
-      mockApi.createCircuit.mock.calls[1]![0].client_request_id,
+    expect(mockApi.sendBuildMessage.mock.calls[0]![0].client_request_id).toBe(
+      mockApi.sendBuildMessage.mock.calls[1]![0].client_request_id,
     );
   });
 
@@ -214,7 +233,7 @@ describe("electronic construction flow", () => {
     mockApi.saveCircuitInventory.mockRejectedValueOnce(new Error("offline"));
     renderPage();
     const start = await screen.findByRole("button", {
-      name: "Start this project",
+      name: "A light of my own",
     });
     expect(start).toBeDisabled();
     fireEvent.click(screen.getByRole("button", { name: /I have this kit/ }));
@@ -246,7 +265,7 @@ describe("electronic construction flow", () => {
     });
     renderPage();
     expect(
-      await screen.findByRole("button", { name: "Start this project" }),
+      await screen.findByRole("button", { name: "A light of my own" }),
     ).toBeEnabled();
     expect(
       screen.queryByRole("button", { name: "Edit saved quantities" }),

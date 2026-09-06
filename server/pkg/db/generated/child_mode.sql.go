@@ -113,6 +113,10 @@ deleted_build_creations AS (
     DELETE FROM build_creation AS bc
     WHERE bc.workspace_id = $1 AND bc.creator_user_id = $2
 ),
+deleted_build_messages AS (
+    DELETE FROM build_message WHERE session_id IN (SELECT id FROM target_build_sessions)
+    RETURNING id
+),
 deleted_build_sessions AS (
     DELETE FROM build_session AS bs
     WHERE bs.workspace_id = $1 AND bs.creator_user_id = $2

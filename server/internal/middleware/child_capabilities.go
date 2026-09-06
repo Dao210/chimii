@@ -67,6 +67,10 @@ func childBuildCapabilityAllowed(method, path string) bool {
 		return len(segments) == 4 && segments[1] != "" && segments[2] == "parts" && method == http.MethodGet
 	case "inventory":
 		return len(segments) == 1 && (method == http.MethodGet || method == http.MethodPut || method == http.MethodDelete)
+	case "inventions":
+		return len(segments) == 1 && method == http.MethodGet
+	case "conversations":
+		return (len(segments) == 2 && segments[1] != "" && method == http.MethodGet) || (len(segments) == 3 && segments[1] != "" && segments[2] == "messages" && method == http.MethodPost)
 	case "sessions":
 		return (len(segments) == 1 && method == http.MethodPost) ||
 			(len(segments) == 2 && segments[1] != "" && method == http.MethodGet) ||

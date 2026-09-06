@@ -163,6 +163,10 @@ cleared_build_jobs AS (
 cleared_build_creations AS (
     DELETE FROM build_creation WHERE workspace_id = $1
 ),
+deleted_build_messages AS (
+    DELETE FROM build_message WHERE session_id IN (SELECT id FROM build_session WHERE workspace_id = $1)
+    RETURNING id
+),
 cleared_build_sessions AS (
     DELETE FROM build_session WHERE workspace_id = $1
 ),

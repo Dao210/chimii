@@ -186,3 +186,19 @@ single-statement concurrent indexes.
 See [procurement and physical acceptance worksheet (Chinese)](HARDWARE-ACCEPTANCE.zh-CN.md)
 for exact parts, reviewed sources, source hashes, acquisition limitations and
 physical test steps. No kit was purchased or physically assembled in this run.
+
+
+## Shared creation conversations
+
+The `/circuit` entry now uses the same conversational container and durable Build
+queue as `/build`. Circuit documents, family inventories, progress and trial
+reports remain in their existing independent tables. The worker dispatches before
+loading any brick catalogue. `compileCircuitDocument` and `saveCircuitDocument`
+are shared by the legacy circuit endpoint and queued conversation generation.
+
+A model may select a reviewed project, ask a necessary question, explain a listed
+project, or report an unsupported request. Explanations use reviewed catalogue
+text; no model-authored wiring is rendered as an assembly guide. Fixed projects
+still work without a model. New versions do not inherit old progress or family
+trial evidence. See `docs/plans/2026-09-05-conversation-build-circuit.md` at the
+repository root for the API, migration and verification record.

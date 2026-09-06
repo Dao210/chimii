@@ -99,7 +99,7 @@ const completeBuildSession = `-- name: CompleteBuildSession :one
 UPDATE build_session
 SET status = 'completed', creation_id = $1, error = NULL, updated_at = now()
 WHERE id = $2
-RETURNING id, workspace_id, creator_user_id, child_profile_id, client_request_id, prompt, status, question, answers, creation_id, error, expires_at, created_at, updated_at, inventory_snapshot, revision, phase, recipe
+RETURNING id, workspace_id, creator_user_id, child_profile_id, client_request_id, prompt, status, question, answers, creation_id, error, expires_at, created_at, updated_at, inventory_snapshot, revision, phase, recipe, conversation_id, kind, circuit_creation_id, request_hash
 `
 
 type CompleteBuildSessionParams struct {
@@ -129,6 +129,10 @@ func (q *Queries) CompleteBuildSession(ctx context.Context, arg CompleteBuildSes
 		&i.Revision,
 		&i.Phase,
 		&i.Recipe,
+		&i.ConversationID,
+		&i.Kind,
+		&i.CircuitCreationID,
+		&i.RequestHash,
 	)
 	return i, err
 }
@@ -224,14 +228,19 @@ func (q *Queries) CreateBuildCreation(ctx context.Context, arg CreateBuildCreati
 }
 
 const createBuildSession = `-- name: CreateBuildSession :one
+WITH new_session AS (SELECT gen_random_uuid() AS id)
 INSERT INTO build_session (
+    id, conversation_id, kind, request_hash,
     workspace_id, creator_user_id, child_profile_id, client_request_id, prompt, status, question, answers,
     inventory_snapshot, recipe, phase
-) VALUES (
-    $1, $2, $3, $4, $5, $6,
-    $7, COALESCE($8, '{}'::jsonb), $9,
-    $10, CASE WHEN $11::boolean THEN 'compiling' ELSE 'planning' END
-)
+) SELECT id, COALESCE($1::uuid, id) AS conversation_id,
+    COALESCE(NULLIF($2::text, ''), 'brick') AS kind, $3::text AS request_hash,
+    $4::uuid AS workspace_id, $5::uuid AS creator_user_id,
+    $6::uuid AS child_profile_id, $7::uuid AS client_request_id,
+    $8::text AS prompt, $9::text AS status, $10::jsonb AS question,
+    COALESCE($11::jsonb, '{}'::jsonb) AS answers, $12::jsonb AS inventory_snapshot,
+    $13::jsonb AS recipe, CASE WHEN $14::boolean THEN 'compiling' ELSE 'planning' END AS phase
+FROM new_session
 ON CONFLICT (
     workspace_id,
     creator_user_id,
@@ -239,10 +248,13 @@ ON CONFLICT (
     (COALESCE(child_profile_id, '00000000-0000-0000-0000-000000000000'::uuid))
 )
 DO UPDATE SET updated_at = build_session.updated_at
-RETURNING id, workspace_id, creator_user_id, child_profile_id, client_request_id, prompt, status, question, answers, creation_id, error, expires_at, created_at, updated_at, inventory_snapshot, revision, phase, recipe
+RETURNING build_session.id, build_session.workspace_id, build_session.creator_user_id, build_session.child_profile_id, build_session.client_request_id, build_session.prompt, build_session.status, build_session.question, build_session.answers, build_session.creation_id, build_session.error, build_session.expires_at, build_session.created_at, build_session.updated_at, build_session.inventory_snapshot, build_session.revision, build_session.phase, build_session.recipe, build_session.conversation_id, build_session.kind, build_session.circuit_creation_id, build_session.request_hash
 `
 
 type CreateBuildSessionParams struct {
+	ConversationID    pgtype.UUID `json:"conversation_id"`
+	Kind              string      `json:"kind"`
+	RequestHash       string      `json:"request_hash"`
 	WorkspaceID       pgtype.UUID `json:"workspace_id"`
 	CreatorUserID     pgtype.UUID `json:"creator_user_id"`
 	ChildProfileID    pgtype.UUID `json:"child_profile_id"`
@@ -250,7 +262,7 @@ type CreateBuildSessionParams struct {
 	Prompt            string      `json:"prompt"`
 	Status            string      `json:"status"`
 	Question          []byte      `json:"question"`
-	Answers           interface{} `json:"answers"`
+	Answers           []byte      `json:"answers"`
 	InventorySnapshot []byte      `json:"inventory_snapshot"`
 	Recipe            []byte      `json:"recipe"`
 	DirectCompile     bool        `json:"direct_compile"`
@@ -258,6 +270,9 @@ type CreateBuildSessionParams struct {
 
 func (q *Queries) CreateBuildSession(ctx context.Context, arg CreateBuildSessionParams) (BuildSession, error) {
 	row := q.db.QueryRow(ctx, createBuildSession,
+		arg.ConversationID,
+		arg.Kind,
+		arg.RequestHash,
 		arg.WorkspaceID,
 		arg.CreatorUserID,
 		arg.ChildProfileID,
@@ -290,6 +305,10 @@ func (q *Queries) CreateBuildSession(ctx context.Context, arg CreateBuildSession
 		&i.Revision,
 		&i.Phase,
 		&i.Recipe,
+		&i.ConversationID,
+		&i.Kind,
+		&i.CircuitCreationID,
+		&i.RequestHash,
 	)
 	return i, err
 }
@@ -462,7 +481,7 @@ func (q *Queries) GetBuildProgress(ctx context.Context, arg GetBuildProgressPara
 }
 
 const getBuildSessionByClientRequest = `-- name: GetBuildSessionByClientRequest :one
-SELECT id, workspace_id, creator_user_id, child_profile_id, client_request_id, prompt, status, question, answers, creation_id, error, expires_at, created_at, updated_at, inventory_snapshot, revision, phase, recipe FROM build_session
+SELECT id, workspace_id, creator_user_id, child_profile_id, client_request_id, prompt, status, question, answers, creation_id, error, expires_at, created_at, updated_at, inventory_snapshot, revision, phase, recipe, conversation_id, kind, circuit_creation_id, request_hash FROM build_session
 WHERE workspace_id = $1
   AND creator_user_id = $2
   AND client_request_id = $3
@@ -506,12 +525,16 @@ func (q *Queries) GetBuildSessionByClientRequest(ctx context.Context, arg GetBui
 		&i.Revision,
 		&i.Phase,
 		&i.Recipe,
+		&i.ConversationID,
+		&i.Kind,
+		&i.CircuitCreationID,
+		&i.RequestHash,
 	)
 	return i, err
 }
 
 const getBuildSessionForWorker = `-- name: GetBuildSessionForWorker :one
-SELECT id, workspace_id, creator_user_id, child_profile_id, client_request_id, prompt, status, question, answers, creation_id, error, expires_at, created_at, updated_at, inventory_snapshot, revision, phase, recipe FROM build_session WHERE id = $1
+SELECT id, workspace_id, creator_user_id, child_profile_id, client_request_id, prompt, status, question, answers, creation_id, error, expires_at, created_at, updated_at, inventory_snapshot, revision, phase, recipe, conversation_id, kind, circuit_creation_id, request_hash FROM build_session WHERE id = $1
 `
 
 func (q *Queries) GetBuildSessionForWorker(ctx context.Context, id pgtype.UUID) (BuildSession, error) {
@@ -536,12 +559,16 @@ func (q *Queries) GetBuildSessionForWorker(ctx context.Context, id pgtype.UUID) 
 		&i.Revision,
 		&i.Phase,
 		&i.Recipe,
+		&i.ConversationID,
+		&i.Kind,
+		&i.CircuitCreationID,
+		&i.RequestHash,
 	)
 	return i, err
 }
 
 const getBuildSessionInWorkspace = `-- name: GetBuildSessionInWorkspace :one
-SELECT id, workspace_id, creator_user_id, child_profile_id, client_request_id, prompt, status, question, answers, creation_id, error, expires_at, created_at, updated_at, inventory_snapshot, revision, phase, recipe FROM build_session
+SELECT id, workspace_id, creator_user_id, child_profile_id, client_request_id, prompt, status, question, answers, creation_id, error, expires_at, created_at, updated_at, inventory_snapshot, revision, phase, recipe, conversation_id, kind, circuit_creation_id, request_hash FROM build_session
 WHERE id = $1
   AND workspace_id = $2
   AND creator_user_id = $3
@@ -582,6 +609,10 @@ func (q *Queries) GetBuildSessionInWorkspace(ctx context.Context, arg GetBuildSe
 		&i.Revision,
 		&i.Phase,
 		&i.Recipe,
+		&i.ConversationID,
+		&i.Kind,
+		&i.CircuitCreationID,
+		&i.RequestHash,
 	)
 	return i, err
 }
@@ -742,7 +773,7 @@ func (q *Queries) LockBuildJobLease(ctx context.Context, arg LockBuildJobLeasePa
 }
 
 const lockBuildSessionForAnswer = `-- name: LockBuildSessionForAnswer :one
-SELECT id, workspace_id, creator_user_id, child_profile_id, client_request_id, prompt, status, question, answers, creation_id, error, expires_at, created_at, updated_at, inventory_snapshot, revision, phase, recipe FROM build_session
+SELECT id, workspace_id, creator_user_id, child_profile_id, client_request_id, prompt, status, question, answers, creation_id, error, expires_at, created_at, updated_at, inventory_snapshot, revision, phase, recipe, conversation_id, kind, circuit_creation_id, request_hash FROM build_session
 WHERE id = $1 AND workspace_id = $2 AND creator_user_id = $3
  AND (($4::uuid IS NULL AND child_profile_id IS NULL) OR child_profile_id = $4)
 FOR UPDATE
@@ -782,12 +813,16 @@ func (q *Queries) LockBuildSessionForAnswer(ctx context.Context, arg LockBuildSe
 		&i.Revision,
 		&i.Phase,
 		&i.Recipe,
+		&i.ConversationID,
+		&i.Kind,
+		&i.CircuitCreationID,
+		&i.RequestHash,
 	)
 	return i, err
 }
 
 const lockBuildSessionForWorker = `-- name: LockBuildSessionForWorker :one
-SELECT id, workspace_id, creator_user_id, child_profile_id, client_request_id, prompt, status, question, answers, creation_id, error, expires_at, created_at, updated_at, inventory_snapshot, revision, phase, recipe FROM build_session WHERE id = $1 FOR UPDATE
+SELECT id, workspace_id, creator_user_id, child_profile_id, client_request_id, prompt, status, question, answers, creation_id, error, expires_at, created_at, updated_at, inventory_snapshot, revision, phase, recipe, conversation_id, kind, circuit_creation_id, request_hash FROM build_session WHERE id = $1 FOR UPDATE
 `
 
 func (q *Queries) LockBuildSessionForWorker(ctx context.Context, id pgtype.UUID) (BuildSession, error) {
@@ -812,6 +847,10 @@ func (q *Queries) LockBuildSessionForWorker(ctx context.Context, id pgtype.UUID)
 		&i.Revision,
 		&i.Phase,
 		&i.Recipe,
+		&i.ConversationID,
+		&i.Kind,
+		&i.CircuitCreationID,
+		&i.RequestHash,
 	)
 	return i, err
 }
@@ -821,7 +860,7 @@ UPDATE build_session s
 SET status = 'generating', updated_at = now()
 WHERE s.id = $1 AND s.revision = $2 AND s.status IN ('queued', 'generating')
   AND EXISTS (SELECT 1 FROM build_job j WHERE j.session_id = s.id AND j.status = 'running' AND j.lease_token = $3 AND j.leased_until > clock_timestamp())
-RETURNING s.id, s.workspace_id, s.creator_user_id, s.child_profile_id, s.client_request_id, s.prompt, s.status, s.question, s.answers, s.creation_id, s.error, s.expires_at, s.created_at, s.updated_at, s.inventory_snapshot, s.revision, s.phase, s.recipe
+RETURNING s.id, s.workspace_id, s.creator_user_id, s.child_profile_id, s.client_request_id, s.prompt, s.status, s.question, s.answers, s.creation_id, s.error, s.expires_at, s.created_at, s.updated_at, s.inventory_snapshot, s.revision, s.phase, s.recipe, s.conversation_id, s.kind, s.circuit_creation_id, s.request_hash
 `
 
 type MarkBuildSessionGeneratingParams struct {
@@ -852,6 +891,10 @@ func (q *Queries) MarkBuildSessionGenerating(ctx context.Context, arg MarkBuildS
 		&i.Revision,
 		&i.Phase,
 		&i.Recipe,
+		&i.ConversationID,
+		&i.Kind,
+		&i.CircuitCreationID,
+		&i.RequestHash,
 	)
 	return i, err
 }
@@ -860,7 +903,7 @@ const pauseBuildSession = `-- name: PauseBuildSession :one
 UPDATE build_session
 SET status = 'clarifying', question = $1, recipe = $2, phase = 'planning', updated_at = now()
 WHERE id = $3 AND revision = $4 AND status = 'generating'
-RETURNING id, workspace_id, creator_user_id, child_profile_id, client_request_id, prompt, status, question, answers, creation_id, error, expires_at, created_at, updated_at, inventory_snapshot, revision, phase, recipe
+RETURNING id, workspace_id, creator_user_id, child_profile_id, client_request_id, prompt, status, question, answers, creation_id, error, expires_at, created_at, updated_at, inventory_snapshot, revision, phase, recipe, conversation_id, kind, circuit_creation_id, request_hash
 `
 
 type PauseBuildSessionParams struct {
@@ -897,6 +940,10 @@ func (q *Queries) PauseBuildSession(ctx context.Context, arg PauseBuildSessionPa
 		&i.Revision,
 		&i.Phase,
 		&i.Recipe,
+		&i.ConversationID,
+		&i.Kind,
+		&i.CircuitCreationID,
+		&i.RequestHash,
 	)
 	return i, err
 }
@@ -946,7 +993,7 @@ func (q *Queries) RetryBuildJob(ctx context.Context, arg RetryBuildJobParams) (B
 const saveBuildSessionMessage = `-- name: SaveBuildSessionMessage :one
 UPDATE build_session SET recipe = $1, updated_at = now()
 WHERE id = $2 AND revision = $3 AND status = 'generating'
-RETURNING id, workspace_id, creator_user_id, child_profile_id, client_request_id, prompt, status, question, answers, creation_id, error, expires_at, created_at, updated_at, inventory_snapshot, revision, phase, recipe
+RETURNING id, workspace_id, creator_user_id, child_profile_id, client_request_id, prompt, status, question, answers, creation_id, error, expires_at, created_at, updated_at, inventory_snapshot, revision, phase, recipe, conversation_id, kind, circuit_creation_id, request_hash
 `
 
 type SaveBuildSessionMessageParams struct {
@@ -977,6 +1024,10 @@ func (q *Queries) SaveBuildSessionMessage(ctx context.Context, arg SaveBuildSess
 		&i.Revision,
 		&i.Phase,
 		&i.Recipe,
+		&i.ConversationID,
+		&i.Kind,
+		&i.CircuitCreationID,
+		&i.RequestHash,
 	)
 	return i, err
 }
@@ -986,7 +1037,7 @@ UPDATE build_session s
 SET recipe = $1, phase = 'compiling', updated_at = now()
 WHERE s.id = $2 AND s.revision = $3 AND s.status = 'generating'
   AND EXISTS (SELECT 1 FROM build_job j WHERE j.session_id = s.id AND j.status = 'running' AND j.lease_token = $4 AND j.leased_until > clock_timestamp())
-RETURNING s.id, s.workspace_id, s.creator_user_id, s.child_profile_id, s.client_request_id, s.prompt, s.status, s.question, s.answers, s.creation_id, s.error, s.expires_at, s.created_at, s.updated_at, s.inventory_snapshot, s.revision, s.phase, s.recipe
+RETURNING s.id, s.workspace_id, s.creator_user_id, s.child_profile_id, s.client_request_id, s.prompt, s.status, s.question, s.answers, s.creation_id, s.error, s.expires_at, s.created_at, s.updated_at, s.inventory_snapshot, s.revision, s.phase, s.recipe, s.conversation_id, s.kind, s.circuit_creation_id, s.request_hash
 `
 
 type SaveBuildSessionRecipeParams struct {
@@ -1023,6 +1074,10 @@ func (q *Queries) SaveBuildSessionRecipe(ctx context.Context, arg SaveBuildSessi
 		&i.Revision,
 		&i.Phase,
 		&i.Recipe,
+		&i.ConversationID,
+		&i.Kind,
+		&i.CircuitCreationID,
+		&i.RequestHash,
 	)
 	return i, err
 }
@@ -1043,7 +1098,7 @@ WHERE id = $2
   AND expires_at > now()
   AND status = 'clarifying'
   AND revision = $6
-RETURNING id, workspace_id, creator_user_id, child_profile_id, client_request_id, prompt, status, question, answers, creation_id, error, expires_at, created_at, updated_at, inventory_snapshot, revision, phase, recipe
+RETURNING id, workspace_id, creator_user_id, child_profile_id, client_request_id, prompt, status, question, answers, creation_id, error, expires_at, created_at, updated_at, inventory_snapshot, revision, phase, recipe, conversation_id, kind, circuit_creation_id, request_hash
 `
 
 type SubmitBuildSessionAnswersParams struct {
@@ -1084,6 +1139,10 @@ func (q *Queries) SubmitBuildSessionAnswers(ctx context.Context, arg SubmitBuild
 		&i.Revision,
 		&i.Phase,
 		&i.Recipe,
+		&i.ConversationID,
+		&i.Kind,
+		&i.CircuitCreationID,
+		&i.RequestHash,
 	)
 	return i, err
 }

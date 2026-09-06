@@ -34,40 +34,45 @@ test("builds and resumes a radio from real saved circuit data", async ({
       waitUntil: "domcontentloaded",
     });
     await expect(
-      page.getByRole("heading", { name: "Build a little wonder" }),
+      page.getByRole("heading", { name: "Creation studio" }),
     ).toBeVisible({ timeout: 20_000 });
-    await page.getByRole("button", { name: /My tabletop radio/ }).click();
-    await expect(
-      page.getByRole("button", { name: "Start this project" }),
-    ).toBeDisabled();
     await page.getByRole("button", { name: /I have this kit/ }).click();
     await page.getByRole("spinbutton", { name: /^FM/ }).fill("0");
     await page.getByRole("checkbox", { name: /I checked the model/ }).check();
     await page.getByRole("button", { name: "Save parts box" }).click();
     await expect(page.getByText("Parts box saved.")).toBeVisible();
     await expect(
-      page.getByRole("button", { name: "Start this project" }),
+      page.getByRole("button", { name: "My tabletop radio", exact: true }),
     ).toBeDisabled();
+    await expect(
+      page.getByText(/Some parts are missing/).first(),
+    ).toBeVisible();
     await page.getByRole("button", { name: "Edit saved quantities" }).click();
     await page.getByRole("spinbutton", { name: /^FM/ }).fill("1");
     await page.getByRole("checkbox", { name: /I checked the model/ }).check();
     await page.getByRole("button", { name: "Save parts box" }).click();
-    await expect(
-      page.getByRole("button", { name: "Start this project" }),
-    ).toBeEnabled();
+    await expect(page.getByText("Parts box saved.")).toBeVisible();
     await page.screenshot({
       path: testInfo.outputPath("circuit-home.png"),
       fullPage: true,
     });
-    await page.getByRole("button", { name: "Start this project" }).click();
+    await page
+      .getByRole("button", { name: "My tabletop radio", exact: true })
+      .click();
+    await expect(page.getByText("STEP 1 / 23")).toBeVisible({ timeout: 30000 });
+    await page.getByRole("link", { name: "Open full guide" }).click();
     await expect(page).toHaveURL(
-      new RegExp(`/${workspace.slug}/circuit/[^/]+$`),
+      new RegExp(`/${workspace.slug}/circuit/[^/?]+$`),
     );
     const parentCreationID = new URL(page.url()).pathname.split("/").at(-1)!;
     await expect(page.getByText("STEP 1 / 23")).toBeVisible();
     let progressListReads = 0;
-    page.on("request", request => {
-      if (request.method() === "GET" && new URL(request.url()).pathname === "/api/circuit/creations") progressListReads++;
+    page.on("request", (request) => {
+      if (
+        request.method() === "GET" &&
+        new URL(request.url()).pathname === "/api/circuit/creations"
+      )
+        progressListReads++;
     });
 
     await page.getByRole("button", { name: "Done, next step" }).click();
@@ -124,17 +129,21 @@ test("builds and resumes a radio from real saved circuit data", async ({
       waitUntil: "domcontentloaded",
     });
     await expect(
-      page.getByRole("heading", { name: "Build a little wonder" }),
+      page.getByRole("heading", { name: "Creation studio" }),
     ).toBeVisible({ timeout: 20_000 });
     const denied = await page.request.get(
       `/api/circuit/creations/${parentCreationID}`,
       { headers: { "X-Workspace-ID": workspace.id } },
     );
     expect(denied.status()).toBe(404);
-    await page.getByRole("button", { name: "Start this project" }).click();
-    await expect(page.getByText("STEP 1 / 8")).toBeVisible();
+    await page
+      .getByRole("button", { name: "A light of my own", exact: true })
+      .click();
+    await page.getByRole("button", { name: "Creation", exact: true }).click();
+    await expect(page.getByText("STEP 1 / 8")).toBeVisible({ timeout: 30000 });
+    await page.getByRole("link", { name: "Open full guide" }).click();
     await expect(page).toHaveURL(
-      new RegExp(`/${workspace.slug}/circuit/[^/]+$`),
+      new RegExp(`/${workspace.slug}/circuit/[^/?]+$`),
     );
     expect(errors).toEqual([]);
   } finally {
@@ -175,9 +184,6 @@ test("saves a BOSON box, follows keyed connections and records a separate family
       waitUntil: "domcontentloaded",
     });
     await page.locator("#circuit-kit").selectOption("dfrobot-edu0080-en");
-    await expect(
-      page.getByRole("button", { name: "Start this project" }),
-    ).toBeDisabled();
     await page.getByRole("button", { name: /I have this kit/ }).click();
     await page.getByRole("checkbox", { name: /I checked the model/ }).check();
     await page.getByRole("button", { name: "Save parts box" }).click();
@@ -185,19 +191,21 @@ test("saves a BOSON box, follows keyed connections and records a separate family
     await page.reload();
     await page.locator("#circuit-kit").selectOption("dfrobot-edu0080-en");
     await expect(
-      page.getByRole("button", { name: "Start this project" }),
+      page.getByRole("button", { name: "Press to light", exact: true }),
     ).toBeEnabled();
     await expect(page.getByText("Parts checked · revision 1")).toBeVisible();
-    await page.getByRole("button", { name: /Two clues for a fan/ }).click();
-    await expect(
-      page.getByRole("button", { name: /Two clues for a fan/ }),
-    ).toHaveAttribute("aria-pressed", "true");
     await page.screenshot({
       path: testInfo.outputPath("boson-home.png"),
       fullPage: true,
     });
-    await page.getByRole("button", { name: "Start this project" }).click();
-    await expect(page.getByText("STEP 1 / 10")).toBeVisible();
+    await page
+      .getByRole("button", { name: "Two clues for a fan", exact: true })
+      .click();
+    await expect(page.getByText("STEP 1 / 10")).toBeVisible({ timeout: 30000 });
+    await page.getByRole("link", { name: "Open full guide" }).click();
+    await expect(page).toHaveURL(
+      new RegExp(`/${workspace.slug}/circuit/[^/?]+$`),
+    );
     const id = new URL(page.url()).pathname.split("/").at(-1)!;
     await page.getByRole("button", { name: "Complete layout" }).click();
     await expect(page.locator("[data-connection-id]")).toHaveCount(5);
@@ -270,16 +278,14 @@ test("saves a BOSON box, follows keyed connections and records a separate family
         data: { language },
       });
       expect(result.ok()).toBe(true);
-      await page
-        .context()
-        .addCookies([
-          {
-            name: "chimii-locale",
-            value: language,
-            url: baseURL!,
-            sameSite: "Lax",
-          },
-        ]);
+      await page.context().addCookies([
+        {
+          name: "chimii-locale",
+          value: language,
+          url: baseURL!,
+          sameSite: "Lax",
+        },
+      ]);
     };
     await setLanguage("zh-Hans");
     await page.reload();
@@ -311,7 +317,7 @@ test("saves a BOSON box, follows keyed connections and records a separate family
     });
     await page.locator("#circuit-kit").selectOption("dfrobot-edu0080-en");
     await expect(
-      page.getByRole("button", { name: "Start this project" }),
+      page.getByRole("button", { name: "Press to light", exact: true }),
     ).toBeEnabled();
     await expect(
       page.getByRole("button", { name: "Edit saved quantities" }),
@@ -326,7 +332,9 @@ test("saves a BOSON box, follows keyed connections and records a separate family
       { headers: { "X-Workspace-ID": workspace.id } },
     );
     expect(privateTrials.status()).toBe(404);
-    await page.getByRole("button", { name: "Start this project" }).click();
+    await page
+      .getByRole("button", { name: "Press to light", exact: true })
+      .click();
     await expect(page.getByText("STEP 1 / 6")).toBeVisible();
     expect(errors).toEqual([]);
   } finally {
