@@ -147,6 +147,31 @@ the local API, frontend and database environment variables explicitly. Model
 unit tests use a fake text generator; they do not establish a live provider's
 intent-classification accuracy.
 
+### Live conversation acceptance (2026-09-06)
+
+After explicit user authorization, `TestBuildConversationLivePlanner` passed all
+five cases against the configured external gateway, requesting `deepseek-v4-pro`.
+The missing local `CHIMII_LLM_DEFAULT_MODEL` initially selected `sonnet-4-6`, which
+the gateway rejected with HTTP 400. Setting the local model to a name listed in
+that response resolved the configuration mismatch; no planner prompt was changed.
+
+| Case | Observed result | Duration |
+| --- | --- | --- |
+| Radio routing | `circuit` | 2.63 s |
+| Rabbit enclosure with functional radio | `clarify`, asks which independent product to make first | 5.19 s |
+| BOSON button light | `ready`, `boson-button-light` | 7.13 s |
+| BOSON FM radio | `unsupported`, explains absent receiver capability | 3.68 s |
+| Lower brick gate, keep doorway | Wall height 12 to 10; doorway and other shape properties unchanged | 14.71 s |
+
+The run took 33.35 seconds. The live test logs parsed decisions and sanitized
+errors, and requires `CHIMII_CONVERSATION_LIVE=1`, explicit utility model
+configuration and a migrated disposable `DATABASE_URL`. Normal tests skip it.
+Run from `server/` with those variables supplied:
+`go test -v ./internal/handler -run '^TestBuildConversationLivePlanner$' -count=1`.
+This is one live planning smoke run, including shape-schema validation; it does
+not establish repeated-run accuracy, complete artifact generation, deployment,
+or physical assembly verification.
+
 
 ## Commercial module adapter
 
