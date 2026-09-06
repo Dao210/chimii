@@ -1,6 +1,6 @@
 {
   "brand": "CHIMII BUILD",
-  "title": "一句话积木工坊",
+  "title": "积木创作",
   "nav_creations": "我的创作",
   "loading_studio": "正在打开积木工坊…",
   "config_label": "需要家长配置",
@@ -54,7 +54,7 @@
   "result_another": "再创造一个",
   "result_attribution": "MPD 使用 LDraw 官方零件编号；LDraw 与 LEGO Group 无隶属或授权关系。",
   "result_separator": "、",
-  "creations_back": "回到积木工坊",
+  "creations_back": "回到积木创作",
   "creations_title": "我的创作",
   "creations_description": "每一个想法，都变成一份经过搭建检查的积木方案。",
   "creations_new": "新创作",

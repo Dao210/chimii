@@ -49,7 +49,7 @@ test("build planning clarification, free text, cancellation and saved result", a
     const idea = page.getByRole("textbox", { name: "我的发明想法" });
     await expect(idea).toBeVisible({ timeout: 60_000 });
     await expect(
-      page.getByRole("heading", { name: "一句话积木工坊" }),
+      page.getByRole("heading", { name: "积木创作" }),
     ).toBeVisible();
     await expect(page.getByRole("combobox")).toHaveCount(0);
     await page.screenshot({
@@ -142,7 +142,7 @@ test("build planning clarification, free text, cancellation and saved result", a
       waitUntil: "domcontentloaded",
     });
     await expect(
-      page.getByRole("heading", { name: "一句话积木工坊" }),
+      page.getByRole("heading", { name: "积木创作" }),
     ).toBeVisible();
     await expect(page.getByRole("combobox")).toHaveCount(0);
     await page.screenshot({
