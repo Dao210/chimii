@@ -101,3 +101,14 @@ The browser test uses the real kits API and checks the full reference route,
 all 15 steps, reload, unavailable references, Chinese/narrow layout and zero
 creation, conversation or inventory writes. This batch makes no external
 model calls and cannot establish physical acceptance.
+
+Executed on 2026-09-07: circuit Go domain tests, the dedicated handler test
+against a migrated disposable PostgreSQL database, circuit/handler `go vet`,
+56 core/diagnostics tests, 13 shared-view tests, scoped ESLint and all five
+workspace typecheck tasks passed. The Chinese Chromium reference flow passed
+with zero automatic retries (14.8 seconds), including all 15 steps, reload,
+narrow-screen overflow, unavailable reference handling and zero domain writes.
+Initial browser attempts exposed test setup issues (account locale and the
+Next.js route announcer sharing the alert role); both were corrected in the
+test. The Desktop renderer passed typechecking but was not launched for native
+acceptance. No external model, physical trial or deployment was performed.

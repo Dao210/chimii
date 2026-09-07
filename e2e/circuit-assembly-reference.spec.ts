@@ -49,6 +49,8 @@ test("browses source-backed module assembly without creating a design or changin
     }
     await expect(page.getByRole("button", { name: "下一步参考" })).toBeDisabled();
     await expect(page.getByRole("link", { name: "查看这一步的原图" })).toHaveAttribute("href", /step-31-16.png$/);
+    await page.getByRole("heading", { name: "图示材料", exact: true }).scrollIntoViewIfNeeded();
+    await page.screenshot({ path: testInfo.outputPath("assembly-reference-materials.png"), fullPage: true });
     await page.reload();
     await expect(page.getByText("参考第 1 / 15 步")).toBeVisible();
     await page.setViewportSize({ width: 390, height: 844 });
@@ -56,7 +58,7 @@ test("browses source-backed module assembly without creating a design or changin
     await page.screenshot({ path: testInfo.outputPath("assembly-reference-narrow.png"), fullPage: true });
     expect(await page.locator("main.circuit-studio").evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);
     await page.goto(`/${ws.slug}/circuit?reference=unavailable`);
-    await expect(page.getByRole("alert")).toContainText("暂时无法读取这件装配参考");
+    await expect(page.locator("main.circuit-studio").getByRole("alert")).toContainText("暂时无法读取这件装配参考");
     expect(writes).toEqual([]);
     expect(errors).toEqual([]);
   } finally {
