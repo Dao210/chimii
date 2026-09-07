@@ -156,6 +156,7 @@ Never copy the visual shape of an existing hand-written `components/ui/` compone
 - **Main CI** (`.github/workflows/ci.yml`) excludes mobile via `--filter='!@chimii/mobile'`. Mobile failures do NOT block web/desktop PRs.
 - **Mobile verify** (`.github/workflows/mobile-verify.yml`): triggered on `apps/mobile/**` or `packages/core/types/**` changes — runs typecheck/lint/test only, no IPA build.
 - **Android APK** (`.github/workflows/mobile-android.yml`): manual signed Release APK via Expo prebuild + Gradle. Local equivalent: `pnpm android:release`; see `docs/android-release.md`.
+- **iOS test IPA** (`.github/workflows/mobile-ios.yml`): manual dispatch or an `ios-test-*` tag builds an unsigned iPhoneOS Release package. Test tags publish a prerelease for personal re-signing; see `docs/ios-testing.md`. No Apple credentials are needed in CI.
 - **Signing**: reuse the same private keystore and increment Android versionCode for upgrades. Keys and build artifacts are gitignored.
 - Store submission and OTA are not configured.
 
@@ -163,7 +164,7 @@ Mobile release cadence is decoupled from main `v*.*.*` tags (server / CLI / desk
 
 ### Local iOS builds go through `scripts/ios-run.sh`
 
-Every `ios:*` script runs `expo prebuild -p ios` before `expo run:ios`. Keep it that way, and route any new iOS script through the same wrapper.
+Every `ios:*` script runs `expo prebuild -p ios` before launching or archiving. Route any new iOS script through the same wrapper. `ios:unsigned` uses its `--prebuild-only` mode, then installs pods and archives with Xcode instead of launching a device.
 
 `expo run:ios` prebuilds **only when `ios/` is missing** (`ensureNativeProjectAsync` in `@expo/cli`) — when the directory exists it returns early and config plugins never re-run. Without the explicit prebuild, everything `app.config.ts` owns (app icon, bundle identifier, display name, URL scheme, Info.plist permission strings) stays pinned to whatever the first prebuild wrote, while the build still reports success. `ios/` is gitignored and fully generated, so re-prebuilding on every run is safe and idempotent.
 

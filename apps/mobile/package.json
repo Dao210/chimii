@@ -19,7 +19,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run && bash scripts/ios-run.test.sh",
     "renderer:build": "node scripts/build-maker-renderer.mjs",
-    "android:release": "bash scripts/android-release.sh"
+    "android:release": "bash scripts/android-release.sh",
+    "ios:unsigned": "bash scripts/ios-unsigned.sh"
   },
   "dependencies": {
     "@chimii/core": "workspace:*",

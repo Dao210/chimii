@@ -20,4 +20,9 @@
 set -euo pipefail
 
 pnpm exec expo prebuild -p ios --no-install
+# CI archives with xcodebuild after using the same native configuration path.
+if [[ "${1:-}" == "--prebuild-only" ]]; then
+  [[ "$#" == 1 ]] || { echo 'No arguments allowed after --prebuild-only' >&2; exit 1; }
+  exit 0
+fi
 exec pnpm exec expo run:ios "$@"

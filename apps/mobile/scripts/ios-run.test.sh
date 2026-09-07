@@ -69,6 +69,12 @@ expected_prebuild='exec expo prebuild -p ios --no-install'
 [ "$(sed -n '2p' "$CALLS_FILE")" = 'exec expo run:ios --device --configuration Release' ] ||
   fail "run:ios should receive the forwarded arguments"
 
+# --- CI preparation does not launch a device -------------------------------
+: >"$CALLS_FILE"
+"$SCRIPT_DIR/ios-run.sh" --prebuild-only
+[ "$(wc -l <"$CALLS_FILE")" -eq 1 ] || fail "CI preparation must not launch a device"
+[ "$(cat "$CALLS_FILE")" = "$expected_prebuild" ] || fail "CI must use the same prebuild"
+
 # --- a failed prebuild aborts before run:ios --------------------------------
 : >"$CALLS_FILE"
 set +e

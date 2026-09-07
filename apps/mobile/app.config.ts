@@ -42,6 +42,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       blockedPermissions: isProd ? ["android.permission.SYSTEM_ALERT_WINDOW"] : [],
     },
     ios: {
+      buildNumber: process.env.IOS_BUILD_NUMBER ?? "1",
       // Expo keeps the top-level portrait policy for iPhone while adding all
       // iPad orientations required for multitasking when tablet support is on.
       supportsTablet: true,
