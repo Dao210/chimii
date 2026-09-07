@@ -3,12 +3,19 @@ import { Alert, ScrollView, Switch, View } from "react-native";
 import { router } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useQuery } from "@tanstack/react-query";
-import { brickColorName } from "@/lib/maker";
+import { brickColorName, guideNavigation } from "@/lib/maker";
 import { Text } from "@/components/ui/text";
 import { Button } from "@/components/ui/button";
 import { PartThumbnail } from "./part-thumbnail";
 import { CircuitBoard } from "./circuit-board";
-import { Loading, Notice, Panel, MakerDetailHeader, useMaker } from "./shared";
+import {
+  Loading,
+  Notice,
+  Panel,
+  MakerDetailHeader,
+  NetworkNotice,
+  useMaker,
+} from "./shared";
 import {
   buildDetailOptions,
   buildProgressOptions,
@@ -29,6 +36,7 @@ function Frame({
   return (
     <SafeAreaView edges={["bottom"]} className="flex-1 bg-background">
       <MakerDetailHeader title={title} />
+      <NetworkNotice />
       <ScrollView
         contentContainerStyle={{ padding: 20, gap: 16, paddingBottom: 24 }}
       >
@@ -51,8 +59,9 @@ export function CreationDetail({
   kind: string;
   guide?: boolean;
 }) {
-  if (kind === "build") return <BuildDetail id={id} guide={guide} />;
-  if (kind === "circuit") return <CircuitDetail id={id} guide={guide} />;
+  if (kind === "build") return <BuildDetail key={id} id={id} guide={guide} />;
+  if (kind === "circuit")
+    return <CircuitDetail key={id} id={id} guide={guide} />;
   return (
     <Frame title="作品">
       <Text>无法识别这个作品类型。</Text>
@@ -61,6 +70,7 @@ export function CreationDetail({
 }
 function BuildDetail({ id, guide }: { id: string; guide: boolean }) {
   const { ws, slug } = useMaker();
+  const [preview, setPreview] = useState<number | null>(null);
   const detail = useQuery(buildDetailOptions(ws, id));
   const progress = useQuery(buildProgressOptions(ws, id));
   const save = useBuildProgress(ws, id);
@@ -85,8 +95,14 @@ function BuildDetail({ id, guide }: { id: string; guide: boolean }) {
       </Frame>
     );
   const plan = creation.build_plan;
-  const step = Math.max(1, saved?.current_step ?? 1);
   const total = plan.steps.length;
+  const navigation = guideNavigation(
+    preview,
+    Math.max(1, saved?.current_step ?? 1),
+    total,
+    !!saved?.completed_at,
+  );
+  const step = navigation.step;
   const current = plan.steps.find((v) => v.number === step);
   const ids = new Set(current?.added_placement_ids);
   const added = plan.placements.filter((v) => ids.has(v.id));
@@ -111,6 +127,7 @@ function BuildDetail({ id, guide }: { id: string; guide: boolean }) {
         completed,
         expected_revision: saved.revision,
       });
+      setPreview(null);
       return true;
     } catch {
       return false;
@@ -132,25 +149,39 @@ function BuildDetail({ id, guide }: { id: string; guide: boolean }) {
                 className="flex-1"
                 size="lg"
                 variant="outline"
-                disabled={busy || !saved || step <= 1}
-                onPress={() => void persist(step - 1)}
+                disabled={save.isPending || step <= 1}
+                onPress={() => setPreview(step - 1)}
               >
-                <Text>上一步</Text>
+                <Text>回看上一步</Text>
               </Button>
               <Button
                 className="flex-1"
                 size="lg"
-                disabled={busy || !saved || !!saved.completed_at}
-                onPress={() =>
-                  void persist(Math.min(total, step + 1), step === total)
+                disabled={
+                  navigation.next === "preview"
+                    ? save.isPending
+                    : busy || !saved || navigation.next === "done"
                 }
+                onPress={() => {
+                  if (navigation.next === "preview")
+                    setPreview(navigation.nextStep);
+                  else if (navigation.next !== "done")
+                    void persist(
+                      navigation.nextStep,
+                      navigation.next === "complete",
+                    );
+                }}
               >
                 <Text>
                   {save.isPending
                     ? "正在保存…"
-                    : step === total
-                      ? "完成搭建"
-                      : "搭好了，下一步"}
+                    : navigation.next === "preview"
+                      ? "查看下一步"
+                      : navigation.next === "done"
+                        ? "已完成搭建"
+                        : step === total
+                          ? "完成搭建"
+                          : "搭好了，下一步"}
                 </Text>
               </Button>
             </View>
@@ -178,7 +209,11 @@ function BuildDetail({ id, guide }: { id: string; guide: boolean }) {
             onPress={() => void start()}
           >
             <Text>
-              {saved?.current_step ? "继续步骤引导" : "准备好了，开始搭建"}
+              {saved?.completed_at
+                ? "回看搭建步骤"
+                : saved?.current_step
+                  ? "继续步骤引导"
+                  : "准备好了，开始搭建"}
             </Text>
           </Button>
         )
@@ -264,6 +299,7 @@ function CircuitDetail({ id, guide }: { id: string; guide: boolean }) {
   const detail = useQuery(circuitDetailOptions(ws, id));
   const save = useCircuitProgress(ws, id);
   const [checked, setChecked] = useState(false);
+  const [preview, setPreview] = useState<number | null>(null);
   const creation = detail.data;
   const busy = save.isPending || detail.isFetching;
   const retry = () => {
@@ -283,7 +319,13 @@ function CircuitDetail({ id, guide }: { id: string; guide: boolean }) {
       </Frame>
     );
   const doc = creation.document;
-  const index = creation.current_step;
+  const navigation = guideNavigation(
+    preview,
+    creation.current_step,
+    doc.project.steps.length - 1,
+    creation.observation !== "not_tried",
+  );
+  const index = navigation.step;
   const step = doc.project.steps[index]!;
   const last = index === doc.project.steps.length - 1;
   const persist = async (
@@ -297,6 +339,7 @@ function CircuitDetail({ id, guide }: { id: string; guide: boolean }) {
         observation,
         expected_revision: creation.progress_revision,
       });
+      setPreview(null);
       setChecked(false);
     } catch {
       /* Canonical step remains unchanged. */
@@ -317,19 +360,35 @@ function CircuitDetail({ id, guide }: { id: string; guide: boolean }) {
                 className="flex-1"
                 size="lg"
                 variant="outline"
-                disabled={busy || index === 0}
-                onPress={() => void persist(index - 1)}
+                disabled={save.isPending || index === 0}
+                onPress={() => {
+                  setPreview(index - 1);
+                  setChecked(false);
+                }}
               >
-                <Text>上一步</Text>
+                <Text>回看上一步</Text>
               </Button>
               {!last ? (
                 <Button
                   className="flex-1"
                   size="lg"
-                  disabled={busy}
-                  onPress={() => void persist(index + 1)}
+                  disabled={
+                    navigation.next === "preview" ? save.isPending : busy
+                  }
+                  onPress={() => {
+                    if (navigation.next === "preview") {
+                      setPreview(navigation.nextStep);
+                      setChecked(false);
+                    } else void persist(navigation.nextStep);
+                  }}
                 >
-                  <Text>{save.isPending ? "正在保存…" : "接好了，下一步"}</Text>
+                  <Text>
+                    {save.isPending
+                      ? "正在保存…"
+                      : navigation.next === "preview"
+                        ? "查看下一步"
+                        : "接好了，下一步"}
+                  </Text>
                 </Button>
               ) : (
                 <Button
@@ -344,7 +403,7 @@ function CircuitDetail({ id, guide }: { id: string; guide: boolean }) {
               )}
             </View>
             <Text className="text-xs text-center text-muted-foreground">
-              已保存到第 {index + 1} 步
+              已保存到第 {creation.current_step + 1} 步
             </Text>
           </>
         ) : (

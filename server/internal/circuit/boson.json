@@ -1,5 +1,5 @@
 {
-  "version": "boson-edu0080-en-reference-v1",
+  "version": "boson-edu0080-en-composition-v2",
   "kit_id": "dfrobot-edu0080-en",
   "name": "DFRobot BOSON EDU0080-EN",
   "columns": 30,
@@ -1720,8 +1720,8 @@
   ],
   "preparation": [
     {
-      "en": "Use the exact EDU0080-EN part markings shown here. This list covers only the five supported non-programming projects, not the entire box.",
-      "zh": "按这里的编号核对 EDU0080-EN 实物，本清单仅覆盖五个免编程项目所需元件，不代表整盒清单。"
+      "en": "Use the exact EDU0080-EN part markings shown here. This list covers the supported projects and digital module combinations, not the entire box.",
+      "zh": "按这里的编号核对 EDU0080-EN 实物，本清单覆盖参考项目和数字模块组合所需元件，不代表整盒清单。"
     },
     {
       "en": "An adult checks the matching 3×AAA battery holder and directions. Keep m2 OFF during assembly; use only one power source.",

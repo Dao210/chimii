@@ -23,6 +23,7 @@ import {
 } from "@/data/queries/maker";
 import { brickCreationsOptions, creationKeys } from "@/data/queries/creations";
 import { createRequestId } from "@/lib/request-id";
+import { missingBuildSession } from "@/lib/maker";
 export default function Build() {
   const { ws, slug, draft, patch, focused } = useMaker();
   const qc = useQueryClient();
@@ -35,6 +36,7 @@ export default function Build() {
   );
   const actions = useBuildActions(ws, draft.sessionId);
   const current = session.data;
+  const missing = missingBuildSession(session.error);
   const question = current?.question;
   const busy =
     actions.session.isPending ||
@@ -49,8 +51,9 @@ export default function Build() {
       void qc.invalidateQueries({ queryKey: creationKeys.list(ws, "build") });
   }, [current?.status, qc, ws]);
   const start = async () => {
-    const id = draft.buildRequest || createRequestId();
-    patch({ buildRequest: id });
+    const id =
+      (current?.status !== "failed" && draft.buildRequest) || createRequestId();
+    patch({ buildRequest: id, sessionId: undefined });
     try {
       const value = await actions.session.mutateAsync({
         prompt: draft.prompt!.trim(),
@@ -74,7 +77,7 @@ export default function Build() {
     }
   };
   const reset = async () => {
-    if (active && current?.revision !== undefined) {
+    if (!missing && active && current?.revision !== undefined) {
       try {
         await actions.cancel.mutateAsync(current.revision);
       } catch {
@@ -84,6 +87,7 @@ export default function Build() {
     patch({ sessionId: undefined, buildRequest: undefined });
     actions.session.reset();
     actions.answer.reset();
+    actions.cancel.reset();
     setFree("");
   };
   const resume = recent.data?.creations.find(
@@ -92,7 +96,17 @@ export default function Build() {
   return (
     <MakerPage title="Build" subtitle="把一个想法，搭成真的">
       <MakerScroll>
-        {current?.status === "completed" && current.creation_id ? (
+        {missing ? (
+          <Panel>
+            <Text className="text-xl font-bold">上次的生成任务已不存在</Text>
+            <Text className="text-muted-foreground">
+              你的想法还在，可以保留它重新开始。
+            </Text>
+            <Button size="lg" onPress={() => void reset()}>
+              <Text>保留想法，重新开始</Text>
+            </Button>
+          </Panel>
+        ) : current?.status === "completed" && current.creation_id ? (
           <Panel>
             <Text className="text-2xl font-bold">方案准备好了</Text>
             <Text className="text-muted-foreground">
@@ -182,6 +196,7 @@ export default function Build() {
             </Text>
             <TextField
               accessibilityLabel="搭建想法"
+              editable={!busy}
               multiline
               maxLength={280}
               value={draft.prompt || ""}
@@ -196,6 +211,7 @@ export default function Build() {
                 <Choice
                   key={prompt}
                   label={prompt}
+                  disabled={busy}
                   onPress={() =>
                     patch({
                       prompt,
@@ -230,7 +246,7 @@ export default function Build() {
             actions.cancel.error
           }
         />
-        {current?.status === "failed" && (
+        {!missing && current?.status === "failed" && (
           <Panel>
             <Text>这次方案没有生成成功。</Text>
             <Text className="text-muted-foreground">

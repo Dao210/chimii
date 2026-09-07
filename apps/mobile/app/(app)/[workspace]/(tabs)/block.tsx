@@ -19,7 +19,11 @@ import {
   useSaveInventory,
 } from "@/data/queries/maker";
 import { PartThumbnail } from "@/components/maker/part-thumbnail";
-import { setBrickQuantity, brickColorName } from "@/lib/maker";
+import {
+  setBrickQuantity,
+  brickColorName,
+  sameBrickQuantities,
+} from "@/lib/maker";
 export default function Block() {
   const { ws, draft, patch, focused } = useMaker();
   const [mode, setMode] = useState("mine");
@@ -36,6 +40,17 @@ export default function Block() {
     partsOptions(ws, debounced, focused && mode === "catalog"),
   );
   const save = useSaveInventory(ws);
+  // A response can be lost after the server commits and before local cleanup.
+  // Only identical quantities at a newer revision prove this draft was applied.
+  useEffect(() => {
+    if (
+      draft.bricks &&
+      inventory.data &&
+      inventory.data.revision > draft.bricks.revision &&
+      sameBrickQuantities(draft.bricks.items, inventory.data.items)
+    )
+      patch({ bricks: undefined });
+  }, [draft.bricks, inventory.data, patch]);
   const items = draft.bricks?.items ?? inventory.data?.items ?? [];
   const partSpecs = useMemo(
     () =>

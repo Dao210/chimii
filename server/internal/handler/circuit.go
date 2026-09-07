@@ -60,7 +60,7 @@ func (h *Handler) GetCircuitCatalog(w http.ResponseWriter, r *http.Request) {
 		writeError(w, 404, "kit not supported")
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"catalog": c, "ai_available": h.LLM != nil && h.LLM.Enabled()})
+	writeJSON(w, http.StatusOK, map[string]any{"catalog": c, "composition_available": c.ConnectionSystem == "boson", "ai_available": h.LLM != nil && h.LLM.Enabled()})
 }
 
 func decodeCircuitRequest(w http.ResponseWriter, r *http.Request, target any) bool {

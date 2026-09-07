@@ -16,18 +16,20 @@ import (
 )
 
 type circuitBuildPlan struct {
-	SourceKind          string `json:"source_kind,omitempty"`
-	AwaitingMaterials   bool   `json:"awaiting_materials,omitempty"`
-	KitID               string `json:"kit_id"`
-	CatalogVersion      string `json:"catalog_version"`
-	InventoryRevision   int32  `json:"inventory_revision"`
-	ProjectID           string `json:"project_id,omitempty"`
-	Locale              string `json:"locale,omitempty"`
-	SourceCreationID    string `json:"source_creation_id,omitempty"`
-	ExpectedContentHash string `json:"expected_content_hash,omitempty"`
-	PreviousProjectID   string `json:"previous_project_id,omitempty"`
-	Title               string `json:"title,omitempty"`
-	Summary             string `json:"summary,omitempty"`
+	Composition         *circuit.CompositionSpec `json:"composition,omitempty"`
+	PreviousComposition *circuit.CompositionSpec `json:"previous_composition,omitempty"`
+	SourceKind          string                   `json:"source_kind,omitempty"`
+	AwaitingMaterials   bool                     `json:"awaiting_materials,omitempty"`
+	KitID               string                   `json:"kit_id"`
+	CatalogVersion      string                   `json:"catalog_version"`
+	InventoryRevision   int32                    `json:"inventory_revision"`
+	ProjectID           string                   `json:"project_id,omitempty"`
+	Locale              string                   `json:"locale,omitempty"`
+	SourceCreationID    string                   `json:"source_creation_id,omitempty"`
+	ExpectedContentHash string                   `json:"expected_content_hash,omitempty"`
+	PreviousProjectID   string                   `json:"previous_project_id,omitempty"`
+	Title               string                   `json:"title,omitempty"`
+	Summary             string                   `json:"summary,omitempty"`
 }
 
 func (h *Handler) validateCircuitBuildSource(w http.ResponseWriter, r *http.Request, q *db.Queries, ws, user, child pgtype.UUID, p *circuitBuildPlan) bool {
@@ -55,6 +57,7 @@ func (h *Handler) validateCircuitBuildSource(w http.ResponseWriter, r *http.Requ
 	}
 	if p.KitID == doc.KitID {
 		p.PreviousProjectID = doc.Project.ID
+		p.PreviousComposition = doc.Composition
 	}
 	return true
 }
@@ -83,12 +86,15 @@ func (h *Handler) answerBuildConversation(w http.ResponseWriter, r *http.Request
 		}
 		if plan.AwaitingMaterials && req.Prompt != "materials_ready" && (req.Circuit == nil || req.Circuit.ProjectID == "") {
 			plan.ProjectID = ""
+			plan.Composition = nil
 			plan.Title = ""
 		}
 		plan.AwaitingMaterials = false
 		if req.Circuit != nil {
 			if req.Circuit.KitID != plan.KitID {
 				plan.PreviousProjectID = ""
+				plan.PreviousComposition = nil
+				plan.Composition = nil
 			}
 			plan.KitID, plan.CatalogVersion, plan.InventoryRevision, plan.Locale = req.Circuit.KitID, req.Circuit.CatalogVersion, req.Circuit.InventoryRevision, req.Circuit.Locale
 			if req.Circuit.ProjectID != "" {
@@ -96,6 +102,7 @@ func (h *Handler) answerBuildConversation(w http.ResponseWriter, r *http.Request
 					plan.Title = ""
 				}
 				plan.ProjectID = req.Circuit.ProjectID
+				plan.Composition = nil
 			}
 		}
 		if s.Kind == "auto" && req.Kind != "auto" {
@@ -204,12 +211,12 @@ func (w *BuildWorker) processCircuit(ctx context.Context, job db.BuildJob, s db.
 	if p.CatalogVersion != c.Version {
 		return w.failPermanently(ctx, job, "CIRCUIT_CATALOG_CHANGED", errors.New("catalogue changed"))
 	}
-	if p.ProjectID == "" {
+	if p.ProjectID == "" && p.Composition == nil {
 		if w.h.LLM == nil || !w.h.LLM.Enabled() {
 			return w.finishReply(ctx, job, s, localizedCircuit(p.Locale, "Choose a reference project while AI is unavailable.", "AI 暂不可用，请选择一个参考项目。"), true)
 		}
 		planCtx, cancel := context.WithTimeout(ctx, buildIntentTimeout)
-		d, err := circuit.PlanConversation(planCtx, w.h.LLM, c, map[string]any{"idea": s.Prompt, "answers": answers, "history": history, "previous_project_id": p.PreviousProjectID, "questions_remaining": max(0, maxBuildClarifications-int(s.Revision)+1)})
+		d, err := circuit.PlanConversation(planCtx, w.h.LLM, c, map[string]any{"idea": s.Prompt, "answers": answers, "history": history, "previous_project_id": p.PreviousProjectID, "previous_composition": p.PreviousComposition, "questions_remaining": max(0, maxBuildClarifications-int(s.Revision)+1)})
 		cancel()
 		if err != nil {
 			return w.retry(ctx, job, err)
@@ -224,12 +231,20 @@ func (w *BuildWorker) processCircuit(ctx context.Context, job db.BuildJob, s db.
 			return w.finishReply(ctx, job, s, d.Message, true)
 		case "reply":
 			project, _ := c.Project(d.ProjectID)
+			if d.Composition != nil {
+				project, _ = circuit.ComposeProject(c, *d.Composition)
+			}
 			return w.finishReply(ctx, job, s, localizedCircuit(p.Locale, project.Explanation.EN, project.Explanation.ZH), false)
 		case "ready":
-			p.ProjectID, p.Title = d.ProjectID, d.Title
+			p.ProjectID, p.Title, p.Composition = d.ProjectID, d.Title, d.Composition
 		}
 	}
 	project, known := c.Project(p.ProjectID)
+	if p.Composition != nil {
+		var err error
+		project, err = circuit.ComposeProject(c, *p.Composition)
+		known = err == nil
+	}
 	if !known {
 		return w.failPermanently(ctx, job, buildstudio.BuildErrorUnsupported, errors.New("unknown project"))
 	}
@@ -248,7 +263,16 @@ func (w *BuildWorker) processCircuit(ctx context.Context, job db.BuildJob, s db.
 	if json.Unmarshal(inventory.Quantities, &req.Inventory) != nil || !circuitInventoryMatches(inventory, req) {
 		return w.failPermanently(ctx, job, "CIRCUIT_INVENTORY_CHANGED", errCircuitInventoryChanged)
 	}
-	doc, err := compileCircuitDocument(c, req, p.Title, "conversation-v1")
+	var doc circuit.Document
+	if p.Composition != nil {
+		doc, err = circuit.CompileComposition(c, *p.Composition, req.Prompt, p.Title, req.Inventory)
+		if err == nil {
+			doc.InventoryRevision = req.InventoryRevision
+			doc, err = circuit.SealDocument(doc)
+		}
+	} else {
+		doc, err = compileCircuitDocument(c, req, p.Title, "conversation-v1")
+	}
 	if err != nil {
 		return w.failPermanently(ctx, job, "CIRCUIT_VALIDATION_FAILED", err)
 	}

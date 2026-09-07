@@ -110,6 +110,7 @@ export const CircuitCatalogSchema = z
       hardware: hardware.optional(),
     }),
     ai_available: z.boolean().catch(false),
+    composition_available: z.boolean().catch(false).optional(),
   })
   .refine(
     (v) =>
@@ -128,11 +129,43 @@ export const CircuitCatalogSchema = z
       ),
     "Invalid module connections",
   );
+const compositionSchema = z
+  .looseObject({
+    inputs: z
+      .array(z.enum(["BOS0002-R", "BOS0013"]))
+      .min(1)
+      .max(2),
+    operation: z.enum(["direct", "not", "and"]),
+    output: z.enum(["BOS0017-R", "BOS0021"]),
+  })
+  .refine(
+    (spec) =>
+      new Set(spec.inputs).size === spec.inputs.length &&
+      spec.inputs.length === (spec.operation === "and" ? 2 : 1),
+    "Invalid functional composition",
+  );
+const behaviorSchema = z.looseObject({
+  model: z.literal("boson-digital-v1"),
+  passed: z.boolean(),
+  cases: z
+    .array(
+      z.looseObject({
+        inputs: z.record(z.string(), z.boolean()),
+        powered: z.boolean(),
+        expected: z.boolean(),
+        actual: z.boolean(),
+      }),
+    )
+    .min(3)
+    .max(5),
+});
 export const CircuitDocumentSchema = z
   .looseObject({
     version: z.union([z.literal(1), z.literal(2)]),
     connection_system: z.enum(["snap", "boson"]).optional(),
     catalog_version: z.string(),
+    composition: compositionSchema.optional(),
+    behavior: behaviorSchema.optional(),
     kit_id: z.string(),
     prompt: z.string(),
     title: z.string(),
@@ -162,6 +195,49 @@ export const CircuitDocumentSchema = z
     }),
   })
   .superRefine((doc, ctx) => {
+    const spec = doc.composition,
+      behavior = doc.behavior;
+    if (spec || behavior || doc.project.id.startsWith("boson-composed-")) {
+      let valid =
+        !!spec &&
+        !!behavior &&
+        doc.version === 2 &&
+        doc.kit_id === "dfrobot-edu0080-en";
+      if (spec && behavior) {
+        const keys = new Set<string>();
+        valid &&=
+          behavior.passed &&
+          behavior.cases.length === 2 ** spec.inputs.length + 1;
+        for (const row of behavior.cases) {
+          const values = spec.inputs.map((id) => row.inputs[id]);
+          const expected =
+            row.powered &&
+            (spec.operation === "not" ? !values[0] : values.every(Boolean));
+          const key = `${row.powered}:${values.join(":")}`;
+          valid &&=
+            Object.keys(row.inputs).length === spec.inputs.length &&
+            values.every((v) => typeof v === "boolean") &&
+            row.expected === expected &&
+            row.actual === row.expected &&
+            !keys.has(key);
+          keys.add(key);
+        }
+        valid &&=
+          behavior.cases.filter((row) => row.powered).length ===
+          2 ** spec.inputs.length;
+        const actualParts = new Set(
+          doc.project.placements.map((p) => p.part_id),
+        );
+        valid &&= [...spec.inputs, spec.output, "BOS0036", "FIT0529"].every(
+          (id) => actualParts.has(id),
+        );
+      }
+      if (!valid)
+        ctx.addIssue({
+          code: "custom",
+          message: "Inconsistent functional verification",
+        });
+    }
     if (
       (doc.version === 2 &&
         (doc.connection_system !== "boson" ||

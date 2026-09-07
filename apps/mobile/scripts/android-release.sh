@@ -14,7 +14,7 @@ for name in ANDROID_KEYSTORE_PATH ANDROID_KEYSTORE_PASSWORD ANDROID_KEY_ALIAS AN
   [[ -n "${!name:-}" ]] || { echo "Missing $name. See docs/android-release.md." >&2; exit 1; }
 done
 [[ -f "$ANDROID_KEYSTORE_PATH" ]] || { echo 'Release keystore does not exist' >&2; exit 1; }
-export ANDROID_VERSION_CODE="${ANDROID_VERSION_CODE:-2}"
+export ANDROID_VERSION_CODE="${ANDROID_VERSION_CODE:-3}"
 [[ "$ANDROID_VERSION_CODE" =~ ^[1-9][0-9]*$ ]] || { echo 'ANDROID_VERSION_CODE must be positive' >&2; exit 1; }
 # Explicit dotenv prevents a developer's local Expo environment entering a release.
 pnpm exec dotenv -o -e ".env.$APP_ENV" -- expo prebuild --platform android --no-install
@@ -25,7 +25,9 @@ pnpm exec dotenv -o -e ".env.$APP_ENV" -- bash -c 'cd android && ./gradlew --no-
 mkdir -p artifacts
 apk="artifacts/chimii-${APP_ENV}-${ANDROID_VERSION_CODE}.apk"
 cp android/app/build/outputs/apk/release/app-release.apk "$apk"
+pnpm exec dotenv -o -e ".env.$APP_ENV" -- node scripts/verify-android-bundle.mjs "$apk"
 sdk="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
 "$sdk/build-tools/36.0.0/apksigner" verify --verbose --print-certs "$apk"
+"$sdk/build-tools/36.0.0/zipalign" -c -P 16 4 "$apk"
 (cd artifacts && shasum -a 256 "$(basename "$apk")") > "$apk.sha256"
 echo "APK: $PWD/$apk"

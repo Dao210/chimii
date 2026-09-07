@@ -1,4 +1,6 @@
+import { useEffect } from "react";
 import { Alert, FlatList, View } from "react-native";
+import { sameCircuitQuantities } from "@/lib/maker";
 import { router, useLocalSearchParams } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useQuery } from "@tanstack/react-query";
@@ -9,6 +11,7 @@ import {
   Notice,
   Quantity,
   MakerDetailHeader,
+  NetworkNotice,
   useMaker,
 } from "@/components/maker/shared";
 import {
@@ -23,6 +26,18 @@ export default function CircuitInventory() {
   const inventory = useQuery(circuitInventoryOptions(ws, kit));
   const save = useSaveCircuitInventory(ws, kit);
   const local = draft.circuits?.[kit];
+  useEffect(() => {
+    if (
+      local &&
+      inventory.data &&
+      inventory.data.revision > local.revision &&
+      sameCircuitQuantities(local.quantities, inventory.data.quantities)
+    ) {
+      const next = { ...draft.circuits };
+      delete next[kit];
+      patch({ circuits: next });
+    }
+  }, [local, inventory.data, draft.circuits, kit, patch]);
   const values = local?.quantities ?? inventory.data?.quantities ?? {};
   const change = (part: string, n: number) => {
     if (!inventory.data) return;
@@ -58,6 +73,7 @@ export default function CircuitInventory() {
   return (
     <SafeAreaView edges={["bottom"]} className="flex-1 bg-background">
       <MakerDetailHeader title="确认我的套件" />
+      <NetworkNotice />
       <View className="p-5 gap-3">
         <Text className="text-lg font-bold">{catalog.data?.catalog.name}</Text>
         <Text className="text-muted-foreground">

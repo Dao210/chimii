@@ -1,4 +1,11 @@
-import { useEffect, type PropsWithChildren } from "react";
+import {
+  useEffect,
+  useCallback,
+  useState,
+  useSyncExternalStore,
+  type PropsWithChildren,
+} from "react";
+import { onlineManager } from "@tanstack/react-query";
 import {
   ActivityIndicator,
   Platform,
@@ -22,9 +29,29 @@ import {
   selectMakerDraft,
   restoreMakerDraft,
 } from "@/data/stores/maker-draft-store";
-import { makerError, makerScope } from "@/lib/maker";
+import { makerError, makerScope, quantityInput } from "@/lib/maker";
 import { useColorScheme } from "@/lib/use-color-scheme";
 import { THEME } from "@/lib/theme";
+const subscribeOnline = (notify: () => void) => onlineManager.subscribe(notify);
+const getOnline = () => onlineManager.isOnline();
+function useOnline() {
+  return useSyncExternalStore(subscribeOnline, getOnline, getOnline);
+}
+
+export function NetworkNotice() {
+  const online = useOnline();
+  return online ? null : (
+    <View
+      accessibilityRole="alert"
+      accessibilityLiveRegion="polite"
+      className="px-5 py-3 bg-secondary"
+    >
+      <Text>
+        网络已断开。你可以继续修改草稿，已暂停的请求会在连接恢复后继续。
+      </Text>
+    </View>
+  );
+}
 
 export function useMaker() {
   const ws = useWorkspaceStore((s) => s.currentWorkspaceId);
@@ -36,6 +63,10 @@ export function useMaker() {
   }, [scope, user?.id, ws]);
   const draft = useMakerDraftStore(selectMakerDraft(scope));
   const patch = useMakerDraftStore((s) => s.patch);
+  const update = useCallback(
+    (v: Parameters<typeof patch>[1]) => patch(scope, v),
+    [patch, scope],
+  );
   const focused = useIsFocused();
   const { colorScheme } = useColorScheme();
   return {
@@ -44,7 +75,7 @@ export function useMaker() {
     user,
     scope,
     draft,
-    patch: (v: Parameters<typeof patch>[1]) => patch(scope, v),
+    patch: update,
     focused,
     theme: THEME[colorScheme],
   };
@@ -54,7 +85,11 @@ export function MakerPage({
   subtitle,
   children,
 }: PropsWithChildren<{ title: string; subtitle: string }>) {
-  const { slug, user } = useMaker();
+  const slug = useWorkspaceStore((s) => s.currentWorkspaceSlug);
+  const user = useAuthStore((s) => s.user);
+  const ws = useWorkspaceStore((s) => s.currentWorkspaceId);
+  const scope = makerScope(user?.id, ws);
+  const storageError = useMakerDraftStore((s) => s.storageErrors[scope]);
   return (
     <SafeAreaView edges={["top"]} className="flex-1 bg-background">
       <View className="flex-row items-center justify-between px-5 pt-3 pb-4 gap-3">
@@ -73,6 +108,12 @@ export function MakerPage({
           </Text>
         </Pressable>
       </View>
+      <NetworkNotice />
+      {storageError && (
+        <Text accessibilityRole="alert" className="px-5 py-2 text-destructive">
+          本机草稿暂未保存，请保持 App 打开并保存修改。
+        </Text>
+      )}
       {children}
     </SafeAreaView>
   );
@@ -122,10 +163,13 @@ export function Notice({
   );
 }
 export function Loading() {
+  const online = useOnline();
   return (
     <View className="p-8 items-center gap-3">
-      <ActivityIndicator />
-      <Text className="text-muted-foreground">正在加载…</Text>
+      {online && <ActivityIndicator />}
+      <Text className="text-muted-foreground">
+        {online ? "正在加载…" : "等待网络连接…"}
+      </Text>
     </View>
   );
 }
@@ -165,6 +209,8 @@ export function Quantity({
   disabled?: boolean;
   max?: number;
 }) {
+  const [editing, setEditing] = useState(false);
+  const [text, setText] = useState(String(value));
   return (
     <View className="flex-row items-center gap-2">
       <Button
@@ -172,33 +218,42 @@ export function Quantity({
         variant="outline"
         disabled={disabled || value <= 0}
         accessibilityLabel={`减少${name}`}
-        onPress={() => onChange(value - 1)}
+        onPress={() => {
+          setText(String(value - 1));
+          onChange(value - 1);
+        }}
       >
         <Text>−</Text>
       </Button>
       <TextField
         accessibilityLabel={`${name}数量`}
-        value={String(value)}
+        value={editing ? text : String(value)}
         keyboardType="number-pad"
         selectTextOnFocus
         editable={!disabled}
-        onChangeText={(text) =>
-          onChange(
-            Math.max(
-              0,
-              Math.min(max, Number(text.replace(/[^0-9]/g, "")) || 0),
-            ),
-          )
-        }
+        onFocus={() => {
+          setText(String(value));
+          setEditing(true);
+        }}
+        onBlur={() => setEditing(false)}
+        onChangeText={(input) => {
+          const digits = input.replace(/[^0-9]/g, "");
+          const next = quantityInput(digits, value, max);
+          setText(digits === "" ? "" : String(next));
+          if (digits !== "") onChange(next);
+        }}
         className="w-14 text-center"
-        style={{ height: 44 }}
+        style={{ minHeight: Platform.OS === "android" ? 48 : 44 }}
       />
       <Button
         size="lg"
         variant="outline"
         disabled={disabled || value >= max}
         accessibilityLabel={`增加${name}`}
-        onPress={() => onChange(value + 1)}
+        onPress={() => {
+          setText(String(value + 1));
+          onChange(value + 1);
+        }}
       >
         <Text>＋</Text>
       </Button>
@@ -216,7 +271,8 @@ export function RowLink({
   icon?: React.ComponentProps<typeof Ionicons>["name"];
   onPress: () => void;
 }) {
-  const { theme } = useMaker();
+  const { colorScheme } = useColorScheme();
+  const theme = THEME[colorScheme];
   return (
     <Pressable
       accessibilityRole="button"
@@ -235,7 +291,7 @@ export function RowLink({
 }
 
 export function MakerDetailHeader({ title }: { title: string }) {
-  const { slug } = useMaker();
+  const slug = useWorkspaceStore((s) => s.currentWorkspaceSlug);
   // Android's nested native stacks overlap the status bar under edge-to-edge.
   // Reuse the existing safe-area header there; iOS retains its native back header.
   return (

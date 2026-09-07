@@ -50,3 +50,43 @@ export function circuitFixture(projectId = "switch-light") {
   });
   return { catalog, creation };
 }
+
+export function compositionFixture() {
+  const { creation, catalog } = circuitFixture("boson-button-light");
+  const doc = creation.document;
+  doc.project.id = "boson-composed-button-fan";
+  doc.project.placements.find((p) => p.id === "output")!.part_id = "BOS0021";
+  doc.parts = catalog.catalog.parts;
+  delete doc.validation.used_parts["BOS0017-R"];
+  doc.validation.used_parts["BOS0021"] = 1;
+  doc.composition = {
+    inputs: ["BOS0002-R"],
+    operation: "direct",
+    output: "BOS0021",
+  };
+  doc.behavior = {
+    model: "boson-digital-v1",
+    passed: true,
+    cases: [
+      {
+        inputs: { "BOS0002-R": false },
+        powered: true,
+        expected: false,
+        actual: false,
+      },
+      {
+        inputs: { "BOS0002-R": true },
+        powered: true,
+        expected: true,
+        actual: true,
+      },
+      {
+        inputs: { "BOS0002-R": true },
+        powered: false,
+        expected: false,
+        actual: false,
+      },
+    ],
+  };
+  return creation;
+}

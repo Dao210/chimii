@@ -3,7 +3,8 @@
 This module turns an idea or a selected project into a saved, step-by-step
 assembly document for children using exact commercial kits. The catalogues target
 **Snap Circuits SC-500** (switched lamp, alarm sound, tabletop FM radio) and
-**DFRobot BOSON EDU0080-EN** (five non-programming projects). Quantities are
+**DFRobot BOSON EDU0080-EN** (five reference projects and ten supported digital
+functional combinations). Quantities are
 subsets of each kit, not their full BOMs.
 Parts from other brands or kit revisions are not assumed interchangeable.
 
@@ -14,11 +15,12 @@ Idea / selected project + kit version + saved parts-box revision
               |
      Plan: bounded model intent (optional)
               |
-     Compile: reference project + component catalogue
+     Compile: reference project OR typed composition + component catalogue
               |
      Validate: inventory + kit-specific reference connections
          Snap: layers / bodies / snaps / netlist / shorts
          BOSON: keyed ports / directions / cables / expected pairs
+         Composition: concrete graph behavior vs requested digital truth table
               |
      Document v1 (Snap) or v2 (BOSON) -> immutable JSONB snapshot
               |
@@ -33,12 +35,15 @@ entry points; Web and Electron mount the same views at `/:workspace/circuit`.
 Native mobile UI is outside this version; the Web view supports narrow screens
 and an enlarged, horizontally scrollable assembly diagram.
 
-The model chooses one supported project and a short title. It does not supply
+The model chooses a supported project or a bounded BOSON functional composition,
+and a short title. It does not supply
 electrical connections, coordinates, instructions, or inferred component
 substitutions. Unsupported functions must return `unsupported`. The optional
-model call has a 20-second deadline. Selecting a project remains available when
-the platform model is unconfigured. There is no firmware, flashing, circuit
-simulation, background agent job, or general-purpose circuit synthesis here.
+legacy model call has a 20-second deadline; conversations use the existing Build
+worker. Selecting a reference project remains available when the platform model
+is unconfigured. There is no firmware, flashing, SPICE simulation or
+general-purpose circuit synthesis here. Digital composition checks use an ideal
+binary module model, with the limitations described below.
 
 ## Catalogue and verification evidence
 
@@ -72,9 +77,10 @@ The radio has two battery holders and three layers. At D5–F5 it uses **two
 F6–F7 bridge sits on layer 3. Preserve these details when changing rendering or
 templates; electrical equivalence alone does not establish physical fit.
 
-`validation.passed` means these reference-consistency checks passed. Every
+`validation.passed` means the applicable structural checks passed; compositions
+also require the independently evaluated digital behavior to match. Every
 current document has `physical_verification: "not_tested"`. No bench test or
-simulation has been performed. A family's `worked` / `needs_help` observation
+analog electrical simulation has been performed. A family's `worked` / `needs_help` observation
 never changes that evidence. Validate actual stock, assembly, and operation
 with the matching kit before claiming hardware verification.
 
@@ -114,9 +120,9 @@ reject malformed or contradictory build documents with a retryable error.
 
 ## Independent optimization
 
-1. Tune intent matching in `planner.go`, retaining the bounded output contract.
+1. Tune intent matching in `planner.go` and `conversation.go`, retaining the bounded output contract.
    Test supported ideas and unsupported additions such as Bluetooth, timers,
-   automatic sensors, remote control, and recording against the chosen model.
+   unsupported sensor capabilities, remote control, and recording against the chosen model.
 2. Add a documented project by defining the functional netlist independently
    from the layout, then testing missing parts, shorts, polarity, collisions,
    and step order. Bump the catalogue version for every material change.
@@ -178,9 +184,11 @@ or physical assembly verification.
 BOSON records whole keyed cables between module sockets. It does not collapse a
 three-wire cable into a single electrical conductor. `modules.go` checks port
 identity, connector family, direction, single occupancy, cable ownership, full
-connectivity and an independently supplied reference connection list. A generic
-connector name is insufficient to accept a new module: the exact project and
-part IDs must also match. Diagrams use logical coordinates, not mounting scale,
+connectivity. Fixed projects additionally require an independently supplied
+reference connection list and exact project parts. Compositions use the same
+structural checks plus an independent functional check. A generic connector name
+is insufficient to accept a new module: exact supported part IDs are required.
+Diagrams use logical coordinates, not mounting scale,
 and do not establish cable reach, current budgets or physical safety.
 
 The five BOSON references are button light, inverted button light, dimmer light,
@@ -237,9 +245,10 @@ remain readable, with links to every recorded version; continuing from a saved
 artifact creates a domain-specific conversation with its source ID and hash.
 Neither route silently converts an electronic function into a brick shape.
 
-A model may select a reviewed project, ask a necessary question, explain a listed
-project, or report an unsupported request. Explanations use reviewed catalogue
-text; no model-authored wiring is rendered as an assembly guide. Fixed projects
+A model may select a reviewed project, request a supported digital composition,
+ask a necessary question, explain a project, or report an unsupported request.
+Explanations use catalogue text or deterministic composition descriptions;
+no model-authored wiring is rendered as an assembly guide. Fixed projects
 still work without a model. New versions do not inherit old progress or family
 trial evidence. See `docs/plans/2026-09-05-conversation-build-circuit.md` at the
 repository root for the API, migration and verification record.
@@ -253,3 +262,88 @@ the local deterministic model fixture with the real API, worker and database;
 they do not constitute another live-model run, deployment or physical assembly
 verification. Headless Chromium used the existing SVG fallback when WebGL was
 unavailable.
+
+## BOSON digital composition prototype (2026-09-07)
+
+`composition.go` accepts only an input list, an operation and an output SKU.
+Inputs are the momentary button `BOS0002-R` and motion-signal module `BOS0013`.
+`direct` and `not` accept one input; `and` requires both distinct inputs. Outputs
+are LED `BOS0017-R` and fan `BOS0021`. This gives ten functional combinations;
+reordering the AND inputs does not add a function. Analog sound and knob controls
+continue to use the existing reference projects.
+
+The deterministic compiler selects exact known module ports, m2 `BOS0036`,
+NOT `BOS0029` or AND `BOS0027` where needed, matching keyed cables and the 3×AAA
+holder `FIT0529`. It generates the graph, layout and steps, connecting the battery
+last. A new graph is labelled as a composition using module references, not as an
+original manufacturer project. Module topology was checked against the kit quick
+start and non-programming cards linked from the
+[official EDU0080-EN documentation](https://wiki.dfrobot.com/edu0080-en/docs/20920).
+The graph remains an engineering composition awaiting physical acceptance.
+
+Expected behavior comes from the requested operation; actual behavior comes from
+traversing concrete module ports. All two or four powered input combinations,
+plus one unpowered case, must match before saving. Tests deliberately remove a
+NOT or AND function while keeping a structurally legal graph. The evaluator must
+reject these graphs. This is an ideal low/high signal model, not analog voltage,
+current, noise, PIR timing, mechanical fit, cable reach or motor-start validation.
+The power-off case models the entire kit as unpowered, not physical propagation
+of supply voltage through every cable conductor.
+
+The document adds optional `composition` and `behavior` fields to BOSON v2;
+legacy snapshots remain readable. The frontend validates exhaustive case coverage
+and consistency before rendering. Its interactive controls look up saved checked
+cases and never modify the document, progress or hardware. Module recognition
+drawings, the signal-diagram toggle and two-endpoint cable guidance share the
+existing renderer. Drawings are simplified recognition aids, not product photos
+or dimensionally accurate assembly models.
+
+The conversation worker reuses source hashes, queued execution, inventory
+revision checks and immutable saves. An output-only edit receives the previous
+composition so the planner can preserve its input conditions. The existing
+server-side `Circuit` request whitelist excludes these internal planning fields.
+No new service, database table, migration or external package was added.
+
+Research informs these bounded choices:
+
+- [Fritzing](https://github.com/fritzing/fritzing-app): recognizable physical-part
+  presentation alongside the electrical view.
+- [Polymorphic Blocks](https://github.com/BerkeleyHCI/PolymorphicBlocks): constrained
+  composition using module contracts.
+- [AnalogCoder](https://github.com/laiyao1/AnalogCoder): candidate generation
+  followed by independent behavioral feedback.
+
+These are architectural references. Their code, artwork and simulation engines
+were not incorporated into this prototype.
+
+Additional acceptance commands (explicit local test environment required):
+
+```sh
+# Both variables must point to the same migrated disposable PostgreSQL database.
+# DATABASE_URL is also required by the handler package's TestMain.
+go test -v ./internal/handler -run 'TestBuildCompositionDB|TestBuildConversationDB' -count=1
+# Run the command above from server/ with CHIMII_BUILD_TEST_DATABASE_URL supplied.
+
+pnpm --filter @chimii/core exec vitest run circuit
+pnpm --filter @chimii/views exec vitest run circuit
+pnpm exec playwright test e2e/circuit-composition.spec.ts e2e/circuit.spec.ts e2e/conversation.spec.ts
+```
+
+Browser acceptance uses a deterministic local provider fixture, the real worker,
+API, and disposable database. It covers AND fan → AND light revision, immutable
+old documents, signal exploration, saved steps and Chinese/mobile guidance. It
+does not establish external-model reliability or physical operation. The earlier
+five live-model cases above predate composition support and cannot validate it.
+
+Executed acceptance on 2026-09-07 passed the circuit domain's 16 top-level Go
+tests (including all ten combinations), 4 database conversation tests, 27 core
+and 10 views tests, scoped ESLint, `go vet` for circuit/handler, and type checks
+for all five packages. Six Chromium flows passed: brick planning, brick shape
+revision, generated composition, Snap radio, BOSON reference/trial, and circuit
+conversation/gallery restoration. In the local development server, initial
+5-second page assertions timed out during compilation/loading; the final run
+used a temporary 15-second assertion timeout, unchanged functional assertions
+and zero automatic retries. The repository Playwright configuration is unchanged.
+Headless brick previews used the existing SVG fallback because WebGL was
+unavailable. No external-model call, physical test, commit, push or deployment
+was performed for this prototype.

@@ -22,6 +22,7 @@ import {
 } from "@chimii/core/circuit";
 import { useT } from "../i18n";
 import { CircuitBoard } from "./circuit-board";
+import { CircuitBehaviorPreview } from "./circuit-behavior-preview";
 import { CircuitModuleBoard } from "./circuit-module-board";
 import { CircuitTrialPanel } from "./circuit-trials";
 import "@chimii/ui/styles/circuit.css";
@@ -93,6 +94,7 @@ export function CircuitWorkbench({
   const progress = useCircuitProgress(wsId, creation.id);
   const [previewStep, setPreviewStep] = useState<number | null>(null);
   const [overview, setOverview] = useState(false);
+  const [signalView, setSignalView] = useState(false);
   const [enlarged, setEnlarged] = useState(false);
   const [layer, setLayer] = useState(0);
   const [checked, setChecked] = useState(false);
@@ -108,6 +110,27 @@ export function CircuitWorkbench({
   const visible = overview
     ? doc.project.placements
     : doc.project.placements.filter((p) => visibleIds.has(p.id));
+  const focusedWire = !overview
+    ? doc.project.connections?.find((w) =>
+        step?.placement_ids.includes(w.cable_id ?? w.from.split(":")[0] ?? ""),
+      )
+    : undefined;
+  const focusPlacements = focusedWire
+    ? [focusedWire.from, focusedWire.to]
+        .map((key, i) => {
+          const p = doc.project.placements.find(
+            (v) => v.id === key.split(":")[0],
+          );
+          return p ? { ...p, x: 1 + i * 9, y: 1 } : undefined;
+        })
+        .filter((p) => p !== undefined)
+    : [];
+  if (focusedWire?.cable_id) {
+    const cable = doc.project.placements.find(
+      (p) => p.id === focusedWire.cable_id,
+    );
+    if (cable) focusPlacements.push(cable);
+  }
   const last = current === doc.project.steps.length - 1;
   const save = async (
     stepIndex: number,
@@ -156,12 +179,21 @@ export function CircuitWorkbench({
       <div className="mb-5 flex flex-wrap items-center gap-3 text-xs">
         <span className="flex items-center gap-1.5 rounded-full border bg-card px-3 py-2">
           <Check className="size-3" />
-          {canBuild ? t(($) => $.checks_passed) : t(($) => $.checks_failed)}
+          {canBuild
+            ? doc.composition
+              ? t(($) => $.composition_checks)
+              : t(($) => $.checks_passed)
+            : t(($) => $.checks_failed)}
         </span>
         <span className="text-muted-foreground">
-          {t(($) => $.reference_only)}
+          {doc.composition
+            ? t(($) => $.composition_evidence)
+            : t(($) => $.reference_only)}
         </span>
       </div>
+      {canBuild && (
+        <CircuitBehaviorPreview key={doc.content_hash} document={doc} />
+      )}
       {!canBuild ? (
         <CircuitErrorNotice />
       ) : (
@@ -190,6 +222,18 @@ export function CircuitWorkbench({
                   {t(($) => $.overview)}
                 </Button>
               </div>
+              {isModule && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  aria-pressed={signalView}
+                  onClick={() => setSignalView(!signalView)}
+                >
+                  {signalView
+                    ? t(($) => $.show_modules)
+                    : t(($) => $.show_signals)}
+                </Button>
+              )}
               {!isModule && (
                 <label className="flex items-center gap-2 text-xs text-muted-foreground">
                   <Layers className="size-4" />
@@ -229,6 +273,7 @@ export function CircuitWorkbench({
                 {isModule ? (
                   <CircuitModuleBoard
                     label={doc.title}
+                    schematic={signalView}
                     parts={doc.parts}
                     placements={visible}
                     connections={doc.project.connections ?? []}
@@ -271,7 +316,7 @@ export function CircuitWorkbench({
               rel="noopener noreferrer"
               className="mt-4 inline-block text-xs underline underline-offset-4"
             >
-              {t(($) => $.source)}
+              {doc.composition ? t(($) => $.module_source) : t(($) => $.source)}
             </a>
           </section>
           <aside className="space-y-4">
@@ -314,6 +359,25 @@ export function CircuitWorkbench({
                   <p className="mt-3 text-sm leading-7 text-muted-foreground">
                     {label(step.instruction)}
                   </p>
+                  {focusedWire && (
+                    <div
+                      className="mt-4 rounded-xl border p-3"
+                      data-testid="connection-focus"
+                    >
+                      <p className="mb-2 text-xs font-bold">
+                        {t(($) => $.connect_now)}
+                      </p>
+                      <CircuitModuleBoard
+                        label={t(($) => $.connect_now)}
+                        parts={doc.parts}
+                        placements={focusPlacements}
+                        connections={[focusedWire]}
+                        columns={16}
+                        rows={5}
+                        highlighted={step.placement_ids}
+                      />
+                    </div>
+                  )}
                   <div className="my-4 space-y-3">
                     {step.placement_ids.map((id) => {
                       const p = doc.project.placements.find((v) => v.id === id);

@@ -8,13 +8,18 @@ import (
 // ValidateModuleConnections checks a reviewed keyed-module assembly. It does
 // not simulate analogue behaviour or infer an undocumented module's internals.
 func ValidateModuleConnections(c Catalog, projectID string, placements []Placement, connections []Connection, inventory map[string]int) Report {
-	r := Report{Issues: []Issue{}, Nets: [][]string{}, UsedParts: map[string]int{}, PhysicalVerification: "not_tested"}
-	add := func(code, id string) { r.Issues = append(r.Issues, Issue{Code: code, PlacementID: id}) }
 	ref, ok := c.Project(projectID)
 	if !ok || c.ConnectionSystem != "boson" {
-		add("unsupported_project", "")
-		return r
+		return Report{Issues: []Issue{{Code: "unsupported_project"}}, Nets: [][]string{}, UsedParts: map[string]int{}, PhysicalVerification: "not_tested"}
 	}
+	return validateModuleGraph(c, &ref, placements, connections, inventory)
+}
+
+// A generated assembly has no manufacturer reference netlist. Its structure is
+// checked here and its requested behavior is checked independently by the evaluator.
+func validateModuleGraph(c Catalog, ref *Project, placements []Placement, connections []Connection, inventory map[string]int) Report {
+	r := Report{Issues: []Issue{}, Nets: [][]string{}, UsedParts: map[string]int{}, PhysicalVerification: "not_tested"}
+	add := func(code, id string) { r.Issues = append(r.Issues, Issue{Code: code, PlacementID: id}) }
 	if len(placements) > 128 || len(connections) > 128 {
 		add("too_many_parts", "")
 		return r
@@ -53,12 +58,14 @@ func ValidateModuleConnections(c Catalog, projectID string, placements []Placeme
 			ports[key] = port
 		}
 	}
-	if len(byID) != len(ref.Placements) {
-		add("reference_part_mismatch", "")
-	}
-	for _, p := range ref.Placements {
-		if actual, exists := byID[p.ID]; !exists || actual.PartID != p.PartID {
-			add("reference_part_mismatch", p.ID)
+	if ref != nil {
+		if len(byID) != len(ref.Placements) {
+			add("reference_part_mismatch", "")
+		}
+		for _, p := range ref.Placements {
+			if actual, exists := byID[p.ID]; !exists || actual.PartID != p.PartID {
+				add("reference_part_mismatch", p.ID)
+			}
 		}
 	}
 	usedPorts := map[string]bool{}
@@ -125,7 +132,7 @@ func ValidateModuleConnections(c Catalog, projectID string, placements []Placeme
 	if len(roots) != 1 {
 		add("disconnected_assembly", "")
 	}
-	if moduleNetKey(ref.ExpectedNets) != moduleNetKey(r.Nets) {
+	if ref != nil && moduleNetKey(ref.ExpectedNets) != moduleNetKey(r.Nets) {
 		add("reference_net_mismatch", "")
 	}
 	for id, count := range r.UsedParts {

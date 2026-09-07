@@ -128,20 +128,22 @@ type Report struct {
 }
 
 type Document struct {
-	Version           int            `json:"version"`
-	CatalogVersion    string         `json:"catalog_version"`
-	KitID             string         `json:"kit_id"`
-	Prompt            string         `json:"prompt"`
-	Title             string         `json:"title"`
-	Planner           string         `json:"planner"`
-	Project           Project        `json:"project"`
-	Parts             []Part         `json:"parts"`
-	Columns           int            `json:"columns"`
-	Rows              int            `json:"rows"`
-	Preparation       []Text         `json:"preparation"`
-	Inventory         map[string]int `json:"inventory"`
-	Validation        Report         `json:"validation"`
-	ContentHash       string         `json:"content_hash"`
-	ConnectionSystem  string         `json:"connection_system,omitempty"`
-	InventoryRevision *int32         `json:"inventory_revision,omitempty"`
+	Composition       *CompositionSpec `json:"composition,omitempty"`
+	Behavior          *BehaviorReport  `json:"behavior,omitempty"`
+	Version           int              `json:"version"`
+	CatalogVersion    string           `json:"catalog_version"`
+	KitID             string           `json:"kit_id"`
+	Prompt            string           `json:"prompt"`
+	Title             string           `json:"title"`
+	Planner           string           `json:"planner"`
+	Project           Project          `json:"project"`
+	Parts             []Part           `json:"parts"`
+	Columns           int              `json:"columns"`
+	Rows              int              `json:"rows"`
+	Preparation       []Text           `json:"preparation"`
+	Inventory         map[string]int   `json:"inventory"`
+	Validation        Report           `json:"validation"`
+	ContentHash       string           `json:"content_hash"`
+	ConnectionSystem  string           `json:"connection_system,omitempty"`
+	InventoryRevision *int32           `json:"inventory_revision,omitempty"`
 }

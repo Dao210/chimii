@@ -9,11 +9,60 @@ export function setBrickQuantity(
   color: number,
   quantity: number,
 ): BrickInventoryItem[] {
-  const next = items.filter((v) => v.part_id !== part || v.color !== color);
   const count = Math.max(0, Math.min(999, Math.trunc(quantity)));
-  return count > 0
-    ? [...next, { part_id: part, color, quantity: count }]
-    : next;
+  const matches = (v: BrickInventoryItem) =>
+    v.part_id === part && v.color === color;
+  if (count === 0) return items.filter((v) => !matches(v));
+  if (items.some(matches))
+    return items.map((v) => (matches(v) ? { ...v, quantity: count } : v));
+  return [...items, { part_id: part, color, quantity: count }];
+}
+// Empty text is an unfinished edit, not a request to remove an inventory row.
+export function quantityInput(text: string, previous: number, max: number) {
+  const digits = text.replace(/[^0-9]/g, "");
+  return digits ? Math.min(max, Number(digits)) : previous;
+}
+export function sameBrickQuantities(
+  a: BrickInventoryItem[],
+  b: BrickInventoryItem[],
+) {
+  if (a.length !== b.length) return false;
+  const quantities = new Map(
+    a.map((v) => [`${v.part_id}:${v.color}`, v.quantity]),
+  );
+  return b.every(
+    (v) => quantities.get(`${v.part_id}:${v.color}`) === v.quantity,
+  );
+}
+export function sameCircuitQuantities(
+  a: Record<string, number>,
+  b: Record<string, number>,
+) {
+  return [...new Set([...Object.keys(a), ...Object.keys(b)])].every(
+    (id) => (a[id] ?? 0) === (b[id] ?? 0),
+  );
+}
+// Preview can revisit saved steps but never move or clear canonical progress.
+// Mirrors the preview/progress separation in the web Build and Circuit workbenches.
+export function guideNavigation(
+  preview: number | null,
+  saved: number,
+  last: number,
+  completed = false,
+) {
+  const step = Math.max(0, Math.min(preview ?? saved, saved, last));
+  const next =
+    step < saved || completed
+      ? step < last
+        ? "preview"
+        : "done"
+      : step < last
+        ? "save"
+        : "complete";
+  return { step, next, nextStep: Math.min(last, step + 1) } as const;
+}
+export function missingBuildSession(error: unknown) {
+  return (error as { status?: number } | null)?.status === 404;
 }
 export function makerError(error: unknown) {
   const e = error as { status?: number; message?: string } | null;

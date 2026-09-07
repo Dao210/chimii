@@ -267,7 +267,9 @@ function CircuitStudio() {
         {creationId ? t(($) => $.discuss) : t(($) => $.idea)}
       </label>
       <p className="mb-4 mt-2 text-sm leading-6 text-muted-foreground">
-        {t(($) => $.idea_hint)}
+        {catalog.data?.composition_available
+          ? t(($) => $.composition_hint)
+          : t(($) => $.idea_hint)}
       </p>
       {isWorking && (
         <p role="status" className="my-4 flex items-center gap-2">
@@ -329,6 +331,28 @@ function CircuitStudio() {
           </AppLink>
         </div>
       )}
+      {!isQuestion &&
+        catalog.data?.composition_available === true &&
+        aiAvailable &&
+        !creationId && (
+          <div className="mb-3 flex flex-wrap gap-2">
+            {[
+              t(($) => $.starter_button_fan),
+              t(($) => $.starter_motion_light),
+              t(($) => $.starter_both_fan),
+            ].map((idea) => (
+              <Button
+                key={idea}
+                size="sm"
+                variant="outline"
+                disabled={disabled}
+                onClick={() => setPrompt(idea)}
+              >
+                {idea}
+              </Button>
+            ))}
+          </div>
+        )}
       <Textarea
         id="circuit-idea"
         value={prompt}
@@ -355,7 +379,11 @@ function CircuitStudio() {
       />
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
         <p className="max-w-md text-xs leading-6 text-muted-foreground">
-          {aiAvailable ? t(($) => $.ai_scope) : t(($) => $.ai_unavailable)}
+          {aiAvailable
+            ? catalog.data?.composition_available
+              ? t(($) => $.composition_scope)
+              : t(($) => $.ai_scope)
+            : t(($) => $.ai_unavailable)}
         </p>
         <Button
           disabled={disabled || !aiAvailable || !prompt.trim()}

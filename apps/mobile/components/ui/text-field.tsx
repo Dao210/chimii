@@ -11,7 +11,7 @@
  *   on TextInput is unreliable across SDK upgrades.
  */
 import { useState } from "react";
-import { TextInput, type TextInputProps } from "react-native";
+import { Platform, TextInput, type TextInputProps } from "react-native";
 import { cn } from "@/lib/utils";
 import { MOBILE_PLACEHOLDER_COLOR } from "./input-tokens";
 
@@ -34,7 +34,12 @@ export function TextField({
     <TextInput
       placeholderTextColor={MOBILE_PLACEHOLDER_COLOR}
       style={[
-        { fontSize: 14, includeFontPadding: false, textAlignVertical: "center" },
+        {
+          fontSize: 14,
+          includeFontPadding: false,
+          textAlignVertical: "center",
+          minHeight: Platform.OS === "android" ? 48 : undefined,
+        },
         style,
       ]}
       onFocus={(e) => {

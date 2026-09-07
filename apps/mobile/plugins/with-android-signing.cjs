@@ -4,6 +4,19 @@ module.exports = function withAndroidSigning(config) {
   return withAppBuildGradle(config, (config) => {
     const marker = '// Chimii release signing';
     let source = config.modResults.contents;
+    // Metro's own cache key cannot help if Gradle skips Metro entirely.
+    // Declare public environment inputs for both up-to-date and build-cache checks.
+    const bundleMarker = '// Chimii bundle environment inputs';
+    if (!source.includes(bundleMarker)) {
+      source += `\n${bundleMarker}
+tasks.withType(com.facebook.react.tasks.BundleHermesCTask).configureEach {
+    inputs.property('chimiiAppEnv', System.getenv('APP_ENV') ?: 'development')
+    inputs.property('chimiiApiUrl', System.getenv('EXPO_PUBLIC_API_URL') ?: '')
+    inputs.property('chimiiWebUrl', System.getenv('EXPO_PUBLIC_WEB_URL') ?: '')
+}
+`;
+    }
+    config.modResults.contents = source;
     if (source.includes(marker)) return config;
     const target = 'signingConfig signingConfigs.debug';
     const release = source.indexOf('        release {');

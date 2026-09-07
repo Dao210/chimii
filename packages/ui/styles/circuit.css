@@ -9,6 +9,8 @@
   --circuit-power: oklch(0.83 0.1 80);
   --circuit-passive: oklch(0.85 0.13 95);
   --circuit-receiver: oklch(0.74 0.06 225);
+  --circuit-component-red: oklch(0.59 0.2 28);
+  --circuit-component-metal: oklch(0.8 0.07 65);
   --circuit-module-input: oklch(0.72 0.11 245);
   --circuit-module-output: oklch(0.77 0.13 140);
   --circuit-module-logic: oklch(0.88 0.13 90);
@@ -142,4 +144,11 @@
     background: white;
     color: black;
   }
+}
+
+.circuit-component-red {
+  fill: var(--circuit-component-red);
+}
+.circuit-component-metal {
+  fill: var(--circuit-component-metal);
 }

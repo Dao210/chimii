@@ -40,7 +40,27 @@ http.createServer(async (req, res) => {
     const body = JSON.parse(raw);
     const input = JSON.parse(body.messages[0].content[0].text);
     let decision;
-    if (input.idea.includes("真的飞起来")) {
+    if (input.request && input.projects) {
+      const idea = input.request.idea;
+      if (/蓝牙|Bluetooth|定时|timer/i.test(idea)) {
+        decision = { outcome: "unsupported", message: "This digital kit combination does not support Bluetooth or timers." };
+      } else {
+        const previous = input.request.previous_composition;
+        let composition;
+        if (/改成灯|change to a light/i.test(idea) && previous) {
+          composition = { ...previous, inputs: [...previous.inputs], output: "BOS0017-R" };
+        } else if (/同时|both|且/i.test(idea)) {
+          composition = { inputs: ["BOS0002-R", "BOS0013"], operation: "and", output: "BOS0021" };
+        } else if (/松开|反转|invert/i.test(idea)) {
+          composition = { inputs: ["BOS0002-R"], operation: "not", output: "BOS0017-R" };
+        } else if (/运动|motion/i.test(idea)) {
+          composition = { inputs: ["BOS0013"], operation: "direct", output: "BOS0017-R" };
+        } else {
+          composition = { inputs: ["BOS0002-R"], operation: "direct", output: "BOS0021" };
+        }
+        decision = { outcome: "ready", title: composition.output === "BOS0021" ? "My signal fan" : "My signal light", composition };
+      }
+    } else if (input.idea.includes("真的飞起来")) {
       decision = { outcome: "unsupported", message: "当前还不能制作真正飞起来的机构。" };
     } else if (input.idea.includes("换一个颜色") && Object.keys(input.history).length === 0) {
       const next = structuredClone(input.draft);

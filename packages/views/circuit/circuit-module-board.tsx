@@ -1,6 +1,7 @@
 "use client";
 
 import { useId } from "react";
+import { CircuitModuleFace } from "./circuit-module-face";
 import type {
   CircuitPart,
   CircuitPlacement,
@@ -17,6 +18,7 @@ export function CircuitModuleBoard({
   rows,
   highlighted = [],
   miniature = false,
+  schematic = false,
 }: {
   label: string;
   parts: CircuitPart[];
@@ -26,6 +28,7 @@ export function CircuitModuleBoard({
   rows: number;
   highlighted?: string[];
   miniature?: boolean;
+  schematic?: boolean;
 }) {
   const id = useId().replace(/:/g, "");
   const unit = 26,
@@ -46,6 +49,15 @@ export function CircuitModuleBoard({
       : undefined;
   };
   const active = new Set(highlighted);
+  const hotPorts = new Set(
+    connections
+      .filter(
+        (w) =>
+          active.has(w.cable_id ?? "") ||
+          (!w.cable_id && active.has(w.from.split(":")[0] ?? "")),
+      )
+      .flatMap((w) => [w.from, w.to]),
+  );
   return (
     <svg
       role="img"
@@ -124,6 +136,9 @@ export function CircuitModuleBoard({
           const x = p.x * unit + margin,
             y = p.y * unit + margin;
           const hot = active.has(p.id);
+          const bottomCenterPort = part.ports.some(
+            (port) => port.x === 2 && port.y === 3,
+          );
           return (
             <g
               key={p.id}
@@ -162,18 +177,19 @@ export function CircuitModuleBoard({
                 rx={5}
                 className="fill-card"
               />
+              {!schematic && <CircuitModuleFace part={part} />}
               <text
                 x={unit * 2}
-                y={unit * 1.2}
+                y={schematic ? unit * 1.2 : 65}
                 textAnchor="middle"
                 className="fill-foreground text-[17px] font-black"
               >
                 {part.marking ?? part.id}
               </text>
               <text
-                x={unit * 2}
-                y={unit * 2.05}
-                textAnchor="middle"
+                x={unit * 2 + (!schematic && bottomCenterPort ? 10 : 0)}
+                y={schematic ? unit * 2.05 : 112}
+                textAnchor={!schematic && bottomCenterPort ? "start" : "middle"}
                 className="fill-muted-foreground text-[11px] font-mono"
               >
                 {part.id}
@@ -183,6 +199,13 @@ export function CircuitModuleBoard({
                   key={port.id}
                   transform={`translate(${port.x * unit},${port.y * unit})`}
                 >
+                  {hotPorts.has(`${p.id}:${port.id}`) && (
+                    <circle
+                      r={12}
+                      className="fill-primary/15 stroke-primary"
+                      strokeWidth={2}
+                    />
+                  )}
                   <rect
                     x={-4}
                     y={-6}
