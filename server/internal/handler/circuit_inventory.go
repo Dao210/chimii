@@ -38,7 +38,7 @@ func (h *Handler) ListCircuitKits(w http.ResponseWriter, r *http.Request) {
 		}
 		kits = append(kits, kit{c.KitID, c.Version, c.Name, system, c.Hardware})
 	}
-	writeJSON(w, 200, map[string]any{"kits": kits})
+	writeJSON(w, 200, map[string]any{"kits": kits, "assembly_references": circuit.AssemblyReferences()})
 }
 
 func validCircuitInventory(c circuit.Catalog, quantities map[string]int, complete bool) bool {

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { parseWithFallback } from "../api/schema";
+import { AssemblyReferencesSchema } from "./assembly-reference";
 
 const text = z.looseObject({ en: z.string(), zh: z.string() });
 const point = z.looseObject({ x: z.number().int(), y: z.number().int() });
@@ -402,6 +403,7 @@ function validModuleConnections(
 
 export const CircuitKitsSchema = z
   .looseObject({
+    assembly_references: AssemblyReferencesSchema,
     kits: z
       .array(
         z.looseObject({

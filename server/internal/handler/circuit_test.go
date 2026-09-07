@@ -32,6 +32,38 @@ func circuitTestInput() circuitCreateRequest {
 	return circuitCreateRequest{ClientRequestID: uuid.NewString(), KitID: c.KitID, CatalogVersion: c.Version, ProjectID: "fm-radio", Locale: "zh-Hans", Inventory: c.Inventory()}
 }
 
+func TestCircuitAssemblyReferenceCatalogBoundary(t *testing.T) {
+	w := httptest.NewRecorder()
+	testHandler.ListCircuitKits(w, circuitTestRequest(http.MethodGet, "", nil, ""))
+	if w.Code != http.StatusOK {
+		t.Fatalf("kits status=%d", w.Code)
+	}
+	var response struct {
+		Kits []struct {
+			KitID string `json:"kit_id"`
+		} `json:"kits"`
+		References []circuit.AssemblyReference `json:"assembly_references"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &response); err != nil {
+		t.Fatal(err)
+	}
+	if len(response.Kits) != 2 || len(response.References) != 1 {
+		t.Fatalf("unexpected kit/reference counts: %d/%d", len(response.Kits), len(response.References))
+	}
+	ref := response.References[0]
+	if err := circuit.ValidateAssemblyReference(ref); err != nil || len(ref.ContentHash) != 64 {
+		t.Fatalf("invalid reference: %v", err)
+	}
+	for _, kit := range response.Kits {
+		if kit.KitID == ref.KitID {
+			t.Fatal("research reference exposed in executable kit picker")
+		}
+	}
+	input := circuitTestInput()
+	input.KitID, input.CatalogVersion, input.ProjectID = ref.KitID, ref.Version, ref.ID
+	circuitTestCreate(t, input, "", http.StatusConflict)
+}
+
 func circuitTestCreate(t *testing.T, input circuitCreateRequest, child string, status int) circuitCreationResponse {
 	t.Helper()
 	w := httptest.NewRecorder()

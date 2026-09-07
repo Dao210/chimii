@@ -8,6 +8,11 @@ functional combinations). Quantities are
 subsets of each kit, not their full BOMs.
 Parts from other brands or kit revisions are not assumed interchangeable.
 
+The first complete-product assembly research entry is the Nezha V2 ultrasonic
+gate, accessible at `/:workspace/circuit?reference=nezha-v2-ultrasonic-gate`.
+Its source-indexed parts and assembly steps are separate from executable kits.
+See [the reference data and remaining engineering work](references/README.md).
+
 ## Boundaries
 
 ```text

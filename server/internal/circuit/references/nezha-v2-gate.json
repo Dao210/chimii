@@ -1,0 +1,403 @@
+{
+  "id": "nezha-v2-ultrasonic-gate",
+  "version": "2026-09-07.1",
+  "status": "research",
+  "kit_id": "elecfreaks-ef08288",
+  "kit_name": "ELECFREAKS Nezha Inventor’s Kit V2 · EF08288",
+  "title": {
+    "en": "Ultrasonic gate",
+    "zh": "超声波感应门"
+  },
+  "description": {
+    "en": "A distance sensor triggers a gate assembled from a servo, beams, pins and controller boards.",
+    "zh": "把传感器、舵机、梁、连接销和控制板组装成一扇能感应靠近物体的门。"
+  },
+  "checked_on": "2026-09-07",
+  "source_url": "https://wiki.elecfreaks.com/en/microbit/building-blocks/nezha-inventors-kit-v2/the-ultrasonic-sound-gate/",
+  "product_url": "https://wiki.elecfreaks.com/en/microbit/building-blocks/nezha-inventors-kit-v2/product-description/",
+  "parts_source_url": "https://wiki-media-ef.oss-cn-hongkong.aliyuncs.com/i18n/en/docusaurus-plugin-content-docs/current/microbit/building-blocks/nezha-inventors-kit-v2/images/nezha-inventors-kit-v2-step-31-01.png",
+  "program_url": "https://makecode.microbit.org/_71MTtr1dH9go",
+  "parts": [
+    {
+      "id": "grey-short-pin",
+      "name": {
+        "en": "Short grey pin",
+        "zh": "灰色短连接销"
+      },
+      "pictured_quantity": 1,
+      "kind": "structure"
+    },
+    {
+      "id": "black-pin",
+      "name": {
+        "en": "Black connector pin",
+        "zh": "黑色连接销"
+      },
+      "pictured_quantity": 7,
+      "kind": "structure"
+    },
+    {
+      "id": "grey-long-pin",
+      "name": {
+        "en": "Long grey pin",
+        "zh": "灰色长连接销"
+      },
+      "pictured_quantity": 7,
+      "kind": "structure"
+    },
+    {
+      "id": "blue-axle-pin",
+      "name": {
+        "en": "Blue axle pin",
+        "zh": "蓝色轴销"
+      },
+      "pictured_quantity": 1,
+      "kind": "structure"
+    },
+    {
+      "id": "gear",
+      "name": {
+        "en": "Grey gear",
+        "zh": "灰色齿轮"
+      },
+      "pictured_quantity": 1,
+      "kind": "structure"
+    },
+    {
+      "id": "black-link",
+      "name": {
+        "en": "Black short link",
+        "zh": "黑色短连杆"
+      },
+      "pictured_quantity": 1,
+      "kind": "structure"
+    },
+    {
+      "id": "yellow-short-beam",
+      "name": {
+        "en": "Short yellow beam",
+        "zh": "黄色短梁"
+      },
+      "pictured_quantity": 2,
+      "kind": "structure"
+    },
+    {
+      "id": "axle",
+      "name": {
+        "en": "Grey cross axle",
+        "zh": "灰色十字轴"
+      },
+      "pictured_quantity": 1,
+      "kind": "structure"
+    },
+    {
+      "id": "angle-connector",
+      "name": {
+        "en": "Grey angle connector",
+        "zh": "灰色直角连接件"
+      },
+      "pictured_quantity": 3,
+      "kind": "structure"
+    },
+    {
+      "id": "yellow-medium-beam",
+      "name": {
+        "en": "Medium yellow beam",
+        "zh": "黄色中梁"
+      },
+      "pictured_quantity": 5,
+      "kind": "structure"
+    },
+    {
+      "id": "yellow-long-beam",
+      "name": {
+        "en": "Long yellow beam",
+        "zh": "黄色长梁"
+      },
+      "pictured_quantity": 1,
+      "kind": "structure"
+    },
+    {
+      "id": "white-long-beam",
+      "name": {
+        "en": "Long white beam",
+        "zh": "白色长梁"
+      },
+      "pictured_quantity": 2,
+      "kind": "structure"
+    },
+    {
+      "id": "servo",
+      "name": {
+        "en": "Kit servo (model unconfirmed)",
+        "zh": "套件舵机（型号待核对）"
+      },
+      "pictured_quantity": 1,
+      "kind": "electronics"
+    },
+    {
+      "id": "microbit",
+      "name": {
+        "en": "micro:bit (board revision unconfirmed)",
+        "zh": "micro:bit（板卡版本待核对）"
+      },
+      "pictured_quantity": 1,
+      "kind": "electronics"
+    },
+    {
+      "id": "nezha-board",
+      "name": {
+        "en": "Nezha expansion board",
+        "zh": "哪吒扩展板"
+      },
+      "pictured_quantity": 1,
+      "kind": "electronics"
+    },
+    {
+      "id": "ultrasonic",
+      "name": {
+        "en": "Ultrasonic sensor",
+        "zh": "超声波传感器"
+      },
+      "pictured_quantity": 1,
+      "kind": "electronics"
+    }
+  ],
+  "steps": [
+    {
+      "number": 1,
+      "title": {
+        "en": "Drive shaft",
+        "zh": "传动轴"
+      },
+      "source_url": "https://wiki-media-ef.oss-cn-hongkong.aliyuncs.com/i18n/en/docusaurus-plugin-content-docs/current/microbit/building-blocks/nezha-inventors-kit-v2/images/nezha-inventors-kit-v2-step-31-02.png",
+      "introduced_parts": {
+        "black-pin": 1,
+        "axle": 1,
+        "servo": 1
+      }
+    },
+    {
+      "number": 2,
+      "title": {
+        "en": "First upright",
+        "zh": "第一根立梁"
+      },
+      "source_url": "https://wiki-media-ef.oss-cn-hongkong.aliyuncs.com/i18n/en/docusaurus-plugin-content-docs/current/microbit/building-blocks/nezha-inventors-kit-v2/images/nezha-inventors-kit-v2-step-31-03.png",
+      "introduced_parts": {
+        "grey-long-pin": 1,
+        "yellow-medium-beam": 1
+      }
+    },
+    {
+      "number": 3,
+      "title": {
+        "en": "Lower gate rail",
+        "zh": "门框下横梁"
+      },
+      "source_url": "https://wiki-media-ef.oss-cn-hongkong.aliyuncs.com/i18n/en/docusaurus-plugin-content-docs/current/microbit/building-blocks/nezha-inventors-kit-v2/images/nezha-inventors-kit-v2-step-31-04.png",
+      "introduced_parts": {
+        "grey-long-pin": 3,
+        "white-long-beam": 1
+      }
+    },
+    {
+      "number": 4,
+      "title": {
+        "en": "Gate linkage",
+        "zh": "门框连杆"
+      },
+      "source_url": "https://wiki-media-ef.oss-cn-hongkong.aliyuncs.com/i18n/en/docusaurus-plugin-content-docs/current/microbit/building-blocks/nezha-inventors-kit-v2/images/nezha-inventors-kit-v2-step-31-05.png",
+      "introduced_parts": {
+        "blue-axle-pin": 1,
+        "black-link": 1
+      }
+    },
+    {
+      "number": 5,
+      "title": {
+        "en": "Shaft end",
+        "zh": "轴端零件"
+      },
+      "source_url": "https://wiki-media-ef.oss-cn-hongkong.aliyuncs.com/i18n/en/docusaurus-plugin-content-docs/current/microbit/building-blocks/nezha-inventors-kit-v2/images/nezha-inventors-kit-v2-step-31-06.png",
+      "introduced_parts": {
+        "gear": 1
+      }
+    },
+    {
+      "number": 6,
+      "title": {
+        "en": "Gate uprights",
+        "zh": "门框立梁"
+      },
+      "source_url": "https://wiki-media-ef.oss-cn-hongkong.aliyuncs.com/i18n/en/docusaurus-plugin-content-docs/current/microbit/building-blocks/nezha-inventors-kit-v2/images/nezha-inventors-kit-v2-step-31-07.png",
+      "introduced_parts": {
+        "grey-long-pin": 3,
+        "yellow-medium-beam": 3
+      }
+    },
+    {
+      "number": 7,
+      "title": {
+        "en": "Upper gate rail",
+        "zh": "门框上横梁"
+      },
+      "source_url": "https://wiki-media-ef.oss-cn-hongkong.aliyuncs.com/i18n/en/docusaurus-plugin-content-docs/current/microbit/building-blocks/nezha-inventors-kit-v2/images/nezha-inventors-kit-v2-step-31-08.png",
+      "introduced_parts": {
+        "white-long-beam": 1
+      }
+    },
+    {
+      "number": 8,
+      "title": {
+        "en": "Support connectors",
+        "zh": "支架连接销"
+      },
+      "source_url": "https://wiki-media-ef.oss-cn-hongkong.aliyuncs.com/i18n/en/docusaurus-plugin-content-docs/current/microbit/building-blocks/nezha-inventors-kit-v2/images/nezha-inventors-kit-v2-step-31-09.png",
+      "introduced_parts": {
+        "grey-short-pin": 1,
+        "black-pin": 1
+      }
+    },
+    {
+      "number": 9,
+      "title": {
+        "en": "Support upright",
+        "zh": "支架立梁"
+      },
+      "source_url": "https://wiki-media-ef.oss-cn-hongkong.aliyuncs.com/i18n/en/docusaurus-plugin-content-docs/current/microbit/building-blocks/nezha-inventors-kit-v2/images/nezha-inventors-kit-v2-step-31-10.png",
+      "introduced_parts": {
+        "yellow-long-beam": 1
+      }
+    },
+    {
+      "number": 10,
+      "title": {
+        "en": "Sensor mount",
+        "zh": "传感器固定座"
+      },
+      "source_url": "https://wiki-media-ef.oss-cn-hongkong.aliyuncs.com/i18n/en/docusaurus-plugin-content-docs/current/microbit/building-blocks/nezha-inventors-kit-v2/images/nezha-inventors-kit-v2-step-31-11.png",
+      "introduced_parts": {
+        "black-pin": 2,
+        "yellow-short-beam": 1,
+        "angle-connector": 1
+      }
+    },
+    {
+      "number": 11,
+      "title": {
+        "en": "Lower bracket",
+        "zh": "下部连接件"
+      },
+      "source_url": "https://wiki-media-ef.oss-cn-hongkong.aliyuncs.com/i18n/en/docusaurus-plugin-content-docs/current/microbit/building-blocks/nezha-inventors-kit-v2/images/nezha-inventors-kit-v2-step-31-12.png",
+      "introduced_parts": {
+        "black-pin": 1,
+        "angle-connector": 1
+      }
+    },
+    {
+      "number": 12,
+      "title": {
+        "en": "Controller support",
+        "zh": "控制板支撑梁"
+      },
+      "source_url": "https://wiki-media-ef.oss-cn-hongkong.aliyuncs.com/i18n/en/docusaurus-plugin-content-docs/current/microbit/building-blocks/nezha-inventors-kit-v2/images/nezha-inventors-kit-v2-step-31-13.png",
+      "introduced_parts": {
+        "yellow-medium-beam": 1
+      }
+    },
+    {
+      "number": 13,
+      "title": {
+        "en": "Controller mount",
+        "zh": "控制板固定座"
+      },
+      "source_url": "https://wiki-media-ef.oss-cn-hongkong.aliyuncs.com/i18n/en/docusaurus-plugin-content-docs/current/microbit/building-blocks/nezha-inventors-kit-v2/images/nezha-inventors-kit-v2-step-31-14.png",
+      "introduced_parts": {
+        "black-pin": 2,
+        "yellow-short-beam": 1,
+        "angle-connector": 1
+      }
+    },
+    {
+      "number": 14,
+      "title": {
+        "en": "Distance sensor",
+        "zh": "测距模块"
+      },
+      "source_url": "https://wiki-media-ef.oss-cn-hongkong.aliyuncs.com/i18n/en/docusaurus-plugin-content-docs/current/microbit/building-blocks/nezha-inventors-kit-v2/images/nezha-inventors-kit-v2-step-31-15.png",
+      "introduced_parts": {
+        "ultrasonic": 1
+      }
+    },
+    {
+      "number": 15,
+      "title": {
+        "en": "Controller boards",
+        "zh": "控制板组合"
+      },
+      "source_url": "https://wiki-media-ef.oss-cn-hongkong.aliyuncs.com/i18n/en/docusaurus-plugin-content-docs/current/microbit/building-blocks/nezha-inventors-kit-v2/images/nezha-inventors-kit-v2-step-31-16.png",
+      "introduced_parts": {
+        "microbit": 1,
+        "nezha-board": 1
+      }
+    }
+  ],
+  "connections": [
+    {
+      "part_id": "ultrasonic",
+      "controller_id": "nezha-board",
+      "port": "J1"
+    },
+    {
+      "part_id": "servo",
+      "controller_id": "nezha-board",
+      "port": "S1"
+    }
+  ],
+  "unresolved": [
+    {
+      "id": "part_identity",
+      "detail": {
+        "en": "Match the pictured pieces to exact part numbers, dimensions and board revisions.",
+        "zh": "将图中零件对应到确切编号、尺寸和板卡版本。"
+      }
+    },
+    {
+      "id": "mounting_geometry",
+      "detail": {
+        "en": "Record mounting points, shaft engagement and required fasteners from measurements or technical drawings.",
+        "zh": "根据测量或技术图纸记录安装点、轴的配合和紧固件。"
+      }
+    },
+    {
+      "id": "servo_motion",
+      "detail": {
+        "en": "Confirm the servo model, control mode and clearance throughout the gate motion.",
+        "zh": "核对舵机型号、控制方式和门运动时需要的空间。"
+      }
+    },
+    {
+      "id": "cables_power",
+      "detail": {
+        "en": "Check cable types, lengths, routing and the complete power arrangement; cables are absent from the pictured parts list.",
+        "zh": "补齐图示总表中未列出的线缆，核对型号、长度、走线和完整供电方式。"
+      }
+    },
+    {
+      "id": "program_binding",
+      "detail": {
+        "en": "Pin the program dependencies and verify compilation, ports and calibration against the actual hardware.",
+        "zh": "固定程序依赖版本，并按实际硬件核对编译、端口和校准。"
+      }
+    },
+    {
+      "id": "physical_trial",
+      "detail": {
+        "en": "Build and run this exact version, recording photos and observations.",
+        "zh": "用对应硬件照图搭建并运行，记录照片和观察结果。"
+      }
+    }
+  ],
+  "content_hash": ""
+}

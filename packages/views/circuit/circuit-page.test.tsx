@@ -4,9 +4,11 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "@chimii/core/api";
 import { circuitFixture } from "./test-fixture";
+import referenceData from "../../../server/internal/circuit/references/nezha-v2-gate.json";
 import { renderWithI18n } from "../test/i18n";
 
-const { mockApi, push } = vi.hoisted(() => ({
+const { mockApi, push, locationState } = vi.hoisted(() => ({
+  locationState: { search: "" },
   mockApi: {
     getCircuitCatalog: vi.fn(),
     listCircuitKits: vi.fn(),
@@ -41,7 +43,7 @@ vi.mock("../navigation", () => ({
     push,
     replace: push,
     pathname: "/acme/circuit",
-    searchParams: new URLSearchParams(),
+    searchParams: new URLSearchParams(locationState.search),
   }),
   AppLink: ({
     children,
@@ -78,6 +80,7 @@ function renderPage(detail = false) {
 }
 beforeEach(() => {
   vi.resetAllMocks();
+  locationState.search = "";
   const { catalog, creation } = circuitFixture();
   mockApi.getCircuitCatalog.mockResolvedValue(catalog);
   mockApi.listCircuitKits.mockResolvedValue({
@@ -112,6 +115,51 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("electronic construction flow", () => {
+  it("lists assembly research separately from executable kits", async () => {
+    const current = await mockApi.listCircuitKits();
+    mockApi.listCircuitKits.mockResolvedValue({
+      ...current,
+      assembly_references: [{ ...referenceData, content_hash: "a".repeat(64) }],
+    });
+    renderPage();
+    expect(await screen.findByRole("link", { name: /Ultrasonic gate.*View assembly reference/ })).toHaveAttribute(
+      "href", "/acme/circuit?reference=nezha-v2-ultrasonic-gate",
+    );
+    expect(screen.queryByRole("option", { name: /Nezha/ })).not.toBeInTheDocument();
+  });
+
+  it("opens the reference route and browses steps without starting a conversation or saving stock", async () => {
+    const current = await mockApi.listCircuitKits();
+    mockApi.listCircuitKits.mockResolvedValue({
+      ...current,
+      assembly_references: [{ ...referenceData, content_hash: "a".repeat(64) }],
+    });
+    locationState.search = "reference=nezha-v2-ultrasonic-gate";
+    renderPage();
+    await screen.findByRole("heading", { name: "Ultrasonic gate" });
+    expect(screen.getByText(/16 pictured types · 36 pieces · 15 assembly steps/)).toBeVisible();
+    expect(screen.getByRole("button", { name: "Previous reference step" })).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: "Next reference step" }));
+    expect(screen.getByText("Reference step 2 / 15")).toBeVisible();
+    expect(screen.getByRole("link", { name: "Open this step’s original image" }).getAttribute("href")).toMatch(/step-31-03.png$/);
+    fireEvent.click(screen.getByRole("button", { name: "15. Controller boards" }));
+    expect(screen.getByRole("button", { name: "Next reference step" })).toBeDisabled();
+    expect(screen.getByRole("link", { name: "Open this step’s original image" }).getAttribute("href")).toMatch(/step-31-16.png$/);
+    expect(screen.queryByRole("button", { name: "Start this project" })).not.toBeInTheDocument();
+    expect(mockApi.getCircuitCatalog).not.toHaveBeenCalled();
+    expect(mockApi.getCircuitInventory).not.toHaveBeenCalled();
+    expect(mockApi.saveCircuitInventory).not.toHaveBeenCalled();
+    expect(mockApi.sendBuildMessage).not.toHaveBeenCalled();
+  });
+
+  it("handles an unavailable reference without falling through to generation", async () => {
+    locationState.search = "reference=unknown";
+    renderPage();
+    expect(await screen.findByRole("alert")).toHaveTextContent("This assembly reference is unavailable");
+    expect(screen.getByRole("link", { name: "Back to circuit creation" })).toHaveAttribute("href", "/acme/circuit");
+    expect(mockApi.getCircuitCatalog).not.toHaveBeenCalled();
+  });
+
   it("offers the documented projects without AI and blocks missing parts", async () => {
     renderPage();
     const start = await screen.findByRole("button", {

@@ -36,6 +36,10 @@ import { CircuitInventoryPanel } from "./circuit-inventory";
 import { CircuitBoard } from "./circuit-board";
 import { CircuitModuleBoard } from "./circuit-module-board";
 import {
+  CircuitAssemblyReferenceEntry,
+  CircuitAssemblyReferencePage,
+} from "./circuit-assembly-reference";
+import {
   CircuitWorkbench,
   CircuitErrorNotice as ErrorNotice,
 } from "./circuit-workbench";
@@ -43,6 +47,10 @@ import {
 export function CircuitPage() {
   const wsId = useWorkspaceId();
   const navigation = useNavigation();
+  const referenceId = navigation.searchParams.get("reference");
+  if (referenceId) {
+    return <CircuitAssemblyReferencePage wsId={wsId} referenceId={referenceId} />;
+  }
   return (
     <CircuitStudio key={`${wsId}:${navigation.searchParams.toString()}`} />
   );
@@ -455,6 +463,11 @@ function CircuitStudio() {
           </section>
         ) : (
           <>
+            {!conversationId && !sourceId && (
+              <CircuitAssemblyReferenceEntry
+                references={kits.data?.assembly_references ?? []}
+              />
+            )}
             <section className="mb-7 flex flex-wrap items-center gap-4 rounded-2xl border bg-card px-5 py-4">
               <label htmlFor="circuit-kit" className="text-xs font-bold">
                 {t(($) => $.kit)}
