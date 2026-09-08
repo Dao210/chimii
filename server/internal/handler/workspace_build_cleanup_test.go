@@ -41,7 +41,7 @@ func seedDeletionProduct(t *testing.T, ws string) {
 	t.Helper()
 	ctx := context.Background()
 	statements := []string{
-		`INSERT INTO build_session(workspace_id,creator_user_id,client_request_id,prompt) VALUES($1,$2,gen_random_uuid(),'test')`,
+		`WITH identity AS (SELECT gen_random_uuid() AS id) INSERT INTO build_session(id,conversation_id,workspace_id,creator_user_id,client_request_id,prompt) SELECT id,id,$1,$2,gen_random_uuid(),'test' FROM identity`,
 		`INSERT INTO build_job(workspace_id,session_id) SELECT workspace_id,id FROM build_session WHERE workspace_id=$1 AND creator_user_id=$2`,
 		`INSERT INTO build_creation(workspace_id,creator_user_id,session_id,title,prompt,archetype,recipe,build_plan,validation,ldraw_mpd,current_step) VALUES($1,$2,gen_random_uuid(),'test','test','robot','{}','{}','{"step_count":2,"part_count":2}','0 test',1)`,
 		`INSERT INTO brick_inventory(workspace_id,updated_by,catalog_version) VALUES($1,$2,'test')`,

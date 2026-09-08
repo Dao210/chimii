@@ -207,7 +207,8 @@ type MessagesRequest struct {
 	TopP          *float64               `json:"top_p,omitempty"`
 
 	// Extended thinking
-	Thinking *ThinkingConfig `json:"thinking,omitempty"`
+	Thinking     *ThinkingConfig `json:"thinking,omitempty"`
+	OutputConfig *OutputConfig   `json:"output_config,omitempty"`
 
 	// Structured output
 	ToolChoice interface{} `json:"tool_choice,omitempty"`
@@ -227,8 +228,14 @@ type CacheControl struct {
 
 // ThinkingConfig configures extended thinking.
 type ThinkingConfig struct {
-	Type         string `json:"type"`          // "enabled"
-	BudgetTokens int    `json:"budget_tokens"` // Max thinking tokens
+	Type         string `json:"type"`                    // "enabled" or "disabled"
+	BudgetTokens int    `json:"budget_tokens,omitempty"` // Max thinking tokens when enabled
+}
+
+// OutputConfig controls the model's reasoning effort independently of providers'
+// token-budget support.
+type OutputConfig struct {
+	Effort string `json:"effort,omitempty"`
 }
 
 // StreamEvent represents a server-sent event from the streaming API.

@@ -109,15 +109,30 @@ func (c *Client) Message(ctx context.Context, req api.MessagesRequest) (*api.Str
 }
 
 // GenerateText sends an optional system prompt and one user message, then
-// concatenates the text blocks in the Anthropic response. An empty model uses
-// the configured default.
+// concatenates the text blocks in the Anthropic response. These bounded utility
+// calls explicitly disable extended thinking: compatible providers may enable
+// it by default. Use GenerateReasonedText for geometry or other planning work.
+// An empty model uses the configured default.
 func (c *Client) GenerateText(ctx context.Context, model, systemPrompt, userPrompt string) (string, error) {
+	return c.generateText(ctx, model, systemPrompt, userPrompt, &api.ThinkingConfig{Type: "disabled"}, nil)
+}
+
+// GenerateReasonedText keeps a small reasoning budget for constraint-heavy
+// utility work. Set effort explicitly as well: compatible providers such as
+// DeepSeek ignore budget_tokens and otherwise default to high effort.
+func (c *Client) GenerateReasonedText(ctx context.Context, model, systemPrompt, userPrompt string) (string, error) {
+	return c.generateText(ctx, model, systemPrompt, userPrompt, &api.ThinkingConfig{Type: "enabled", BudgetTokens: 2048}, &api.OutputConfig{Effort: "low"})
+}
+
+func (c *Client) generateText(ctx context.Context, model, systemPrompt, userPrompt string, thinking *api.ThinkingConfig, outputConfig *api.OutputConfig) (string, error) {
 	if !c.Enabled() {
 		return "", ErrNotConfigured
 	}
 
 	req := api.MessagesRequest{
-		Model: strings.TrimSpace(model),
+		Model:        strings.TrimSpace(model),
+		Thinking:     thinking,
+		OutputConfig: outputConfig,
 		Messages: []api.APIMessage{{
 			Role: "user",
 			Content: []types.ContentBlock{{

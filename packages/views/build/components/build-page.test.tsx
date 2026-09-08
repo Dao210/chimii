@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   send: vi.fn(),
   history: vi.fn(),
   replace: vi.fn(),
+  push: vi.fn(),
   cancel: vi.fn(),
   params: "",
   available: true,
@@ -32,7 +33,7 @@ vi.mock("../../navigation", () => ({
     pathname: "/acme/build",
     searchParams: new URLSearchParams(mocks.params),
     replace: mocks.replace,
-    push: vi.fn(),
+    push: mocks.push,
   }),
   AppLink: ({
     children,
@@ -150,6 +151,38 @@ afterEach(() => {
   client?.clear();
 });
 describe("dedicated brick studio", () => {
+  it("explains planner timeouts and preserves the idea when returning to the form", async () => {
+    mocks.params = "conversation=run-1";
+    mocks.history.mockResolvedValue({
+      id: "run-1",
+      session: { ...session, status: "failed", error: "BUILD_PLANNER_TIMEOUT" },
+      messages: [
+        {
+          id: "m1",
+          sequence: 1,
+          session_id: "run-1",
+          role: "assistant",
+          kind: "error",
+          content: "BUILD_PLANNER_TIMEOUT",
+          metadata: { error: "BUILD_PLANNER_TIMEOUT" },
+          created_at: "now",
+        },
+      ],
+      next_cursor: "",
+    });
+    renderStudio();
+    await screen.findByRole("heading", {
+      name: "The plan took too long to arrive",
+    });
+    expect(screen.getAllByText(/you do not need to reword it/)).toHaveLength(2);
+    expect(
+      screen.queryByText(/Try saying it another way/),
+    ).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Back to my idea" }));
+    expect(mocks.push).toHaveBeenCalledWith("/acme/build?idea=A+house");
+    expect(mocks.cancel).not.toHaveBeenCalled();
+    expect(mocks.send).not.toHaveBeenCalled();
+  });
   it("keeps a failed message and retries the exact request after a lost response", async () => {
     mocks.send.mockRejectedValueOnce(new Error("connection lost"));
     renderStudio();

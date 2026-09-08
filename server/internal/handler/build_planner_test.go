@@ -2,9 +2,10 @@ package handler
 
 import (
 	"encoding/json"
+	"testing"
+
 	buildstudio "github.com/chimii-ai/chimii/server/internal/build"
 	db "github.com/chimii-ai/chimii/server/pkg/db/generated"
-	"testing"
 )
 
 func validBuildDecision() buildPlanningDecision {
@@ -21,6 +22,20 @@ func TestParseBuildDecisionPreservesCompleteRecipe(t *testing.T) {
 	}
 	if len(d.Recipe.Modules) != 3 || d.Question != nil {
 		t.Fatalf("unexpected decision: %#v", d)
+	}
+}
+
+func TestParseBuildDecisionRejectsCapabilityMetadataInModuleInstance(t *testing.T) {
+	raw, _ := json.Marshal(validBuildDecision())
+	var payload map[string]any
+	if err := json.Unmarshal(raw, &payload); err != nil {
+		t.Fatal(err)
+	}
+	modules := payload["recipe"].(map[string]any)["modules"].([]any)
+	modules[0].(map[string]any)["root"] = true
+	raw, _ = json.Marshal(payload)
+	if _, err := parseBuildDecision(string(raw)); err == nil {
+		t.Fatal("library metadata was accepted as an executable module instance")
 	}
 }
 func TestParseBuildDecisionRejectsAmbiguousAndInventedContracts(t *testing.T) {
@@ -60,6 +75,23 @@ func TestParseBuildDecisionAllowsFreeTextWithoutForcedChoices(t *testing.T) {
 		t.Fatal("free text unavailable")
 	}
 }
+
+func TestParseBuildDecisionRejectsExecutableClarifications(t *testing.T) {
+	for _, shapeDesign := range []bool{false, true} {
+		d := validBuildDecision()
+		d.Outcome = "clarify"
+		d.Question = &buildPlanningQuestion{Prompt: "Which size?", Choices: []buildstudio.QuestionChoice{}}
+		if shapeDesign {
+			d.Recipe.Version = 3
+			d.Recipe.Modules = nil
+			d.Recipe.Design = &buildstudio.DesignSpec{Version: 1, Mode: "static", Shapes: []buildstudio.ShapeNode{{ID: "base", Kind: "box", Operation: "add", Size: buildstudio.DesignVector{X: 6, Y: 6, Z: 6}, Color: 1}}}
+		}
+		if _, err := parseBuildDecision(string(mustBuildJSON(d))); err == nil {
+			t.Fatalf("accepted clarification with executable content: shape_design=%v", shapeDesign)
+		}
+	}
+}
+
 func TestBuildAnswersAreVersionedAndIdempotent(t *testing.T) {
 	q := buildstudio.ClarifyingQuestion{ID: "q2", Prompt: "Ears?", Choices: []buildstudio.QuestionChoice{{ID: "long", Label: "Long ears"}}, Options: []string{"Long ears"}, AllowFreeText: true}
 	s := db.BuildSession{Revision: 2, Status: "clarifying", Question: mustBuildJSON(q), Answers: []byte(`{"q1":"dog"}`)}

@@ -54,7 +54,9 @@ export function CreationHistory({
             </p>
             <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-6">
               {message.kind === "error" && !message.metadata.message
-                ? t(($) => $.failed_description)
+                ? message.metadata.error === "BUILD_PLANNER_TIMEOUT"
+                  ? t(($) => $.failed_timeout)
+                  : t(($) => $.failed_description)
                 : message.content}
             </p>
             {(message.metadata.creation_id ||

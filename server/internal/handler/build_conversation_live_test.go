@@ -40,6 +40,46 @@ func TestBuildConversationLivePlanner(t *testing.T) {
 		t.Fatalf("provider evaluation failed (%T): %s", err, message)
 	}
 	t.Logf("requested model: %s", h.LLM.DefaultModel())
+	for _, sample := range []struct{ name, prompt string }{
+		{"brick_tower", "一座尖塔"},
+		{"brick_car", "坐一个小车"},
+	} {
+		t.Run(sample.name, func(t *testing.T) {
+			started := time.Now()
+			inventory := buildstudio.UnlimitedInventory()
+			catalog := buildstudio.CatalogCopy(buildstudio.StarterCatalog)
+			decision, err := h.planBuildRecipe(context.Background(), sample.prompt, map[string]string{}, nil, 1, inventory, catalog)
+			t.Logf("planning: elapsed=%s outcome=%s", time.Since(started), decision.Outcome)
+			if err != nil {
+				if decision.Recipe != nil {
+					t.Logf("rejected synthetic recipe: %s", mustBuildJSON(decision.Recipe))
+				}
+				providerFailure(t, err)
+			}
+			if decision.Outcome == "clarify" {
+				t.Logf("question: %s", mustBuildJSON(decision.Question))
+				return
+			}
+			if decision.Outcome != "ready" || decision.Recipe == nil {
+				t.Fatalf("simple idea did not yield a plan or question: %s", mustBuildJSON(decision))
+			}
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+			var result buildstudio.CompileResult
+			if decision.Recipe.Design != nil {
+				result, err = buildstudio.CompileDesign(ctx, *decision.Recipe, inventory, inventory.CatalogVersion, catalog, time.Now())
+			} else {
+				result, err = buildstudio.CompileWithCatalog(*decision.Recipe, inventory, inventory.CatalogVersion, catalog, time.Now())
+			}
+			if err != nil {
+				t.Fatalf("compile: %v; recipe: %s", err, mustBuildJSON(decision.Recipe))
+			}
+			if !result.Plan.Validation.Buildable {
+				t.Fatal("compiled plan is not buildable")
+			}
+			t.Logf("compiled: parts=%d steps=%d elapsed=%s", result.Plan.Validation.PartCount, result.Plan.Validation.StepCount, time.Since(started))
+		})
+	}
 	w := NewBuildWorker(h)
 	t.Run("route_radio", func(t *testing.T) {
 		d, err := w.routeBuild(context.Background(), db.BuildSession{Prompt: "我想搭一个可以听广播的收音机"}, map[string]string{}, nil)

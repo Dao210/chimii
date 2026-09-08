@@ -38,7 +38,7 @@ UPDATE build_job AS job
 SET status = 'running',
     attempts = job.attempts + 1,
     lease_token = gen_random_uuid(),
-    leased_until = now() + interval '60 seconds',
+    leased_until = now() + interval '120 seconds',
     updated_at = now()
 FROM candidate
 WHERE job.id = candidate.id

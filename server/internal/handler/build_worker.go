@@ -22,6 +22,9 @@ const (
 	// replicas. A small local pool prevents one slow LLM request from consuming
 	// the entire child-facing latency budget for unrelated families.
 	buildWorkerConcurrency = 4
+	// Optional routing (20s), a shape recipe (60s), then compilation. The SQL
+	// claim grants 120s, leaving time to commit a fenced terminal result.
+	buildWorkerTimeout = 90 * time.Second
 )
 
 type BuildWorker struct {
@@ -106,8 +109,8 @@ func (w *BuildWorker) ProcessNext(ctx context.Context) (bool, error) {
 	defer func() {
 		slog.Info("build worker: execution finished", "job_id", uuidToString(job.ID), "elapsed_ms", time.Since(started).Milliseconds())
 	}()
-	// Leave headroom for a final fenced transaction before the 60-second lease ends.
-	runCtx, cancel := context.WithTimeout(ctx, 45*time.Second)
+	// Leave headroom for a final fenced transaction before the lease ends.
+	runCtx, cancel := context.WithTimeout(ctx, buildWorkerTimeout)
 	defer cancel()
 	session, err := w.h.Queries.GetBuildSessionForWorker(runCtx, job.SessionID)
 	if err != nil {
@@ -203,7 +206,7 @@ func (w *BuildWorker) ProcessNext(ctx context.Context) (bool, error) {
 		}
 		planStarted := time.Now()
 		decision, planErr := w.h.planBuildRecipe(runCtx, session.Prompt, answers, recipe, session.Revision, inventory, catalog, history)
-		slog.Info("build worker: planning", "session_id", uuidToString(session.ID), "revision", session.Revision, "elapsed_ms", time.Since(planStarted).Milliseconds(), "outcome", decision.Outcome)
+		slog.Info("build worker: planning", "session_id", uuidToString(session.ID), "revision", session.Revision, "attempt", job.Attempts, "elapsed_ms", time.Since(planStarted).Milliseconds(), "outcome", decision.Outcome, "timed_out", errors.Is(planErr, context.DeadlineExceeded))
 		if planErr != nil {
 			if code, ok := buildstudio.BuildErrorCode(planErr); ok {
 				return true, w.failPermanently(ctx, job, code, planErr)

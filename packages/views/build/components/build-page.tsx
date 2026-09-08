@@ -73,21 +73,23 @@ function BrickStudio() {
         : t(($) => $.generating)
       : t(($) => $.queued);
   const failedDescription =
-    session?.error === "BUILD_SEARCH_LIMIT"
-      ? t(($) => $.failed_search_limit)
-      : session?.error === "BUILD_UNSUPPORTED"
-        ? t(($) => $.failed_unsupported)
-        : session?.error === "BUILD_REQUIREMENTS_UNMET"
-          ? t(($) => $.failed_requirements)
-          : session?.error === "BUILD_CANCELLED"
-            ? t(($) => $.cancelled)
-            : session?.error === "BUILD_INSUFFICIENT_INVENTORY"
-              ? t(($) => $.failed_inventory)
-              : session?.error === "BUILD_COUNT_UNSUPPORTED"
-                ? t(($) => $.failed_count)
-                : session?.error === "BUILD_STRUCTURE_INVALID"
-                  ? t(($) => $.failed_structure)
-                  : t(($) => $.failed_description);
+    session?.error === "BUILD_PLANNER_TIMEOUT"
+      ? t(($) => $.failed_timeout)
+      : session?.error === "BUILD_SEARCH_LIMIT"
+        ? t(($) => $.failed_search_limit)
+        : session?.error === "BUILD_UNSUPPORTED"
+          ? t(($) => $.failed_unsupported)
+          : session?.error === "BUILD_REQUIREMENTS_UNMET"
+            ? t(($) => $.failed_requirements)
+            : session?.error === "BUILD_CANCELLED"
+              ? t(($) => $.cancelled)
+              : session?.error === "BUILD_INSUFFICIENT_INVENTORY"
+                ? t(($) => $.failed_inventory)
+                : session?.error === "BUILD_COUNT_UNSUPPORTED"
+                  ? t(($) => $.failed_count)
+                  : session?.error === "BUILD_STRUCTURE_INVALID"
+                    ? t(($) => $.failed_structure)
+                    : t(($) => $.failed_description);
   const onSent = (next: BuildSession) => {
     setAnswer("");
     const query = new URLSearchParams({
@@ -418,7 +420,10 @@ function BrickStudio() {
               {statusCopy}
             </h2>
             <p className="mt-4 max-w-lg font-medium text-[var(--brick-muted)]">
-              {session?.summary || t(($) => $.checking_hint)}
+              {session?.summary ||
+                (session?.phase === "planning"
+                  ? t(($) => $.planning_hint)
+                  : t(($) => $.checking_hint))}
             </p>
             <Button
               variant="ghost"
@@ -431,7 +436,11 @@ function BrickStudio() {
           </section>
         ) : session?.status === "failed" ? (
           <section className="mx-auto max-w-xl pt-20 text-center">
-            <h2 className="text-3xl font-black">{t(($) => $.failed_title)}</h2>
+            <h2 className="text-3xl font-black">
+              {session.error === "BUILD_PLANNER_TIMEOUT"
+                ? t(($) => $.failed_timeout_title)
+                : t(($) => $.failed_title)}
+            </h2>
             <p className="mt-3 text-[var(--brick-muted)]">
               {session.message || failedDescription}
             </p>
@@ -445,7 +454,9 @@ function BrickStudio() {
               onClick={() => void editIdea()}
               className="mt-6 rounded-xl bg-[var(--brick-ink)]"
             >
-              {t(($) => $.edit_idea)}
+              {session.error === "BUILD_PLANNER_TIMEOUT"
+                ? t(($) => $.back_to_idea)
+                : t(($) => $.edit_idea)}
             </Button>
           </section>
         ) : (

@@ -50,6 +50,18 @@ describe("BuildSessionSchema planning protocol", () => {
     created_at: "",
     updated_at: "",
   };
+  it("keeps a new timeout code while rejecting malformed failure responses", () => {
+    const parsed = BuildSessionSchema.parse({
+      ...session,
+      status: "failed",
+      error: "BUILD_PLANNER_TIMEOUT",
+    });
+    expect(parsed.error).toBe("BUILD_PLANNER_TIMEOUT");
+    expect(
+      BuildSessionSchema.safeParse({ ...parsed, error: { message: "timeout" } })
+        .success,
+    ).toBe(false);
+  });
   it("supports old labels and new versioned free-text questions", () => {
     const old = BuildSessionSchema.parse({
       ...session,

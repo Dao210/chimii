@@ -539,7 +539,7 @@ func toBuildSessionResponse(row db.BuildSession) buildSessionResponse {
 		// responses expose only a stable product code and never raw LLM/upstream
 		// text, URLs, credentials, or stack details.
 		switch row.Error.String {
-		case "CIRCUIT_INVENTORY_CHANGED", "CIRCUIT_VALIDATION_FAILED", "CIRCUIT_CATALOG_CHANGED", buildstudio.BuildErrorSearchLimit, buildstudio.BuildErrorInsufficientInventory, buildstudio.BuildErrorCountUnsupported, buildstudio.BuildErrorStructureInvalid, buildstudio.BuildErrorUnsupported, buildstudio.BuildErrorRequirements, "BUILD_CANCELLED":
+		case buildPlannerTimeoutCode, "CIRCUIT_INVENTORY_CHANGED", "CIRCUIT_VALIDATION_FAILED", "CIRCUIT_CATALOG_CHANGED", buildstudio.BuildErrorSearchLimit, buildstudio.BuildErrorInsufficientInventory, buildstudio.BuildErrorCountUnsupported, buildstudio.BuildErrorStructureInvalid, buildstudio.BuildErrorUnsupported, buildstudio.BuildErrorRequirements, "BUILD_CANCELLED":
 			response.Error = row.Error.String
 		default:
 			response.Error = "BUILD_GENERATION_FAILED"

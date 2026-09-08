@@ -173,6 +173,16 @@ func TestGenerateText(t *testing.T) {
 	if out != "a title" {
 		t.Fatalf("expected %q, got %q", "a title", out)
 	}
+	thinking, ok := captured.Body["thinking"].(map[string]any)
+	if !ok || thinking["type"] != "disabled" {
+		t.Fatalf("utility request inherited provider thinking defaults: %#v", captured.Body["thinking"])
+	}
+	if _, present := thinking["budget_tokens"]; present {
+		t.Fatal("disabled thinking must not send a token budget")
+	}
+	if _, present := captured.Body["output_config"]; present {
+		t.Fatal("simple text calls must not request reasoning effort")
+	}
 	system, ok := captured.Body["system"].([]any)
 	if !ok || len(system) != 1 || system[0].(map[string]any)["text"] != "you are helpful" {
 		t.Fatalf("unexpected system prompt: %#v", captured.Body["system"])
@@ -180,5 +190,44 @@ func TestGenerateText(t *testing.T) {
 	messages, ok := captured.Body["messages"].([]any)
 	if !ok || len(messages) != 1 || messages[0].(map[string]any)["role"] != "user" {
 		t.Fatalf("unexpected messages: %#v", captured.Body["messages"])
+	}
+}
+
+func TestGenerateReasonedTextUsesLowEffortAndReturnsOnlyText(t *testing.T) {
+	var captured capturedRequest
+	c := New(Config{BaseURL: "https://anthropic.example", HTTPClient: stubHTTPClient(t, func(got capturedRequest) string {
+		captured = got
+		return `{"content":[{"type":"thinking","thinking":"private reasoning"},{"type":"text","text":"the plan"}]}`
+	})})
+	out, err := c.GenerateReasonedText(context.Background(), "", "plan geometry", "a tower")
+	if err != nil || out != "the plan" {
+		t.Fatalf("unexpected final text: %q, error: %v", out, err)
+	}
+	thinking, ok := captured.Body["thinking"].(map[string]any)
+	if !ok || thinking["type"] != "enabled" || thinking["budget_tokens"] != float64(2048) {
+		t.Fatalf("missing bounded thinking configuration: %#v", captured.Body["thinking"])
+	}
+	output, ok := captured.Body["output_config"].(map[string]any)
+	if !ok || output["effort"] != "low" {
+		t.Fatalf("request inherited provider effort defaults: %#v", captured.Body["output_config"])
+	}
+}
+
+func TestMessagePreservesExplicitThinkingBudget(t *testing.T) {
+	var captured capturedRequest
+	c := New(Config{BaseURL: "https://anthropic.example", HTTPClient: stubHTTPClient(t, func(got capturedRequest) string {
+		captured = got
+		return anthropicMessage("claude-default", "answer")
+	})})
+	_, err := c.Message(context.Background(), api.MessagesRequest{
+		Thinking: &api.ThinkingConfig{Type: "enabled", BudgetTokens: 1024},
+		Messages: []api.APIMessage{{Role: "user", Content: []types.ContentBlock{{Type: types.ContentBlockText, Text: "reason about this"}}}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	thinking, ok := captured.Body["thinking"].(map[string]any)
+	if !ok || thinking["type"] != "enabled" || thinking["budget_tokens"] != float64(1024) {
+		t.Fatalf("explicit reasoning budget was changed: %#v", captured.Body["thinking"])
 	}
 }
