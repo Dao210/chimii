@@ -70,13 +70,19 @@ The examples are starting points, not templates. Children choose the story and k
 | Area | Code | Executed tests | Deployment | Physical verification |
 | --- | --- | --- | --- | --- |
 | Workspace, chat and runtime foundation | Implemented | Focused cache and PostgreSQL cleanup/concurrency tests; see acceptance record | Not rechecked in this change | Not applicable |
-| Brick planning and compilation | Text planning, clarification, inventory snapshots, constrained modules, validation and MPD export | Local compiler/handler checks and fixture-based browser flow | Not rechecked in this change | Not performed; geometric validation is not a physical test |
+| Brick planning and compilation | Generic target shapes, clarification, per-model inventory constraints, reviewed modules, validation and MPD export | Local compiler/handler checks and fixture-based browser flow | Not rechecked in this change | Not performed; geometric validation is not a physical test |
 | Brick building progress | Start/continue/complete, revision checks and summary lists | Local API and UI tests; see acceptance record | Requires migration 289; not deployed by this change | Not performed |
 | Circuit building | Saved inventory, step progress, reference circuits, BOSON module connections and family trial reports | Local compiler/API tests and radio/BOSON browser flows | Not rechecked in this change | Reference designs remain `not_tested`; family reports are separate evidence |
 | Mobile creation entry | Native recent lists and summary details; full building opens the web | See acceptance record for mobile checks and remaining limits | No mobile release performed | Not performed |
 | Multimodal ideas and parent growth portal | Voice/sketch planning and growth insights remain roadmap items | Not established | Not established | Not performed |
 
 Status reflects the local checkout on 2026-09-05, including work awaiting commit or release. Test details and limits are in the [acceptance record](docs/plans/2026-09-05-reliability-acceptance.md). A local test does not establish deployment or hardware acceptance. The [Inventor PRD](docs/plans/%E5%A5%87%E8%A7%85%E5%8F%91%E6%98%8E%E5%AE%B6prd%2020260728.md) describes the broader direction.
+
+The 2026-09-08 [BrickGPT comparison experiment](tasks/build-eval-first-batch.md)
+adds an offline 100-case baseline, pinned force-analysis bridge and dataset
+candidate import. Deterministic contracts passed; model inference still needs
+authorized base weights, and most force comparisons hit the current solver
+license size limit. These tools are not deployed or physically verified.
 
 ## Repository architecture
 

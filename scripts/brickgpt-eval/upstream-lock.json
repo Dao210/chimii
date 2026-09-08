@@ -1,0 +1,22 @@
+{
+  "repository": "https://github.com/AvaLovelace1/BrickGPT",
+  "revision": "da01aab83f646a700e2270b66b4c00180523448b",
+  "files": {
+    "src/brickgpt/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "src/brickgpt/data/__init__.py": "15c820482a0cbc1b5bf0bdca950057cf44209f16bc6281f38ac6c68346baf84f",
+    "src/brickgpt/data/brick_library.py": "8e008019d846fc39f2a67f57bf7ab4a1476a2e8a365d164adde39fa93d5e412a",
+    "src/brickgpt/data/brick_structure.py": "f1987c3a9f3ce64b4e14c70c48ad4bd674903e2673c811ede56be34cde0e13ac",
+    "src/brickgpt/infer.py": "3a347a474a25912633d472bca4e3231557df2ddabfc8764ca645caaaf5cd78aa",
+    "src/brickgpt/models/__init__.py": "cdc30ae852adc549473eb84ae5b5fe917821bdac60001fa4188af4c8adc1029f",
+    "src/brickgpt/models/brickgpt.py": "feb8bacad20e8c60428e2f9795e391c83fad43ddefbee6b68138c4d8b8fc9f6a",
+    "src/brickgpt/models/llm.py": "79e98bd127d50a09c2337d3f0bbc04d07adc83f1026d3260bcec4fc2e3852983",
+    "src/brickgpt/prepare_finetuning_dataset.py": "8a301485b98700d7fdb6351757f7be63610ee3fbbc952f632a9bdd9f0d1e0191",
+    "src/brickgpt/render_bricks.py": "5b0758ba67b533afe4972c6239c770eb6ea9cedb0fa2b56737bebfd557207a04",
+    "src/brickgpt/stability_analysis/__init__.py": "6701ed03c7a7d6874aa2b12ccb1e3f9d409c21744a330b1667e6dc64479111f5",
+    "src/brickgpt/stability_analysis/connectivity_analysis.py": "4e4abd8352b40162ae70f82c3aea8b56b2157dc64bb7de3d9025469013416e3d",
+    "src/brickgpt/stability_analysis/stability_analysis.py": "1dd9b45b6785d29dc4bc8d2be5ef6706e9fa51a2b04deed0b4fe88db723baf38",
+    "src/brickgpt/stability_analysis/utils.py": "993ce5c2a02f3f2eb7572d09f4c61d3750b7e35cdb5c0015476bc2c970b56eb4",
+    "src/brickgpt/data/brick_library.json": "e23b7a818c410eaaca139a0e024faf443c3c4137c24f99305df88c8d402b0425",
+    "src/brickgpt/models/few_shot_examples.json": "7457c70787501c0fd9f79ff1cf4074f7197fd9e86f916fee61bf27de74059b76"
+  }
+}

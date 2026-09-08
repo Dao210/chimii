@@ -1,0 +1,5 @@
+# Physics/data evaluation only. Blender and model inference are not required.
+numpy==2.2.6
+gurobipy==13.0.2
+networkx==3.4.2
+pyarrow==21.0.0

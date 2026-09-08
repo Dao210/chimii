@@ -31,6 +31,12 @@ The module registry has 10 reviewed constructions. The shape provider handles ne
 
 ## Verification
 
+Offline comparison against BrickGPT is available through `make build-eval`
+and `scripts/brickgpt-eval/`. It uses this compiler/validator without changing
+production generation. See [the experiment guide](../../../scripts/brickgpt-eval/README.md)
+and [the first-batch record](../../../tasks/build-eval-first-batch.md) for
+dataset, baseplate, license, model-access and physical-verification boundaries.
+
 Run `go test ./internal/build` and the scoped core/views tests. Handler tests have a global database fixture: set `DATABASE_URL` to a fully migrated disposable database, and also set `CHIMII_BUILD_TEST_DATABASE_URL` for the isolated Build schemas. Run handler cases matching `Test(BuildWorkerDB|BuildAnswers|ParseBuild|ToBuild)` with `-race -count=1 -v`; check that tests actually execute rather than the global fixture skipping them.
 
 `e2e/build.spec.ts` and `e2e/build-shapes.spec.ts` use real HTTP, queue, database and UI with a deterministic local model fixture. Run `node scripts/build-e2e-llm-fixture.mjs` (loopback port 55441), point a disposable backend's `CHIMII_LLM_BASE_URL` to it, and run Playwright with `CHIMII_BUILD_E2E_STUB=1`. `CHIMII_BUILD_WEBGL_TEST=1` selects a fresh Chrome browser (Metal on macOS) and requires the actual GLB renderer. Use only a disposable database and test accounts. This verifies flow, not real-provider model quality.

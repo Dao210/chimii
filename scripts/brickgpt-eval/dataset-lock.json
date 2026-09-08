@@ -1,0 +1,10 @@
+{
+  "dataset": "AvaLovelace/StableText2Brick",
+  "revision": "fd4c7b12cf925325665b7d1117615a18f1296b7a",
+  "splits": {
+    "test": {
+      "path": "data/test-00000-of-00001.parquet",
+      "sha256": "45b1078801f2e1871c9444d186be089d77aa9354bc60a35ab3d8e82710e4ff3e"
+    }
+  }
+}

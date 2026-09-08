@@ -1,0 +1,6 @@
+# Optional local text inference, matching the pinned upstream lock.
+-r requirements.txt
+torch==2.7.0
+transformers==4.51.3
+peft==0.15.2
+huggingface-hub==0.31.1

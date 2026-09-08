@@ -63,6 +63,7 @@ server/daemon
 server/chimii
 
 # Test artifacts
+/output/build-eval/
 test-results/
 apps/web/test-results/
 
