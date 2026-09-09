@@ -2,6 +2,7 @@
 
 import { useCallback, useMemo, useRef, useState } from "react";
 import { Boxes, Rotate3D } from "lucide-react";
+import { Button } from "@chimii/ui/components/ui/button";
 import { cn } from "@chimii/ui/lib/utils";
 import type { BuildPartSpec, BuildPlacement } from "@chimii/core/build";
 import { useT } from "../../i18n";
@@ -79,6 +80,7 @@ export function BuildModelViewer({
   const { t } = useT("build");
   const [yaw, setYaw] = useState(-Math.PI / 4);
   const [ldrawStatus, setLDrawStatus] = useState<"loading" | "ready" | "failed">("loading");
+  const [loadAttempt, setLoadAttempt] = useState(0);
   const drag = useRef<{ x: number; yaw: number } | null>(null);
   const handleLDrawStatus = useCallback((status: "loading" | "ready" | "failed") => setLDrawStatus(status), []);
   const visible = useMemo(
@@ -147,13 +149,29 @@ export function BuildModelViewer({
       </div>
       {renderMode === "ldraw" && (
         <LDrawModelCanvas
-          placements={visible}
+          key={loadAttempt}
+          placements={placements}
+          maxStep={maxStep}
           parts={parts}
           catalogVersion={catalogVersion}
           highlightedPlacementIds={highlighted}
           yaw={yaw}
           onStatus={handleLDrawStatus}
         />
+      )}
+      {renderMode === "ldraw" && ldrawStatus === "failed" && (
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          className="absolute bottom-4 right-4 z-10"
+          onClick={() => {
+            setLDrawStatus("loading");
+            setLoadAttempt((attempt) => attempt + 1);
+          }}
+        >
+          {t($ => $.retry_fetch)}
+        </Button>
       )}
       {renderMode === "ldraw" && ldrawStatus === "ready" && (
         <div className="absolute bottom-4 right-4 z-10 rounded-full border border-white/35 bg-[#173b79]/75 px-3 py-1.5 text-[10px] font-black uppercase tracking-[.12em] text-white/85 backdrop-blur">

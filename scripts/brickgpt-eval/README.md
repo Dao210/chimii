@@ -14,6 +14,11 @@ Keep three evidence types separate: deterministic compiler contracts, an
 upstream computational force check, and actual physical assembly. The last
 category is not established by these tools.
 
+See also [the 2026-09-09 integration record](../../tasks/brickgpt-integration.md).
+Chimii keeps its DeepSeek planner; the Go compiler now adapts cumulative seam
+priorities and critical-neighborhood retiling. Those algorithms do not depend
+on the optional Llama reproduction script or on Gurobi.
+
 ## Deterministic baseline
 
 From the repository root:
@@ -23,6 +28,17 @@ mkdir -p output/build-eval
 make build-eval BUILD_EVAL_ARGS='-output ../output/build-eval/baseline.json'
 make build-eval-test
 ```
+
+The additional `build-seams-v1` corpus contains 80 fixed synthetic rectangular
+targets with exact counts and constrained inventory. Every sample, including
+failures, is retained. Run it with:
+
+```sh
+make build-eval BUILD_EVAL_ARGS='-corpus seams -output ../output/build-eval/seams.json'
+```
+
+This is a compiler capability observation, not a live-model benchmark or the
+official StableText2Brick dataset. It cannot be combined with `-candidates`.
 
 `BUILD_EVAL_ARGS` are passed to a command running in `server/`. A writable Go
 cache can be selected with `GOCACHE=/tmp/chimii-go-cache` when the system cache
@@ -50,6 +66,20 @@ checked. Geometry preservation does not establish that a model resembles its
 natural-language prompt.
 
 ## Pinned upstream physics
+
+When the source is already present at `server/BrickGPT`, verify it without
+installing model or physics dependencies:
+
+```sh
+make build-brickgpt-check
+```
+
+The `compare` and `verify-source` commands default to that directory, resolved
+relative to the script even when called from another working directory.
+Verification covers the 19 files in `upstream-lock.json`, including the adapted
+mesh2brick algorithm and license. It does not attest to every file in a source
+archive. The source checkout is not required by normal Go builds or unit tests.
+For a separate checkout and isolated numerical environment:
 
 ```sh
 git clone https://github.com/AvaLovelace1/BrickGPT.git /tmp/chimii-brickgpt
@@ -165,8 +195,9 @@ are not model evidence.
 ## Licenses and boundaries
 
 The upstream repository declares MIT for its main code, dataset and adapter;
-retain its license if redistributing those files. Source is loaded from the
-explicit checkout and is not vendored here. The Llama base model has its own
+retain its license if redistributing those files. The Python tools read the
+supplied source checkout; the application runs the adapted Go algorithms with
+attribution in `server/internal/build/THIRD_PARTY_NOTICES.md`. The Llama base model has its own
 community license. Gurobi has separate license terms and the free package can
 reject models exceeding its allowed size. No license is purchased by these
 scripts. The existing product LDraw catalog retains its own notices.

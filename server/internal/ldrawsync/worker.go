@@ -379,7 +379,7 @@ func persistStarterKitProfile(ctx context.Context, queries *db.Queries, manifest
 
 func composeCatalogVersion(release, archiveSHA string) string {
 	if archiveSHA == "" {
-		return "ldraw-official-" + release + "-unknown"
+		return "ldraw-official-" + release + "-unknown-r2"
 	}
-	return fmt.Sprintf("ldraw-official-%s-%s", release, archiveSHA[:min(12, len(archiveSHA))])
+	return fmt.Sprintf("ldraw-official-%s-%s-r2", release, archiveSHA[:min(12, len(archiveSHA))])
 }

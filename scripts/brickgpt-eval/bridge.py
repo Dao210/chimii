@@ -15,6 +15,7 @@ import time
 
 LOCK = Path(__file__).with_name("upstream-lock.json")
 DATASET_LOCK = Path(__file__).with_name("dataset-lock.json")
+DEFAULT_UPSTREAM = Path(__file__).resolve().parents[2] / "server" / "BrickGPT"
 BRICK_SIZES = {(1, 1), (1, 2), (1, 4), (1, 6), (1, 8), (2, 2), (2, 4), (2, 6)}
 
 
@@ -40,6 +41,14 @@ def verify_upstream(root):
         if hashlib.sha256((root / relative).read_bytes()).hexdigest() != expected:
             raise ValueError("upstream source differs from pinned revision: " + relative)
     return lock
+
+
+def verify_source(args):
+    """Verify the explicit source snapshot without importing upstream packages."""
+    lock = verify_upstream(args.upstream)
+    print(json.dumps({"status": "verified", "upstream": str(Path(args.upstream).resolve()),
+                      "revision": lock["revision"], "files_checked": len(lock["files"]),
+                      "scope": "pinned files only; no model or solver loaded"}, sort_keys=True))
 
 
 def verify_dataset(path, revision, split):
@@ -282,8 +291,11 @@ def dataset(args):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
+    p = commands.add_parser("verify-source", help="verify the local BrickGPT snapshot without model or solver dependencies")
+    p.add_argument("--upstream", default=str(DEFAULT_UPSTREAM))
+    p.set_defaults(run=verify_source)
     p = commands.add_parser("compare", help="compare an offline Go report against pinned BrickGPT physics")
-    p.add_argument("--upstream", required=True)
+    p.add_argument("--upstream", default=str(DEFAULT_UPSTREAM))
     p.add_argument("--input", required=True)
     p.add_argument("--output", required=True)
     p.add_argument("--timeout", type=float, default=15)

@@ -17,11 +17,24 @@ import (
 func main() {
 	output := flag.String("output", "", "JSON report path; stdout when empty")
 	family := flag.String("family", "", "comma-separated case families; all by default")
+	corpus := flag.String("corpus", "baseline", "fixed corpus: baseline or seams")
 	candidatePath := flag.String("candidates", "", "optional versioned BrickGPT/dataset candidate JSON file")
 	flag.Parse()
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer cancel()
 	cases := buildeval.BaselineCases()
+	switch *corpus {
+	case "baseline":
+	case "seams":
+		if *candidatePath != "" {
+			fmt.Fprintln(os.Stderr, "seams corpus cannot be combined with candidates")
+			os.Exit(2)
+		}
+		cases = buildeval.SeamCases()
+	default:
+		fmt.Fprintln(os.Stderr, "unknown evaluation corpus")
+		os.Exit(2)
+	}
 	if *candidatePath != "" {
 		f, err := os.Open(*candidatePath)
 		if err != nil {
@@ -69,6 +82,9 @@ func main() {
 		os.Exit(2)
 	}
 	report := buildeval.Run(ctx, cases)
+	if *corpus == "seams" {
+		report.CorpusVersion = buildeval.SeamCorpusVersion
+	}
 	data, err := json.MarshalIndent(report, "", "  ")
 	if err == nil {
 		data = append(data, '\n')

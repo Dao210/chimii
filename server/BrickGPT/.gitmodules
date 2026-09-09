@@ -1,0 +1,10 @@
+[submodule "ImportLDraw"]
+	path = ImportLDraw
+	url = https://github.com/AvaLovelace1/ImportLDraw.git
+	branch = bugfix/material-fabric-warning
+[submodule "src/texture/FlashTex"]
+	path = src/texture/FlashTex
+	url = https://github.com/Roblox/FlashTex.git
+[submodule "src/texture/blender-render-toolkit"]
+	path = src/texture/blender-render-toolkit
+	url = https://github.com/dunbar12138/blender-render-toolkit.git

@@ -40,7 +40,7 @@ endef
 # Bare `make` prints the command overview.
 .DEFAULT_GOAL := help
 
-.PHONY: build-eval build-eval-test
+.PHONY: build-eval build-eval-test build-brickgpt-check
 BUILD_EVAL_ARGS ?=
 
 build-eval: ## Run the offline Build corpus (no DB or model access); pass BUILD_EVAL_ARGS
@@ -49,6 +49,9 @@ build-eval: ## Run the offline Build corpus (no DB or model access); pass BUILD_
 build-eval-test: ## Check offline Build evaluation contracts without external models
 	cd server && go test ./internal/build ./internal/buildeval ./cmd/build-eval
 	python3 -m unittest discover -s scripts/brickgpt-eval -p 'test_*.py'
+
+build-brickgpt-check: ## Verify local server/BrickGPT source without loading models or Gurobi
+	python3 scripts/brickgpt-eval/bridge.py verify-source
 
 ##@ Help
 

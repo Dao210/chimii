@@ -267,7 +267,7 @@ init_release() {
   [[ "$CATALOG_RELEASE" =~ ^[0-9]{4}-[0-9]{2}(-[0-9]{2})?$ ]] || die "invalid embedded LDraw release"
   [[ "$CATALOG_SHA256" =~ ^[0-9a-f]{64}$ ]] || die "invalid embedded LDraw SHA-256"
   [[ "$CATALOG_PART_COUNT" =~ ^[1-9][0-9]*$ ]] || die "invalid embedded LDraw part count"
-  CATALOG_VERSION="ldraw-official-$CATALOG_RELEASE-${CATALOG_SHA256:0:12}"
+  CATALOG_VERSION="ldraw-official-$CATALOG_RELEASE-${CATALOG_SHA256:0:12}-r2"
   if [[ -n "$LDRAW_ARCHIVE" ]]; then
     [[ -f "$LDRAW_ARCHIVE" ]] || die "LDRAW_ARCHIVE does not exist: $LDRAW_ARCHIVE"
     [[ "$(sha256_file "$LDRAW_ARCHIVE")" = "$CATALOG_SHA256" ]] || die "LDRAW_ARCHIVE does not match the embedded catalog SHA-256"

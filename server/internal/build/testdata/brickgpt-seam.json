@@ -1,0 +1,303 @@
+{
+  "recipe": {
+    "version": 3,
+    "archetype": "custom",
+    "title": "Custom",
+    "prompt": "",
+    "palette": null,
+    "features": null,
+    "metadata": {},
+    "subject": "custom",
+    "constraints": {
+      "exact_colors": true,
+      "no_wheels": false,
+      "part_count": 21,
+      "required_modules": null
+    },
+    "modules": null,
+    "design": {
+      "version": 1,
+      "mode": "static",
+      "shapes": [
+        {
+          "id": "solid",
+          "label": "solid",
+          "kind": "box",
+          "operation": "add",
+          "position": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "size": {
+            "x": 4,
+            "y": 6,
+            "z": 5
+          },
+          "color": 1
+        }
+      ]
+    }
+  },
+  "placements": [
+    {
+      "id": "0",
+      "part_id": "brick-2x4",
+      "color": 1,
+      "x": 0,
+      "y": 0,
+      "z": 0,
+      "rotation": 0,
+      "step": 1,
+      "module": "solid"
+    },
+    {
+      "id": "1",
+      "part_id": "brick-2x2",
+      "color": 1,
+      "x": 0,
+      "y": 0,
+      "z": 2,
+      "rotation": 90,
+      "step": 1,
+      "module": "solid"
+    },
+    {
+      "id": "2",
+      "part_id": "brick-1x1",
+      "color": 1,
+      "x": 2,
+      "y": 0,
+      "z": 2,
+      "rotation": 0,
+      "step": 1,
+      "module": "solid"
+    },
+    {
+      "id": "3",
+      "part_id": "brick-1x2",
+      "color": 1,
+      "x": 3,
+      "y": 0,
+      "z": 2,
+      "rotation": 90,
+      "step": 1,
+      "module": "solid"
+    },
+    {
+      "id": "4",
+      "part_id": "brick-1x1",
+      "color": 1,
+      "x": 2,
+      "y": 0,
+      "z": 3,
+      "rotation": 90,
+      "step": 1,
+      "module": "solid"
+    },
+    {
+      "id": "5",
+      "part_id": "brick-1x1",
+      "color": 1,
+      "x": 0,
+      "y": 0,
+      "z": 4,
+      "rotation": 0,
+      "step": 1,
+      "module": "solid"
+    },
+    {
+      "id": "6",
+      "part_id": "brick-1x2",
+      "color": 1,
+      "x": 1,
+      "y": 0,
+      "z": 4,
+      "rotation": 0,
+      "step": 1,
+      "module": "solid"
+    },
+    {
+      "id": "7",
+      "part_id": "brick-1x1",
+      "color": 1,
+      "x": 3,
+      "y": 0,
+      "z": 4,
+      "rotation": 90,
+      "step": 1,
+      "module": "solid"
+    },
+    {
+      "id": "8",
+      "part_id": "brick-1x1",
+      "color": 1,
+      "x": 0,
+      "y": 3,
+      "z": 0,
+      "rotation": 90,
+      "step": 2,
+      "module": "solid"
+    },
+    {
+      "id": "9",
+      "part_id": "brick-1x1",
+      "color": 1,
+      "x": 1,
+      "y": 3,
+      "z": 0,
+      "rotation": 0,
+      "step": 2,
+      "module": "solid"
+    },
+    {
+      "id": "10",
+      "part_id": "brick-1x1",
+      "color": 1,
+      "x": 2,
+      "y": 3,
+      "z": 0,
+      "rotation": 0,
+      "step": 2,
+      "module": "solid"
+    },
+    {
+      "id": "11",
+      "part_id": "brick-1x1",
+      "color": 1,
+      "x": 3,
+      "y": 3,
+      "z": 0,
+      "rotation": 90,
+      "step": 2,
+      "module": "solid"
+    },
+    {
+      "id": "12",
+      "part_id": "brick-1x2",
+      "color": 1,
+      "x": 0,
+      "y": 3,
+      "z": 1,
+      "rotation": 0,
+      "step": 2,
+      "module": "solid"
+    },
+    {
+      "id": "13",
+      "part_id": "brick-1x1",
+      "color": 1,
+      "x": 2,
+      "y": 3,
+      "z": 1,
+      "rotation": 0,
+      "step": 2,
+      "module": "solid"
+    },
+    {
+      "id": "14",
+      "part_id": "brick-1x2",
+      "color": 1,
+      "x": 3,
+      "y": 3,
+      "z": 1,
+      "rotation": 90,
+      "step": 2,
+      "module": "solid"
+    },
+    {
+      "id": "15",
+      "part_id": "brick-2x2",
+      "color": 1,
+      "x": 0,
+      "y": 3,
+      "z": 2,
+      "rotation": 0,
+      "step": 2,
+      "module": "solid"
+    },
+    {
+      "id": "16",
+      "part_id": "brick-1x2",
+      "color": 1,
+      "x": 2,
+      "y": 3,
+      "z": 2,
+      "rotation": 90,
+      "step": 2,
+      "module": "solid"
+    },
+    {
+      "id": "17",
+      "part_id": "brick-1x1",
+      "color": 1,
+      "x": 3,
+      "y": 3,
+      "z": 3,
+      "rotation": 90,
+      "step": 2,
+      "module": "solid"
+    },
+    {
+      "id": "18",
+      "part_id": "brick-1x2",
+      "color": 1,
+      "x": 0,
+      "y": 3,
+      "z": 4,
+      "rotation": 0,
+      "step": 2,
+      "module": "solid"
+    },
+    {
+      "id": "19",
+      "part_id": "brick-1x1",
+      "color": 1,
+      "x": 2,
+      "y": 3,
+      "z": 4,
+      "rotation": 90,
+      "step": 2,
+      "module": "solid"
+    },
+    {
+      "id": "20",
+      "part_id": "brick-1x1",
+      "color": 1,
+      "x": 3,
+      "y": 3,
+      "z": 4,
+      "rotation": 0,
+      "step": 2,
+      "module": "solid"
+    }
+  ],
+  "inventory": {
+    "configured": true,
+    "catalog_version": "ldraw-official-2026-08-d2a695868ed2",
+    "revision": 1,
+    "items": [
+      {
+        "part_id": "brick-1x1",
+        "color": 1,
+        "quantity": 12
+      },
+      {
+        "part_id": "brick-1x2",
+        "color": 1,
+        "quantity": 6
+      },
+      {
+        "part_id": "brick-2x2",
+        "color": 1,
+        "quantity": 2
+      },
+      {
+        "part_id": "brick-2x4",
+        "color": 1,
+        "quantity": 1
+      }
+    ],
+    "content_hash": "e62fa2761ced4833f8ebb6ba10e29b396e0af2b86e431173366d8afda2805599"
+  }
+}

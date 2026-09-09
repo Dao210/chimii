@@ -23,6 +23,18 @@ Do not run old and new backend Build workers concurrently. Old workers do not un
 
 `modules.go` remains the registry for certified module geometry, including special wheel assemblies. Module capability descriptions are catalog-filtered, not inventory-filtered; missing reusable parts must not be mislabeled as a missing shape capability. Neither provider accepts invented part IDs or physical brick scaling.
 
+`shape-layout-v2` adapts BrickGPT's cumulative gap and component priorities plus
+critical-neighborhood retiling. The first search attempt stays inexpensive;
+with configured inventory, later deterministic restarts score continuous seams and contacts on both faces,
+and may retile up to eight neighboring parts after pair repair fails. The same
+24,000-node budget, eight-second deadline, target cells, feature identity,
+colors, exact counts and reusable inventory apply. Upper contacts never replace
+earlier-step support. Failed local searches do not modify their input. Unconfigured inventory retains
+all six original orientation searches. No Python
+or model dependency is added to the application. See
+[the integration record](../../../tasks/brickgpt-integration.md)
+and [source attribution](THIRD_PARTY_NOTICES.md).
+
 `BuildPlan.document` holds the target design, its hash, solver evidence and source creation/hash. Placements, connections and instructions remain canonical in the surrounding plan. `POST /api/build/sessions` accepts optional `design`, `source_creation_id` and `expected_content_hash`. Source lookup checks workspace, creator and child scope; a mismatched source hash returns 409. Each edit creates a new immutable creation with fresh progress. Existing creations and progress are never overwritten. Shared `design-commands.ts` provides shape commands and undo/redo; the server compiles and validates every published revision.
 
 Every final composition passes the existing inventory, connector, collision and step-stability checks. Module certification alone never establishes that a composition is safe. Constraint checks cover exact colors, no wheels, exact part count, and required module kinds. Natural-language interpretation and visual recognizability still depend on the model; passing geometry checks does not prove semantic fidelity or real-world safety.
@@ -33,7 +45,9 @@ The module registry has 10 reviewed constructions. The shape provider handles ne
 
 Offline comparison against BrickGPT is available through `make build-eval`
 and `scripts/brickgpt-eval/`. It uses this compiler/validator without changing
-production generation. See [the experiment guide](../../../scripts/brickgpt-eval/README.md)
+production state. Use `-corpus seams` for the additional 80 fixed inventory
+cases and `make build-brickgpt-check` to verify a local `server/BrickGPT` source
+snapshot without loading its dependencies. See [the experiment guide](../../../scripts/brickgpt-eval/README.md)
 and [the first-batch record](../../../tasks/build-eval-first-batch.md) for
 dataset, baseplate, license, model-access and physical-verification boundaries.
 

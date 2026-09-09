@@ -80,9 +80,15 @@ Status reflects the local checkout on 2026-09-05, including work awaiting commit
 
 The 2026-09-08 [BrickGPT comparison experiment](tasks/build-eval-first-batch.md)
 adds an offline 100-case baseline, pinned force-analysis bridge and dataset
-candidate import. Deterministic contracts passed; model inference still needs
-authorized base weights, and most force comparisons hit the current solver
-license size limit. These tools are not deployed or physically verified.
+candidate import. Exact reproduction of the optional BrickGPT model needs
+Llama base weights; Chimii continues to use DeepSeek. Most force comparisons
+hit the current solver license size limit.
+
+The 2026-09-09 [algorithm integration](tasks/brickgpt-integration.md)
+adds cumulative seam priorities and bounded neighborhood retiling to the Go
+compiler for configured inventory. The original 100-case baseline is unchanged; a separate 80-case
+inventory corpus improved from 68 to 71 accepted layouts. This is local
+compiler evidence, not deployment, live-model or physical verification.
 
 ## Repository architecture
 

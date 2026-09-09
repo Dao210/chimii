@@ -15,15 +15,21 @@ import {
   disposeLDrawMaterials,
   fitLDrawAssembly,
   instantiateLDrawPart,
+  prepareLDrawTemplate,
+  setLDrawPartHighlighted,
   resizeLDrawStudio,
 } from "./ldraw-render-preset";
 
 type ThreeModule = typeof import("three");
-type CatalogModule = typeof import("../catalog/catalog.generated");
+type CatalogModule = {
+  LDRAW_CATALOG_VERSION: string;
+  LDRAW_CATALOG: typeof import("../catalog/catalog.generated").LDRAW_CATALOG;
+};
 type ModelStatus = "loading" | "ready" | "failed";
 
 interface RuntimeState {
   three: ThreeModule;
+  ConditionalLineMaterial: typeof import("three/addons/materials/LDrawConditionalLineMaterial.js").LDrawConditionalLineMaterial;
   catalog: CatalogModule;
   loader: {
     parseAsync(data: ArrayBuffer, path: string): Promise<{ scene: Group }>;
@@ -34,6 +40,7 @@ interface RuntimeState {
   modelRoot: Group;
   viewHeight: number;
   instanceMaterials: Material[];
+  instances: { placement: BuildPlacement; part: Group; highlighted: boolean }[];
   contextLost: (event: Event) => void;
   resize: () => void;
   observer?: ResizeObserver;
@@ -66,15 +73,18 @@ function fetchCatalogPartBinary(catalogVersion: string, ldrawID: string): Promis
         throw new Error(`failed to load catalog part ${ldrawID}: HTTP ${response.status}`);
       }
       return response.arrayBuffer();
+    }).catch((error) => {
+      catalogPartPayloadCache.delete(key);
+      throw error;
     });
   catalogPartPayloadCache.set(key, promise);
   return promise;
 }
 
-function loadTemplate(runtime: RuntimeState, catalogVersion: string | undefined, ldrawID: string): Promise<Group> {
+export function loadLDrawTemplate(runtime: Pick<RuntimeState, "three" | "catalog" | "loader" | "ConditionalLineMaterial">, catalogVersion: string | undefined, ldrawID: string): Promise<Group> {
   const normalizedID = ldrawID.toLowerCase();
-  const asset = runtime.catalog.LDRAW_CATALOG[normalizedID];
   const effectiveVersion = catalogVersion || runtime.catalog.LDRAW_CATALOG_VERSION;
+  const asset = effectiveVersion === runtime.catalog.LDRAW_CATALOG_VERSION ? runtime.catalog.LDRAW_CATALOG[normalizedID] : undefined;
   const cacheKey = asset == null
     ? `${effectiveVersion}:remote:${normalizedID}`
     : `${effectiveVersion}:${asset.hash}:${normalizedID}`;
@@ -86,9 +96,25 @@ function loadTemplate(runtime: RuntimeState, catalogVersion: string | undefined,
     : Promise.resolve(decodeBase64(asset.glbBase64));
   const pending = source
     .then((data) => runtime.loader.parseAsync(data, ""))
-    .then((model) => model.scene);
+    .then((model) => prepareLDrawTemplate(runtime.three, model.scene, runtime.ConditionalLineMaterial))
+    .catch((error) => {
+      templateCache.delete(cacheKey);
+      catalogPartPayloadCache.delete(partPayloadCacheKey(effectiveVersion, normalizedID));
+      throw error;
+    });
   templateCache.set(cacheKey, pending);
   return pending;
+}
+
+function updateStep(runtime: RuntimeState, maxStep: number | undefined, highlightedIds: ReadonlySet<string>) {
+  for (const instance of runtime.instances) {
+    instance.part.visible = maxStep == null || instance.placement.step <= maxStep;
+    const highlighted = highlightedIds.has(instance.placement.id);
+    if (highlighted !== instance.highlighted) {
+      setLDrawPartHighlighted(runtime.three, instance.part, highlighted);
+      instance.highlighted = highlighted;
+    }
+  }
 }
 
 export function LDrawModelCanvas({
@@ -96,6 +122,7 @@ export function LDrawModelCanvas({
   parts,
   catalogVersion,
   highlightedPlacementIds,
+  maxStep,
   yaw,
   onStatus,
 }: {
@@ -103,6 +130,7 @@ export function LDrawModelCanvas({
   parts: Record<string, BuildPartSpec>;
   catalogVersion?: string;
   highlightedPlacementIds: ReadonlySet<string>;
+  maxStep?: number;
   yaw: number;
   onStatus: (status: ModelStatus) => void;
 }) {
@@ -111,6 +139,8 @@ export function LDrawModelCanvas({
   const yawRef = useRef(yaw);
   const [runtimeVersion, setRuntimeVersion] = useState(0);
   yawRef.current = yaw;
+  const stepRef = useRef({ maxStep, highlightedPlacementIds });
+  stepRef.current = { maxStep, highlightedPlacementIds };
 
   useEffect(() => {
     let cancelled = false;
@@ -122,7 +152,8 @@ export function LDrawModelCanvas({
       import("three"),
       import("three/examples/jsm/loaders/GLTFLoader.js"),
       import("../catalog/catalog.generated"),
-    ]).then(([three, { GLTFLoader }, catalog]) => {
+      import("three/addons/materials/LDrawConditionalLineMaterial.js"),
+    ]).then(([three, { GLTFLoader }, catalog, { LDrawConditionalLineMaterial }]) => {
       if (cancelled) return;
       const renderer = new three.WebGLRenderer({ antialias: true, alpha: true, powerPreference: "high-performance" });
       renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
@@ -140,6 +171,7 @@ export function LDrawModelCanvas({
 
       const runtime: RuntimeState = {
         three,
+        ConditionalLineMaterial: LDrawConditionalLineMaterial,
         catalog,
         loader: new GLTFLoader(),
         renderer,
@@ -148,6 +180,7 @@ export function LDrawModelCanvas({
         modelRoot,
         viewHeight: 240,
         instanceMaterials: [],
+        instances: [],
         contextLost,
         resize: () => {},
       };
@@ -188,16 +221,17 @@ export function LDrawModelCanvas({
     void Promise.all(placements.map(async (placement) => {
       const spec = parts[placement.part_id];
       if (!spec) throw new Error(`BuildPlan part ${placement.part_id} is missing`);
-      const template = await loadTemplate(runtime, catalogVersion, spec.ldraw_id);
+      const template = await loadLDrawTemplate(runtime, catalogVersion, spec.ldraw_id);
       return { placement, spec, template };
     })).then((loadedParts) => {
       if (cancelled) return;
       const { three } = runtime;
       const assembly = new three.Group();
       const nextMaterials: Material[] = [];
+      const instances: RuntimeState["instances"] = [];
 
       for (const { placement, spec, template } of loadedParts) {
-        const highlighted = highlightedPlacementIds.has(placement.id);
+        const highlighted = stepRef.current.highlightedPlacementIds.has(placement.id);
         const { part, materials } = instantiateLDrawPart(three, template, placement.color, highlighted);
         nextMaterials.push(...materials);
 
@@ -212,12 +246,15 @@ export function LDrawModelCanvas({
         part.rotation.y = -three.MathUtils.degToRad(placement.rotation);
         part.scale.y = -1;
         assembly.add(part);
+        instances.push({ placement, part, highlighted });
       }
 
       runtime.viewHeight = fitLDrawAssembly(three, runtime.camera, assembly);
 
       disposeLDrawMaterials(runtime.instanceMaterials);
       runtime.instanceMaterials = nextMaterials;
+      runtime.instances = instances;
+      updateStep(runtime, stepRef.current.maxStep, stepRef.current.highlightedPlacementIds);
       runtime.modelRoot.clear();
       runtime.modelRoot.add(assembly);
       runtime.modelRoot.rotation.y = yawRef.current;
@@ -230,7 +267,14 @@ export function LDrawModelCanvas({
     return () => {
       cancelled = true;
     };
-  }, [catalogVersion, highlightedPlacementIds, onStatus, parts, placements, runtimeVersion]);
+  }, [catalogVersion, onStatus, parts, placements, runtimeVersion]);
+
+  useEffect(() => {
+    const runtime = runtimeRef.current;
+    if (!runtime) return;
+    updateStep(runtime, maxStep, highlightedPlacementIds);
+    runtime.renderer.render(runtime.scene, runtime.camera);
+  }, [maxStep, highlightedPlacementIds]);
 
   useEffect(() => {
     const runtime = runtimeRef.current;

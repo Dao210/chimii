@@ -1,5 +1,5 @@
 import { build } from "esbuild";
-import { copyFile, mkdir, readFile, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, readFile, readdir, unlink, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 const root = fileURLToPath(new URL("../", import.meta.url));
 const result = await build({
@@ -65,3 +65,11 @@ await writeFile(
     entries.join(",\n") +
     "\n};\n",
 );
+
+// Remove only obsolete files owned by this generator after the new registry is saved.
+const currentThumbnails = new Set(Object.values(files));
+for (const file of await readdir(root + "assets/maker")) {
+  if (/-ldraw-studio-v\d+\.webp$/.test(file) && !currentThumbnails.has(file)) {
+    await unlink(root + "assets/maker/" + file);
+  }
+}

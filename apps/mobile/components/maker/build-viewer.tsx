@@ -46,6 +46,7 @@ function ModelAssets({
   if (!assets.data) return <Loading />;
   return (
     <ActiveViewer
+      key={plan.content_hash}
       plan={plan}
       step={step}
       highlight={highlight}

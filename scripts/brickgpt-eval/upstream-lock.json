@@ -2,6 +2,9 @@
   "repository": "https://github.com/AvaLovelace1/BrickGPT",
   "revision": "da01aab83f646a700e2270b66b4c00180523448b",
   "files": {
+    "LICENSE": "98c35bca62126116e314d5c5b29f2b0e77f36db7b62a8eea2ec0e735c6d982b8",
+    "src/mesh2brick/src/mesh2brick/voxel2brick.py": "e3fe42c2ae9b91aa5cddfba0c52108b5dc7324c4c1fde9cd502fe1ce7b256b7a",
+    "src/mesh2brick/src/mesh2brick/planning.py": "37489aec82f2e9c5150299fe3afc3d4170a4c8e37cf9f709b5f0dcc2a6afced4",
     "src/brickgpt/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "src/brickgpt/data/__init__.py": "15c820482a0cbc1b5bf0bdca950057cf44209f16bc6281f38ac6c68346baf84f",
     "src/brickgpt/data/brick_library.py": "8e008019d846fc39f2a67f57bf7ab4a1476a2e8a365d164adde39fa93d5e412a",

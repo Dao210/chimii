@@ -2,6 +2,7 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { prepareLDrawTemplate, ldrawMeshBounds } from "./ldraw-lines.js";
 const post = (type) =>
   window.ReactNativeWebView?.postMessage(JSON.stringify({ type }));
 const colors = {
@@ -34,6 +35,12 @@ function step(number, ids) {
   for (const entry of objects) {
     entry.part.visible = number === undefined || entry.placement.step <= number;
     entry.part.traverse((obj) => {
+      if (obj.isLineSegments) {
+        for (const material of [].concat(obj.material)) {
+          material.color.setHex(hot.has(entry.placement.id) ? 0xffeb78 : material.userData.baseColor);
+          material.opacity = hot.has(entry.placement.id) ? 0.9 : 0.55;
+        }
+      }
       if (obj.isMesh)
         for (const material of [].concat(obj.material)) {
           if (material.emissive) {
@@ -81,12 +88,23 @@ async function load(value) {
         bytes = new Uint8Array(raw.length);
       for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i);
       // GLBs contain embedded assets; CSP blocks every network request.
-      templates[id] = (await loader.parseAsync(bytes.buffer, "")).scene;
+      templates[id] = prepareLDrawTemplate((await loader.parseAsync(bytes.buffer, "")).scene);
     }
     for (const placement of value.plan.placements) {
       const spec = value.plan.parts[placement.part_id];
       const part = templates[spec.ldraw_id].clone(true);
       part.traverse((obj) => {
+        if (obj.isLineSegments) {
+          const materials = [].concat(obj.material).map((source) => {
+            const material = source.clone();
+            if (source.name === "current") material.color.setHex(colors[placement.color] ?? colors[71]);
+            if (source.name === "edge-current") material.color.setHex(0x333333);
+            material.userData.baseColor = material.color.getHex();
+            return material;
+          });
+          obj.material = Array.isArray(obj.material) ? materials : materials[0];
+          return;
+        }
         if (!obj.isMesh) return;
         const materials = [].concat(obj.material).map((source) => {
           const material =
@@ -114,7 +132,7 @@ async function load(value) {
       assembly.add(part);
       objects.push({ part, placement });
     }
-    const box = new THREE.Box3().setFromObject(assembly),
+    const box = ldrawMeshBounds(assembly),
       center = box.getCenter(new THREE.Vector3()),
       size = box.getSize(new THREE.Vector3());
     assembly.position.sub(center);

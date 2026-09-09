@@ -10,7 +10,7 @@ import (
 )
 
 const DesignVersion = 1
-const ShapeGeneratorVersion = "shape-layout-v1"
+const ShapeGeneratorVersion = "shape-layout-v2"
 const BuildErrorSearchLimit = "BUILD_SEARCH_LIMIT"
 const MaxDesignShapes = 48
 const maxDesignCells = 8192

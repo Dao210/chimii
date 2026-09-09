@@ -26,42 +26,21 @@ func (s *shapeSearch) repairSeams(input []Placement) ([]Placement, bool) {
 				if !touchX && !touchZ {
 					continue
 				}
-				local := &shapeSearch{ctx: s.ctx, target: s.target, cells: s.cells, parts: s.parts, catalog: s.catalog, inventory: s.inventory,
-					remaining: s.inventory.quantities(), occupied: map[DesignVector]int{}, exactColors: s.exactColors, exactCount: s.exactCount, limit: min(160, s.budget-s.visited), variant: round % 3}
-				for k, p := range placements {
-					if k == i || k == j {
-						continue
-					}
-					index := len(local.placements)
-					local.placements = append(local.placements, p)
-					local.remaining[inventoryKey{p.PartID, p.Color}]--
-					size := orientedSizeWith(p, s.catalog)
-					for x := 0; x < size.x; x++ {
-						for z := 0; z < size.z; z++ {
-							for y := 0; y < s.catalog[p.PartID].PlatesY; y++ {
-								local.occupied[DesignVector{p.X + x, p.Y + y, p.Z + z}] = index
-							}
+				if next, ok := s.retileSeamRegion(placements, []int{i, j}, count, round, 160); ok {
+					placements, improved = next, true
+					continue
+				}
+				// BrickGPT expands the critical neighborhood before retrying.
+				// Include adjacent layers so a locked seam can exchange parts
+				// with its neighbors without changing volume or inventory.
+				if s.seamPriority {
+					region := criticalSeamRegion(placements, s.catalog, i, j)
+					if len(region) > 2 {
+						if next, ok := s.retileSeamRegion(placements, region, count, round, 640); ok {
+							placements, improved = next, true
 						}
 					}
 				}
-				local.accept = func(candidate []Placement) bool {
-					_, nextCount := layoutComponents(candidate, s.catalog)
-					if nextCount >= count {
-						return false
-					}
-					validation := ValidateWithCatalog(candidate, s.inventory, s.catalog)
-					for _, issue := range validation.Issues {
-						if issue.Code != "disconnected" {
-							return false
-						}
-					}
-					return true
-				}
-				if local.walk(0) {
-					placements = local.result
-					improved = true
-				}
-				s.visited += local.visited
 			}
 		}
 		if !improved {
@@ -69,6 +48,58 @@ func (s *shapeSearch) repairSeams(input []Placement) ([]Placement, bool) {
 		}
 	}
 	return nil, false
+}
+
+// retileSeamRegion owns a new search state. Failed attempts cannot change the
+// caller's placements, input design, or reusable inventory. Every local search
+// node consumes the same global budget as the surrounding shape search.
+func (s *shapeSearch) retileSeamRegion(placements []Placement, region []int, count, round, limit int) ([]Placement, bool) {
+	if s.ctx.Err() != nil || s.visited >= s.budget {
+		s.limited = true
+		return nil, false
+	}
+	removed := map[int]bool{}
+	for _, index := range region {
+		removed[index] = true
+	}
+	local := &shapeSearch{ctx: s.ctx, target: s.target, cells: s.cells, parts: s.parts, catalog: s.catalog, inventory: s.inventory,
+		remaining: s.inventory.quantities(), occupied: map[DesignVector]int{}, exactColors: s.exactColors,
+		exactCount: s.exactCount, limit: min(limit, s.budget-s.visited), variant: round % 3, seamPriority: s.seamPriority}
+	for k, p := range placements {
+		if removed[k] {
+			continue
+		}
+		index := len(local.placements)
+		local.placements = append(local.placements, p)
+		local.remaining[inventoryKey{p.PartID, p.Color}]--
+		size := orientedSizeWith(p, s.catalog)
+		for x := 0; x < size.x; x++ {
+			for z := 0; z < size.z; z++ {
+				for y := 0; y < s.catalog[p.PartID].PlatesY; y++ {
+					local.occupied[DesignVector{p.X + x, p.Y + y, p.Z + z}] = index
+				}
+			}
+		}
+	}
+	local.accept = func(candidate []Placement) bool {
+		_, nextCount := layoutComponents(candidate, s.catalog)
+		if nextCount >= count {
+			return false
+		}
+		validation := ValidateWithCatalog(candidate, s.inventory, s.catalog)
+		for _, issue := range validation.Issues {
+			if issue.Code != "disconnected" {
+				return false
+			}
+		}
+		return true
+	}
+	ok := local.walk(0)
+	s.visited += local.visited
+	if s.visited >= s.budget || s.ctx.Err() != nil {
+		s.limited = true
+	}
+	return local.result, ok
 }
 
 func layoutComponents(placements []Placement, catalog PartCatalog) ([]int, int) {

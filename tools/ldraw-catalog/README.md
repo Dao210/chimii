@@ -33,16 +33,29 @@ JSON files, so a deployed binary does not depend on repository files.
 
 The parser accepts the geometry records required by official rigid parts:
 subfile references, lines, triangles, quads, inherited colours, and nested
-integer/decimal transforms. GLB meshes use the surface records; line records
-are parsed for format compatibility, while runtime outlines are generated from
-mesh edges. BFC winding is not trusted as a visibility rule; generated
-materials are double-sided and carry deterministic flat normals.
+integer/decimal transforms. GLB root-node `extras.ldrawLines` (version 1)
+contains groups of ordinary lines (two endpoints) and conditional lines (two
+endpoints plus two control points), flattened in the same coordinates as the
+surfaces. Group colors are sRGB hex strings, `current`, or `edge-current`.
+Control points never contribute to mesh bounds, inventory, or connectors.
+Surface `baseColorFactor` values are converted from sRGB to linear glTF colors.
+BFC winding is not trusted as a visibility rule; surfaces remain double-sided
+with deterministic flat normals.
+
+Render revision 2 uses the catalog suffix `-r2`, preserving the pinned source
+release and archive hash. Rebuild both the embedded and server catalogs rather
+than overwriting the old immutable asset URLs. Web/desktop and mobile use the
+bundled assets only when the requested catalog version matches. Old GLBs remain
+readable; web/desktop retain their historical geometry-derived outlines.
+New assets use Three.js's official conditional-line material. The rendering
+preset is `ldraw-studio-v2`.
 
 After regenerating the GLB catalog, regenerate the card thumbnails from the
 same Three.js render preset:
 
 ```bash
 pnpm generate:ldraw-thumbnails
+node apps/mobile/scripts/build-maker-renderer.mjs
 ```
 
 The thumbnail generator renders every catalog part in every supported colour

@@ -19,9 +19,9 @@ var CatalogVersion = ComposeLDrawCatalogVersion(CatalogRelease, CatalogArchiveSH
 
 func ComposeLDrawCatalogVersion(release, archiveSHA256 string) string {
 	if archiveSHA256 == "" {
-		return "ldraw-official-" + release + "-unknown"
+		return "ldraw-official-" + release + "-unknown-r2"
 	}
-	return fmt.Sprintf("ldraw-official-%s-%s", release, archiveSHA256[:min(12, len(archiveSHA256))])
+	return fmt.Sprintf("ldraw-official-%s-%s-r2", release, archiveSHA256[:min(12, len(archiveSHA256))])
 }
 
 func min(a, b int) int {

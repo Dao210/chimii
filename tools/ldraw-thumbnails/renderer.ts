@@ -1,5 +1,6 @@
 import * as three from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+import { LDrawConditionalLineMaterial } from "three/addons/materials/LDrawConditionalLineMaterial.js";
 import type { Group, Material } from "three";
 import {
   LDRAW_CATALOG,
@@ -11,6 +12,7 @@ import {
   disposeLDrawMaterials,
   fitLDrawAssembly,
   instantiateLDrawPart,
+  prepareLDrawTemplate,
   LDRAW_DEFAULT_YAW,
   LDRAW_OFFICIAL_COLORS,
   LDRAW_RENDER_PRESET_VERSION,
@@ -51,7 +53,7 @@ function loadTemplate(ldrawID: string): Promise<Group> {
   if (cached) return cached;
   const asset = LDRAW_CATALOG[normalizedID];
   if (!asset) return Promise.reject(new Error(`LDraw catalog does not contain ${normalizedID}`));
-  const pending = loader.parseAsync(decodeBase64(asset.glbBase64), "").then((model) => model.scene);
+  const pending = loader.parseAsync(decodeBase64(asset.glbBase64), "").then((model) => prepareLDrawTemplate(three, model.scene, LDrawConditionalLineMaterial));
   templateCache.set(normalizedID, pending);
   return pending;
 }

@@ -23,6 +23,17 @@ def placement(identifier="a", **kwargs):
 
 
 class BridgeContracts(unittest.TestCase):
+    def test_source_verification_does_not_start_upstream(self):
+        output = io.StringIO()
+        with patch.object(sys, "argv", ["bridge.py", "verify-source"]), \
+                patch.object(bridge, "verify_upstream", return_value={"revision": "pin", "files": {"module.py": "hash"}}) as verify, \
+                patch.object(bridge.subprocess, "run") as child, contextlib.redirect_stdout(output):
+            bridge.main()
+        verify.assert_called_once_with(str(bridge.DEFAULT_UPSTREAM))
+        child.assert_not_called()
+        self.assertEqual(json.loads(output.getvalue())["status"], "verified")
+        self.assertEqual(json.loads(output.getvalue())["files_checked"], 1)
+
     def test_axis_rotation_height_and_order(self):
         p = [placement(rotation=90), placement("b", y=3, step=2)]
         result = bridge.as_bricks(p, {"brick": part()})

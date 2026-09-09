@@ -15,25 +15,26 @@ type shapeCandidate struct {
 	Score     int
 }
 type shapeSearch struct {
-	ctx         context.Context
-	target      designTarget
-	cells       []DesignVector
-	parts       []PartSpec
-	catalog     PartCatalog
-	inventory   InventorySnapshot
-	remaining   map[inventoryKey]int
-	occupied    map[DesignVector]int
-	placements  []Placement
-	exactColors bool
-	exactCount  int
-	visited     int
-	limit       int
-	budget      int
-	variant     int
-	limited     bool
-	triedRepair bool
-	accept      func([]Placement) bool
-	result      []Placement
+	ctx          context.Context
+	target       designTarget
+	cells        []DesignVector
+	parts        []PartSpec
+	catalog      PartCatalog
+	inventory    InventorySnapshot
+	remaining    map[inventoryKey]int
+	occupied     map[DesignVector]int
+	placements   []Placement
+	exactColors  bool
+	exactCount   int
+	visited      int
+	limit        int
+	budget       int
+	variant      int
+	limited      bool
+	triedRepair  bool
+	seamPriority bool
+	accept       func([]Placement) bool
+	result       []Placement
 }
 
 // SolveDesign searches a finite catalog-backed tiling space. It may report a
@@ -92,6 +93,9 @@ func SolveDesign(ctx context.Context, recipe AssemblyRecipe, inventory Inventory
 		}
 	}
 	limited := false
+	// Stock-constrained repairs need neighborhood exchanges when pair swaps
+	// cannot use extra parts. Keep all six orientation seeds and the original
+	// ordering for unrestricted catalogs; neither heuristic fits every shape.
 	for variant := 0; variant < 6; variant++ {
 		remainingBudget := maxShapeSearchNodes - report.Visited
 		if remainingBudget <= 0 {
@@ -100,7 +104,7 @@ func SolveDesign(ctx context.Context, recipe AssemblyRecipe, inventory Inventory
 		}
 		search := &shapeSearch{ctx: ctx, target: target, cells: sortedTargetCells(target), parts: parts, catalog: catalog, inventory: inventory,
 			remaining: inventory.quantities(), occupied: map[DesignVector]int{}, exactColors: recipe.Constraints.ExactColors,
-			exactCount: recipe.Constraints.PartCount, limit: min(maxShapeSearchNodes/6, remainingBudget), budget: remainingBudget, variant: variant}
+			exactCount: recipe.Constraints.PartCount, limit: min(maxShapeSearchNodes/6, remainingBudget), budget: remainingBudget, variant: variant, seamPriority: inventory.Configured && variant > 0}
 		if search.walk(0) {
 			report.Visited += search.visited
 			report.Status, report.MatchedCells = "feasible", len(target)
@@ -247,6 +251,10 @@ func (s *shapeSearch) candidates(cell DesignVector) []shapeCandidate {
 			if !valid {
 				continue
 			}
+			seams := 0
+			if s.seamPriority {
+				seams = s.seamDepth(cell, sx, sz)
+			}
 			supports := map[int]bool{}
 			components := map[int]bool{}
 			engaged := 0
@@ -267,6 +275,18 @@ func (s *shapeSearch) candidates(cell DesignVector) []shapeCandidate {
 					continue
 				}
 			}
+			if s.seamPriority {
+				// During local retiling, frozen parts may also exist above the
+				// candidate. BrickGPT's component priority considers both faces.
+				// Upper contacts do not count as support from an earlier step.
+				for x := 0; x < sx; x++ {
+					for z := 0; z < sz; z++ {
+						if index, ok := s.occupied[DesignVector{cell.X + x, cell.Y + part.PlatesY, cell.Z + z}]; ok && s.placements[index].Y == cell.Y+part.PlatesY {
+							components[root(index)] = true
+						}
+					}
+				}
+			}
 			colors := []int{value.Color}
 			if s.inventory.Configured && !s.exactColors {
 				for _, c := range AllowedColorCodes() {
@@ -280,7 +300,7 @@ func (s *shapeSearch) candidates(cell DesignVector) []shapeCandidate {
 					continue
 				}
 				p.Color = color
-				score := volume*12 + len(supports)*45 + max(0, len(components)-1)*400
+				score := volume*12 + len(supports)*45 + max(0, len(components)-1)*400 + seams*12
 				if color == value.Color {
 					score += 1000
 				}
