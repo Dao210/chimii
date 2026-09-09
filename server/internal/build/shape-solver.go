@@ -9,13 +9,45 @@ import (
 
 const maxShapeSearchNodes = 24000
 
+// One invocation owns one budget, including every restart and local repair.
+// Searches are sequential; local quotas measure shared usage since entry so
+// repairs retain their existing cost against the enclosing attempt's quota.
+type searchBudget struct {
+	ctx            context.Context
+	limit, used    int
+	repairNodes    int
+	repairAttempts int
+	repairs        int
+	pruned         int
+}
+
+func (b *searchBudget) exhausted() bool {
+	return b.used >= b.limit || b.ctx.Err() != nil
+}
+
+func (b *searchBudget) consume(repair bool) bool {
+	if b.exhausted() {
+		return false
+	}
+	b.used++
+	if repair {
+		b.repairNodes++
+	}
+	return true
+}
+
+// IsShapePartEligible identifies reviewed solid parts usable for target tiling.
+// Placement-specific geometry, stock and support still require validation.
+func IsShapePartEligible(part PartSpec) bool {
+	return partIsMechanicallyCertified(part) && part.GeometryProfile == "stud_tube_rect" && part.HasTopStuds && part.HasBottomReceptors
+}
+
 type shapeCandidate struct {
 	Placement Placement
 	Cells     []DesignVector
 	Score     int
 }
 type shapeSearch struct {
-	ctx          context.Context
 	target       designTarget
 	cells        []DesignVector
 	parts        []PartSpec
@@ -26,9 +58,9 @@ type shapeSearch struct {
 	placements   []Placement
 	exactColors  bool
 	exactCount   int
-	visited      int
+	start        int
 	limit        int
-	budget       int
+	budget       *searchBudget
 	variant      int
 	limited      bool
 	triedRepair  bool
@@ -39,8 +71,14 @@ type shapeSearch struct {
 
 // SolveDesign searches a finite catalog-backed tiling space. It may report a
 // search limit, never "impossible" merely because its budget was exhausted.
-func SolveDesign(ctx context.Context, recipe AssemblyRecipe, inventory InventorySnapshot, catalog PartCatalog) ([]Placement, SolverReport, error) {
-	report := SolverReport{Status: "invalid"}
+func SolveDesign(ctx context.Context, recipe AssemblyRecipe, inventory InventorySnapshot, catalog PartCatalog) (placements []Placement, report SolverReport, err error) {
+	report = SolverReport{Status: "invalid", StopReason: "invalid_input"}
+	budget := &searchBudget{ctx: ctx, limit: maxShapeSearchNodes}
+	defer func() {
+		report.Visited, report.RepairNodes = budget.used, budget.repairNodes
+		report.RepairAttempts, report.Repairs = budget.repairAttempts, budget.repairs
+		report.Pruned = budget.pruned
+	}()
 	if recipe.Design == nil || len(recipe.Modules) != 0 || recipe.Version != 3 || len(recipe.Constraints.RequiredModules) != 0 {
 		return nil, report, designError("shape recipes require version 3 and no module constraints")
 	}
@@ -56,12 +94,13 @@ func SolveDesign(ctx context.Context, recipe AssemblyRecipe, inventory Inventory
 	for _, part := range catalog {
 		// Only reviewed solid stud/tube parts can tile arbitrary volumes. Special
 		// geometry retains its separate certified module path.
-		if partIsMechanicallyCertified(part) && part.GeometryProfile == "stud_tube_rect" && part.HasTopStuds && part.HasBottomReceptors {
+		if IsShapePartEligible(part) {
 			parts = append(parts, part)
 		}
 	}
 	sort.Slice(parts, func(i, j int) bool { return parts[i].ID < parts[j].ID })
 	if len(parts) == 0 {
+		report.StopReason = "no_eligible_parts"
 		return nil, report, &BuildError{Code: BuildErrorUnsupported, Cause: fmt.Errorf("no reviewed solid parts in catalog")}
 	}
 	if inventory.Configured {
@@ -69,7 +108,7 @@ func SolveDesign(ctx context.Context, recipe AssemblyRecipe, inventory Inventory
 		colors := map[int]int{}
 		for _, item := range inventory.Items {
 			p, ok := catalog[item.PartID]
-			if ok && p.GeometryProfile == "stud_tube_rect" && partIsMechanicallyCertified(p) {
+			if ok && IsShapePartEligible(p) {
 				v := p.StudsX * p.StudsZ * p.PlatesY * item.Quantity
 				available += v
 				colors[item.Color] += v
@@ -89,6 +128,7 @@ func SolveDesign(ctx context.Context, recipe AssemblyRecipe, inventory Inventory
 		}
 		if missing {
 			report.Status = "insufficient_inventory"
+			report.StopReason = "inventory_insufficient"
 			return nil, report, &BuildError{Code: BuildErrorInsufficientInventory, Cause: fmt.Errorf("available reusable parts cannot cover this model's target volume")}
 		}
 	}
@@ -97,20 +137,20 @@ func SolveDesign(ctx context.Context, recipe AssemblyRecipe, inventory Inventory
 	// cannot use extra parts. Keep all six orientation seeds and the original
 	// ordering for unrestricted catalogs; neither heuristic fits every shape.
 	for variant := 0; variant < 6; variant++ {
-		remainingBudget := maxShapeSearchNodes - report.Visited
+		remainingBudget := budget.limit - budget.used
 		if remainingBudget <= 0 {
 			limited = true
 			break
 		}
-		search := &shapeSearch{ctx: ctx, target: target, cells: sortedTargetCells(target), parts: parts, catalog: catalog, inventory: inventory,
+		report.Attempts = variant + 1
+		search := &shapeSearch{target: target, cells: sortedTargetCells(target), parts: parts, catalog: catalog, inventory: inventory,
 			remaining: inventory.quantities(), occupied: map[DesignVector]int{}, exactColors: recipe.Constraints.ExactColors,
-			exactCount: recipe.Constraints.PartCount, limit: min(maxShapeSearchNodes/6, remainingBudget), budget: remainingBudget, variant: variant, seamPriority: inventory.Configured && variant > 0}
+			exactCount: recipe.Constraints.PartCount, start: budget.used, limit: min(maxShapeSearchNodes/6, remainingBudget), budget: budget, variant: variant, seamPriority: inventory.Configured && variant > 0}
 		if search.walk(0) {
-			report.Visited += search.visited
 			report.Status, report.MatchedCells = "feasible", len(target)
+			report.StopReason = "feasible"
 			return normalizeShapeSteps(search.result), report, nil
 		}
-		report.Visited += search.visited
 		limited = limited || search.limited
 		if ctx.Err() != nil {
 			limited = true
@@ -122,18 +162,30 @@ func SolveDesign(ctx context.Context, recipe AssemblyRecipe, inventory Inventory
 	}
 	if limited {
 		report.Status = "search_limit"
-		return nil, report, &BuildError{Code: BuildErrorSearchLimit, Cause: fmt.Errorf("shape search budget exhausted after %d nodes", report.Visited)}
+		report.StopReason = "node_limit"
+		if ctx.Err() == context.DeadlineExceeded {
+			report.StopReason = "deadline"
+		} else if ctx.Err() != nil {
+			report.StopReason = "cancelled"
+		}
+		return nil, report, &BuildError{Code: BuildErrorSearchLimit, Cause: fmt.Errorf("shape search stopped (%s) after %d nodes", report.StopReason, budget.used)}
 	}
 	report.Status = "no_valid_layout"
+	report.StopReason = "no_valid_layout"
+	if budget.used == 1 {
+		report.StopReason = "no_candidates"
+		if budget.pruned > 0 {
+			report.StopReason = "capacity_bound"
+		}
+	}
 	return nil, report, &BuildError{Code: BuildErrorStructureInvalid, Cause: fmt.Errorf("no validated layout found for the target and current parts")}
 }
 
 func (s *shapeSearch) walk(cursor int) bool {
-	if s.visited >= s.limit || s.ctx.Err() != nil {
+	if s.budget.used-s.start >= s.limit || !s.budget.consume(s.accept != nil) {
 		s.limited = true
 		return false
 	}
-	s.visited++
 	for cursor < len(s.cells) {
 		if _, ok := s.occupied[s.cells[cursor]]; !ok {
 			break
@@ -157,7 +209,7 @@ func (s *shapeSearch) walk(cursor int) bool {
 			s.result = placements
 			return true
 		}
-		if !s.triedRepair {
+		if !s.triedRepair && onlyDisconnectedIssues(validation) {
 			s.triedRepair = true
 			if repaired, ok := s.repairSeams(placements); ok {
 				s.result = repaired
@@ -167,6 +219,10 @@ func (s *shapeSearch) walk(cursor int) bool {
 		return false
 	}
 	if len(s.placements) >= 200 || (s.exactCount > 0 && len(s.placements) >= s.exactCount) {
+		return false
+	}
+	if !s.canCoverRemaining() {
+		s.budget.pruned++
 		return false
 	}
 	candidates := s.candidates(s.cells[cursor])
@@ -220,6 +276,10 @@ func (s *shapeSearch) candidates(cell DesignVector) []shapeCandidate {
 		}
 	}
 	for _, part := range s.parts {
+		if s.budget.ctx.Err() != nil {
+			s.limited = true
+			return nil
+		}
 		for rotation := 0; rotation <= 90; rotation += 90 {
 			if rotation == 90 && part.StudsX == part.StudsZ {
 				continue
@@ -300,24 +360,65 @@ func (s *shapeSearch) candidates(cell DesignVector) []shapeCandidate {
 					continue
 				}
 				p.Color = color
-				score := volume*12 + len(supports)*45 + max(0, len(components)-1)*400 + seams*12
-				if color == value.Color {
-					score += 1000
-				}
-				if (cell.Y/3+s.variant)%2 == rotation/90 {
-					score += 8
-				}
-				// Deterministic restarts explore different seam patterns without
-				// changing the requested silhouette, holes or feature colors.
-				if s.variant > 0 {
-					score += ((sx*31 + sz*17 + part.PlatesY*13 + cell.X*7 + cell.Z*11 + s.variant*19) * (s.variant + 3) % 43) * 8
-				}
+				score := shapeCandidateScore(p, part, sx, sz, len(supports), len(components), seams, value.Color, s.variant)
 				result = append(result, shapeCandidate{p, cells, score})
 			}
 		}
 	}
 	sort.SliceStable(result, func(i, j int) bool { return result[i].Score > result[j].Score })
 	return result
+}
+
+// These optimistic capacity bounds cannot reject a feasible completion.
+// Disconnected partial layouts may still acquire a cross-brick later.
+func (s *shapeSearch) canCoverRemaining() bool {
+	uncovered := len(s.target) - len(s.occupied)
+	availableVolume, availableCount, largest := 0, 0, 0
+	for _, part := range s.parts {
+		volume := part.StudsX * part.StudsZ * part.PlatesY
+		if !s.inventory.Configured {
+			largest = max(largest, volume)
+			continue
+		}
+		for _, color := range AllowedColorCodes() {
+			quantity := s.remaining[inventoryKey{part.ID, color}]
+			if quantity <= 0 {
+				continue
+			}
+			largest = max(largest, volume)
+			availableVolume += quantity * volume
+			availableCount += quantity
+		}
+	}
+	if largest == 0 || (s.inventory.Configured && availableVolume < uncovered) {
+		return false
+	}
+	countLimit := 200
+	if s.exactCount > 0 {
+		countLimit = s.exactCount
+		if s.inventory.Configured && availableCount < s.exactCount-len(s.placements) {
+			return false
+		}
+	}
+	return len(s.placements)+(uncovered+largest-1)/largest <= countLimit
+}
+
+// Scores order eligible candidates; they never override a hard constraint.
+func shapeCandidateScore(p Placement, part PartSpec, sx, sz, supports, components, seams, targetColor, variant int) int {
+	const volumeWeight, supportWeight, componentWeight, seamWeight = 12, 45, 400, 12
+	const colorWeight, orientationWeight = 1000, 8
+	score := sx*sz*part.PlatesY*volumeWeight + supports*supportWeight + max(0, components-1)*componentWeight + seams*seamWeight
+	if p.Color == targetColor {
+		score += colorWeight
+	}
+	if (p.Y/3+variant)%2 == p.Rotation/90 {
+		score += orientationWeight
+	}
+	// Deterministic restarts explore different seam patterns.
+	if variant > 0 {
+		score += ((sx*31 + sz*17 + part.PlatesY*13 + p.X*7 + p.Z*11 + variant*19) * (variant + 3) % 43) * orientationWeight
+	}
+	return score
 }
 
 func normalizeShapeSteps(placements []Placement) []Placement {
@@ -357,9 +458,10 @@ func CompileDesign(ctx context.Context, recipe AssemblyRecipe, inventory Invento
 	defer cancel()
 	placements, solver, err := SolveDesign(ctx, recipe, inventory, catalog)
 	if err != nil {
-		return CompileResult{Recipe: recipe}, err
+		return CompileResult{Recipe: recipe, Solver: &solver}, err
 	}
 	result, err := compilePlacements(recipe, placements, inventory, catalogVersion, catalog, now)
+	result.Solver = &solver
 	if err != nil {
 		return result, err
 	}

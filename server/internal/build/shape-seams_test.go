@@ -89,9 +89,9 @@ func loadSeamRepairFixture(t *testing.T) (seamRepairFixture, *shapeSearch) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	s := &shapeSearch{ctx: context.Background(), target: target, cells: sortedTargetCells(target), catalog: StarterCatalog,
+	s := &shapeSearch{budget: &searchBudget{ctx: context.Background(), limit: maxShapeSearchNodes}, target: target, cells: sortedTargetCells(target), catalog: StarterCatalog,
 		inventory: f.Inventory, remaining: f.Inventory.quantities(), occupied: map[DesignVector]int{}, exactColors: true,
-		exactCount: f.Recipe.Constraints.PartCount, limit: maxShapeSearchNodes, budget: maxShapeSearchNodes, seamPriority: true}
+		exactCount: f.Recipe.Constraints.PartCount, limit: maxShapeSearchNodes, seamPriority: true}
 	for _, p := range StarterCatalog {
 		if p.GeometryProfile == "stud_tube_rect" && partIsMechanicallyCertified(p) {
 			s.parts = append(s.parts, p)
@@ -108,7 +108,7 @@ func TestShapeRepairExpandsCriticalNeighborhood(t *testing.T) {
 	}
 	before, _ := json.Marshal(f)
 	output, ok := s.repairSeams(f.Placements)
-	if !ok || len(output) != len(f.Placements) || s.visited > maxShapeSearchNodes {
+	if !ok || len(output) != len(f.Placements) || s.budget.used > maxShapeSearchNodes {
 		t.Fatal("repair failed or exceeded count/budget")
 	}
 	if v := ValidateWithCatalog(output, f.Inventory, StarterCatalog); !v.Buildable {
@@ -125,14 +125,14 @@ func TestShapeRepairFailurePreservesInputAndBudget(t *testing.T) {
 	for _, reason := range []string{"budget", "cancelled", "missing-stock", "exact-count"} {
 		t.Run(reason, func(t *testing.T) {
 			f, s := loadSeamRepairFixture(t)
-			s.budget = 200
+			s.budget.limit = 200
 			switch reason {
 			case "budget":
-				s.budget = 1
+				s.budget.limit = 1
 			case "cancelled":
 				ctx, cancel := context.WithCancel(context.Background())
 				cancel()
-				s.ctx = ctx
+				s.budget.ctx = ctx
 			case "missing-stock":
 				s.inventory.Items = []InventoryItem{{PartID: "brick-2x4", Color: 1, Quantity: 1}}
 			case "exact-count":
@@ -143,7 +143,7 @@ func TestShapeRepairFailurePreservesInputAndBudget(t *testing.T) {
 			if _, ok := s.repairSeams(f.Placements); ok {
 				t.Fatal("accepted invalid repair")
 			}
-			if s.visited > s.budget {
+			if s.budget.used > s.budget.limit {
 				t.Fatal("exceeded global node budget")
 			}
 			after, _ := json.Marshal([]any{f, s.inventory, s.placements})

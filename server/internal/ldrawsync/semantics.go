@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-const PartSemanticVersion = 2
+const PartSemanticVersion = 3
 
 type PartSemantics struct {
 	PartKey                string
@@ -38,7 +38,7 @@ type semanticConnector struct {
 	CapacityUnits int    `json:"capacity_units,omitempty"`
 }
 
-type legacySemantic struct {
+type reviewedSemantic struct {
 	PartKey                string
 	StudsX                 int
 	StudsZ                 int
@@ -49,7 +49,7 @@ type legacySemantic struct {
 	OriginCenterZOffsetLDU int
 }
 
-var legacySemantics = map[string]legacySemantic{
+var reviewedSemantics = map[string]reviewedSemantic{
 	"3001.dat":    {PartKey: "brick-2x4", StudsX: 4, StudsZ: 2, PlatesY: 3, DefaultQuantity: 18, GeometryProfile: "stud_tube_rect"},
 	"3003.dat":    {PartKey: "brick-2x2", StudsX: 2, StudsZ: 2, PlatesY: 3, DefaultQuantity: 16, GeometryProfile: "stud_tube_rect"},
 	"3004.dat":    {PartKey: "brick-1x2", StudsX: 2, StudsZ: 1, PlatesY: 3, DefaultQuantity: 20, GeometryProfile: "stud_tube_rect"},
@@ -60,6 +60,12 @@ var legacySemantics = map[string]legacySemantic{
 	"3039.dat":    {PartKey: "slope-2x2", StudsX: 2, StudsZ: 2, PlatesY: 3, DefaultQuantity: 8, GeometryProfile: "legacy_special"},
 	"4600.dat":    {PartKey: "wheel-holder-2x2", StudsX: 2, StudsZ: 2, PlatesY: 1, DefaultQuantity: 4, GeometryProfile: "legacy_special"},
 	"4624c04.dat": {PartKey: "wheel", StudsX: 1, StudsZ: 1, PlatesY: 2, DefaultQuantity: 8, GeometryProfile: "legacy_special", OriginYOffsetLDU: 13, OriginCenterZOffsetLDU: 10},
+	// Verified against the pinned official GLBs: the long edge is local X,
+	// despite the name's short-by-long order. Keep the existing catalog keys.
+	"3010.dat": {PartKey: "ldraw-3010", StudsX: 4, StudsZ: 1, PlatesY: 3, DefaultQuantity: 12, GeometryProfile: "stud_tube_rect"},
+	"3009.dat": {PartKey: "ldraw-3009", StudsX: 6, StudsZ: 1, PlatesY: 3, DefaultQuantity: 12, GeometryProfile: "stud_tube_rect"},
+	"3008.dat": {PartKey: "ldraw-3008", StudsX: 8, StudsZ: 1, PlatesY: 3, DefaultQuantity: 12, GeometryProfile: "stud_tube_rect"},
+	"2456.dat": {PartKey: "ldraw-2456", StudsX: 6, StudsZ: 2, PlatesY: 3, DefaultQuantity: 12, GeometryProfile: "stud_tube_rect"},
 }
 
 var (
@@ -78,17 +84,17 @@ func DerivePartSemantics(part StarterKitPart) PartSemantics {
 		Name:    strings.TrimSpace(part.Name), Category: strings.TrimSpace(part.Category),
 		PopularityRank: part.Rank, CertificationLevel: "asset_only", GeometryProfile: "asset_only",
 	}
-	if legacy, ok := legacySemantics[id]; ok {
-		semantics.PartKey = legacy.PartKey
+	if reviewed, ok := reviewedSemantics[id]; ok {
+		semantics.PartKey = reviewed.PartKey
 		semantics.CertificationLevel = "certified"
 		semantics.AutoBuildEligible = true
-		semantics.GeometryProfile = legacy.GeometryProfile
-		semantics.StudsX, semantics.StudsZ, semantics.PlatesY = legacy.StudsX, legacy.StudsZ, legacy.PlatesY
-		semantics.DefaultQuantity = legacy.DefaultQuantity
+		semantics.GeometryProfile = reviewed.GeometryProfile
+		semantics.StudsX, semantics.StudsZ, semantics.PlatesY = reviewed.StudsX, reviewed.StudsZ, reviewed.PlatesY
+		semantics.DefaultQuantity = reviewed.DefaultQuantity
 		semantics.HasTopStuds = id != "4624c04.dat" && id != "3039.dat"
 		semantics.HasBottomReceptors = id != "4624c04.dat"
-		semantics.OriginYOffsetLDU = legacy.OriginYOffsetLDU
-		semantics.OriginCenterZOffsetLDU = legacy.OriginCenterZOffsetLDU
+		semantics.OriginYOffsetLDU = reviewed.OriginYOffsetLDU
+		semantics.OriginCenterZOffsetLDU = reviewed.OriginCenterZOffsetLDU
 		return semantics
 	}
 

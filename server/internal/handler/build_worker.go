@@ -267,6 +267,11 @@ func (w *BuildWorker) ProcessNext(ctx context.Context) (bool, error) {
 		result, err = buildstudio.CompileWithCatalog(*recipe, inventory, inventory.CatalogVersion, catalog, time.Now())
 	}
 	slog.Info("build worker: compile", "session_id", uuidToString(session.ID), "elapsed_ms", time.Since(compileStarted).Milliseconds())
+	if s := result.Solver; s != nil {
+		slog.Info("build worker: shape search", "session_id", uuidToString(session.ID),
+			"status", s.Status, "stop_reason", s.StopReason, "nodes", s.Visited,
+			"repair_nodes", s.RepairNodes, "repair_attempts", s.RepairAttempts, "repairs", s.Repairs, "attempts", s.Attempts, "pruned", s.Pruned)
+	}
 	if err != nil {
 		if code, ok := buildstudio.BuildErrorCode(err); ok {
 			return true, w.failPermanently(ctx, job, code, err)

@@ -54,6 +54,11 @@ hand-authored recipes and layout probes, not live text-planning evaluations.
 
 The JSON report records input/output hashes, inventory inputs, source edits,
 placements, validation failures, catalog/validator versions and runtime.
+Shape compilation includes solver diagnostics on success and failure: shared
+node usage, repair work, pruned branches, attempts and stop reason. These fields
+are explicit in the offline report and worker logs, not in product JSON or the
+physical-content hash. Cancellation and deadlines retain existing external
+error codes while recording their distinct internal causes.
 `planning_ms` is null because no planner ran. `compile_including_validation_ms`
 includes compilation and its built-in validation; `validation_recheck_ms`
 measures an additional independent invocation and must not be subtracted as a
@@ -150,13 +155,32 @@ structures of the same objects; this tool does not train or establish a
 train/test-disjoint training pipeline.
 
 The importer accepts the upstream text format only, not arbitrary LDraw or
-model-supplied part metadata. It maps the complete candidate into the embedded
-`StarterCatalog`, preserves brick ordering, maps one brick layer to three
+model-supplied part metadata. It maps the complete candidate into the selected
+catalog (the ten-part `StarterCatalog` by default), preserves brick ordering, maps one brick layer to three
 plates, checks the 200-part/48-plate Chimii limits, then runs the existing
 validator with the supplied inventory. Missing parts are not deleted and
 floating bricks are not moved onto the ground. All failed candidates remain in
 the report denominator. This starter-catalog result says nothing about the
 currently deployed database catalog without a separate production audit.
+
+For a controlled catalog comparison, add the four already-listed long bricks
+using the production manifest's reviewed semantics and the pinned official
+archive. This creates a fourteen-part **offline** catalog; it does not add
+stock, sync a database, or change the production catalog selection:
+
+```sh
+make build-eval BUILD_EVAL_ARGS='-catalog long-bricks -archive /path/to/complete.zip -candidates ../output/build-eval/dataset-candidates.json -output ../output/build-eval/dataset-long-bricks.json'
+```
+
+The archive must match the embedded SHA-256. `catalog_hash` distinguishes the
+actual part sets; `source_hash` identifies the same unfiltered candidate batch.
+`catalog_assets` records the four source/GLB hashes, triangle counts and bounds.
+The ordinary catalog source version stays pinned to the unchanged archive;
+semantic version 3 corrects the local X/Z axes of `ldraw-3010`, `ldraw-3009`,
+`ldraw-3008` and `ldraw-2456`. Production needs a completed catalog sync for those
+semantics. Until all creative rows reach the required semantic version, the
+existing loader serves the reviewed ten-part fallback. Older creations retain
+their saved plans and part definitions.
 
 ## Optional local text generation
 

@@ -39,7 +39,7 @@ type CandidateSource struct {
 var brickLine = regexp.MustCompile(`^(\d+)x(\d+) \((\d+),(\d+),(\d+)\)$`)
 var upstreamDimensions = map[[2]int]bool{{1, 1}: true, {1, 2}: true, {1, 4}: true, {1, 6}: true, {1, 8}: true, {2, 2}: true, {2, 4}: true, {2, 6}: true}
 
-func ImportCandidates(batch CandidateBatch) ([]Case, error) {
+func ImportCandidates(batch CandidateBatch, catalog build.PartCatalog) ([]Case, error) {
 	if batch.Version != 1 || len(batch.Candidates) == 0 || len(batch.Candidates) > 1000 {
 		return nil, fmt.Errorf("invalid candidate batch version or size")
 	}
@@ -59,7 +59,7 @@ func ImportCandidates(batch CandidateBatch) ([]Case, error) {
 		if candidate.Source.Kind == "brickgpt" && (candidate.Source.Seed == nil || candidate.Source.Model == "" || len(candidate.Source.ModelHash) != 64) {
 			return nil, fmt.Errorf("generated candidate needs model, weight hash and seed provenance")
 		}
-		p, code := importBrickText(candidate.Bricks, candidate.Color, build.StarterCatalog)
+		p, code := importBrickText(candidate.Bricks, candidate.Color, catalog)
 		c := Case{ID: candidate.ID, Family: candidate.Source.Kind, Prompt: candidate.Prompt, Expectation: "observe", Placements: p, Inventory: candidate.Inventory, SourceCandidate: &candidate, PreflightError: code}
 		cases = append(cases, c)
 	}
@@ -110,7 +110,7 @@ func importBrickText(text string, color int, catalog build.PartCatalog) ([]build
 		id, rotation := "", 0
 		for _, key := range keys {
 			part := catalog[key]
-			if !part.AutoBuildEligible || part.CertificationLevel != "certified" || part.GeometryProfile != "stud_tube_rect" || part.PlatesY != 3 {
+			if !build.IsShapePartEligible(part) || part.PlatesY != 3 {
 				continue
 			}
 			if part.StudsX == sx && part.StudsZ == sz {

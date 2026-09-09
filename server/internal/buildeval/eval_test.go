@@ -31,9 +31,9 @@ func TestBaselineCorpusContractsAndReproducibility(t *testing.T) {
 		}
 	}
 	before := Hash(cases)
-	first, second := Run(context.Background(), cases), Run(context.Background(), BaselineCases())
+	first, second := Run(context.Background(), cases, build.StarterCatalog), Run(context.Background(), BaselineCases(), build.StarterCatalog)
 	for i, a := range first.Cases {
-		if !a.ContractPassed {
+		if !a.ContractPassed || (baselineAccepted[a.ID] && (a.ErrorCode != "" || a.Validation == nil || !a.Validation.Buildable)) {
 			t.Errorf("%s: %s %v", a.ID, a.ErrorCode, a.InvariantErrors)
 		}
 		b := second.Cases[i]
@@ -86,11 +86,11 @@ func TestCandidateInventoryAndSourceBoundaries(t *testing.T) {
 	inv := build.NewInventorySnapshot(true, 1, []build.InventoryItem{{PartID: "brick-2x2", Color: 1, Quantity: 1}})
 	candidate := Candidate{ID: "sample", Bricks: "2x2 (0,0,0)\n2x2 (0,0,1)", Color: 1, Inventory: inv, Source: CandidateSource{Kind: "fixture", Revision: "v1"}}
 	batch := CandidateBatch{Version: 1, Candidates: []Candidate{candidate}}
-	cases, err := ImportCandidates(batch)
+	cases, err := ImportCandidates(batch, build.StarterCatalog)
 	if err != nil {
 		t.Fatal(err)
 	}
-	r := Run(context.Background(), cases)
+	r := Run(context.Background(), cases, build.StarterCatalog)
 	if r.Summary.Accepted != 0 || r.Cases[0].Validation.Buildable {
 		t.Fatal("candidate bypassed inventory validation")
 	}
@@ -98,18 +98,18 @@ func TestCandidateInventoryAndSourceBoundaries(t *testing.T) {
 		t.Fatal("inventory mutated")
 	}
 	batch.Candidates = append(batch.Candidates, candidate)
-	if _, err := ImportCandidates(batch); err == nil {
+	if _, err := ImportCandidates(batch, build.StarterCatalog); err == nil {
 		t.Fatal("duplicate identity accepted")
 	}
 	batch.Candidates = batch.Candidates[:1]
 	batch.Candidates[0].Source.Kind = "stabletext2brick"
-	if _, err := ImportCandidates(batch); err == nil {
+	if _, err := ImportCandidates(batch, build.StarterCatalog); err == nil {
 		t.Fatal("dataset without object provenance accepted")
 	}
 	batch.Candidates[0].Source = CandidateSource{Kind: "fixture", Revision: "v1"}
 	batch.Candidates[0].Bricks = "1x8 (0,0,0)"
-	cases, _ = ImportCandidates(batch)
-	r = Run(context.Background(), cases)
+	cases, _ = ImportCandidates(batch, build.StarterCatalog)
+	r = Run(context.Background(), cases, build.StarterCatalog)
 	if len(r.Cases) != 1 || r.Cases[0].ErrorCode != "candidate_part_unavailable" {
 		t.Fatal("failed candidate disappeared from denominator")
 	}
@@ -118,7 +118,7 @@ func TestCandidateInventoryAndSourceBoundaries(t *testing.T) {
 func TestCancellationAndPreservedEditViolationsAreVisible(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	r := Run(ctx, BaselineCases()[:1])
+	r := Run(ctx, BaselineCases()[:1], build.StarterCatalog)
 	if r.Summary.ContractFailed != 1 || r.Cases[0].ErrorCode != "evaluation_cancelled" {
 		t.Fatal("cancelled evaluation reported success")
 	}
@@ -127,7 +127,7 @@ func TestCancellationAndPreservedEditViolationsAreVisible(t *testing.T) {
 			continue
 		}
 		c.Recipe.Design.Shapes[1].Size.X++
-		r = Run(context.Background(), []Case{c})
+		r = Run(context.Background(), []Case{c}, build.StarterCatalog)
 		if r.Summary.ContractFailed != 1 {
 			t.Fatal("edit preservation violation was hidden")
 		}

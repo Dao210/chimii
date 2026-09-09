@@ -104,14 +104,14 @@ func TestShapeSolverHonorsExactCountAndResizing(t *testing.T) {
 	}
 	// A deliberately tiny global budget must stop both tiling and seam repair.
 	target, _ := RasterizeDesign(*clockRecipe().Design)
-	s := &shapeSearch{ctx: context.Background(), target: target, cells: sortedTargetCells(target), catalog: StarterCatalog,
-		inventory: UnlimitedInventory(), remaining: map[inventoryKey]int{}, occupied: map[DesignVector]int{}, limit: 1, budget: 1}
+	s := &shapeSearch{budget: &searchBudget{ctx: context.Background(), limit: 1}, target: target, cells: sortedTargetCells(target), catalog: StarterCatalog,
+		inventory: UnlimitedInventory(), remaining: map[inventoryKey]int{}, occupied: map[DesignVector]int{}, limit: 1}
 	for _, p := range StarterCatalog {
 		if p.GeometryProfile == "stud_tube_rect" && partIsMechanicallyCertified(p) {
 			s.parts = append(s.parts, p)
 		}
 	}
-	if s.walk(0) || !s.limited || s.visited != 1 {
+	if s.walk(0) || !s.limited || s.budget.used != 1 {
 		t.Fatal("search did not obey its budget")
 	}
 }

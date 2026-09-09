@@ -187,6 +187,7 @@ type CompileResult struct {
 	Recipe AssemblyRecipe `json:"recipe"`
 	Plan   BuildPlan      `json:"plan"`
 	MPD    string         `json:"mpd"`
+	Solver *SolverReport  `json:"-"`
 }
 
 // Constraints are executable requirements, independent of model prose.

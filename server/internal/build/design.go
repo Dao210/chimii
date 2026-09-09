@@ -10,7 +10,7 @@ import (
 )
 
 const DesignVersion = 1
-const ShapeGeneratorVersion = "shape-layout-v2"
+const ShapeGeneratorVersion = "shape-layout-v3"
 const BuildErrorSearchLimit = "BUILD_SEARCH_LIMIT"
 const MaxDesignShapes = 48
 const maxDesignCells = 8192
@@ -63,6 +63,13 @@ type SolverReport struct {
 	Visited      int    `json:"visited"`
 	TargetCells  int    `json:"target_cells"`
 	MatchedCells int    `json:"matched_cells"`
+	// Operational diagnostics are explicit in offline reports and logs only.
+	RepairNodes    int    `json:"-"`
+	RepairAttempts int    `json:"-"`
+	Repairs        int    `json:"-"`
+	Attempts       int    `json:"-"`
+	Pruned         int    `json:"-"`
+	StopReason     string `json:"-"`
 }
 
 type targetCell struct {

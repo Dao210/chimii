@@ -11,6 +11,7 @@ import (
 	"os/signal"
 	"strings"
 
+	"github.com/chimii-ai/chimii/server/internal/build"
 	"github.com/chimii-ai/chimii/server/internal/buildeval"
 )
 
@@ -19,9 +20,27 @@ func main() {
 	family := flag.String("family", "", "comma-separated case families; all by default")
 	corpus := flag.String("corpus", "baseline", "fixed corpus: baseline or seams")
 	candidatePath := flag.String("candidates", "", "optional versioned BrickGPT/dataset candidate JSON file")
+	catalogName := flag.String("catalog", "starter", "catalog: starter or long-bricks (four existing manifest parts)")
+	archive := flag.String("archive", "", "pinned LDraw complete.zip; required for long-bricks")
 	flag.Parse()
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer cancel()
+	catalog := build.StarterCatalog
+	var assets []buildeval.CatalogAsset
+	var sourceHash string
+	switch *catalogName {
+	case "starter":
+	case "long-bricks":
+		var err error
+		catalog, assets, err = buildeval.LongBrickCatalog(*archive)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(2)
+		}
+	default:
+		fmt.Fprintln(os.Stderr, "unknown evaluation catalog")
+		os.Exit(2)
+	}
 	cases := buildeval.BaselineCases()
 	switch *corpus {
 	case "baseline":
@@ -58,7 +77,8 @@ func main() {
 			}
 		}
 		if err == nil {
-			cases, err = buildeval.ImportCandidates(batch)
+			cases, err = buildeval.ImportCandidates(batch, catalog)
+			sourceHash = buildeval.Hash(batch)
 		}
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
@@ -81,7 +101,8 @@ func main() {
 		fmt.Fprintln(os.Stderr, "no evaluation cases selected")
 		os.Exit(2)
 	}
-	report := buildeval.Run(ctx, cases)
+	report := buildeval.Run(ctx, cases, catalog)
+	report.CatalogAssets, report.SourceHash = assets, sourceHash
 	if *corpus == "seams" {
 		report.CorpusVersion = buildeval.SeamCorpusVersion
 	}

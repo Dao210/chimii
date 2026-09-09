@@ -1,18 +1,30 @@
 package build
 
+func onlyDisconnectedIssues(validation ValidationReport) bool {
+	if len(validation.Issues) == 0 {
+		return false
+	}
+	for _, issue := range validation.Issues {
+		if issue.Code != "disconnected" {
+			return false
+		}
+	}
+	return true
+}
+
 // repairSeams retiles neighboring parts on a disconnected seam. The target
 // volume and every feature stay identical; only catalog part boundaries move.
 func (s *shapeSearch) repairSeams(input []Placement) ([]Placement, bool) {
 	placements := append([]Placement{}, input...)
-	for round := 0; round < 48 && s.ctx.Err() == nil; round++ {
+	for round := 0; round < 48 && s.budget.ctx.Err() == nil; round++ {
 		components, count := layoutComponents(placements, s.catalog)
 		if count == 1 {
 			return placements, ValidateWithCatalog(placements, s.inventory, s.catalog).Buildable
 		}
 		improved := false
-		for i := 0; i < len(placements) && !improved && s.ctx.Err() == nil; i++ {
-			for j := i + 1; j < len(placements) && !improved && s.ctx.Err() == nil; j++ {
-				if s.visited >= s.budget {
+		for i := 0; i < len(placements) && !improved && s.budget.ctx.Err() == nil; i++ {
+			for j := i + 1; j < len(placements) && !improved && s.budget.ctx.Err() == nil; j++ {
+				if s.budget.used >= s.budget.limit {
 					s.limited = true
 					return nil, false
 				}
@@ -54,7 +66,7 @@ func (s *shapeSearch) repairSeams(input []Placement) ([]Placement, bool) {
 // caller's placements, input design, or reusable inventory. Every local search
 // node consumes the same global budget as the surrounding shape search.
 func (s *shapeSearch) retileSeamRegion(placements []Placement, region []int, count, round, limit int) ([]Placement, bool) {
-	if s.ctx.Err() != nil || s.visited >= s.budget {
+	if s.budget.ctx.Err() != nil || s.budget.used >= s.budget.limit {
 		s.limited = true
 		return nil, false
 	}
@@ -62,10 +74,15 @@ func (s *shapeSearch) retileSeamRegion(placements []Placement, region []int, cou
 	for _, index := range region {
 		removed[index] = true
 	}
-	local := &shapeSearch{ctx: s.ctx, target: s.target, cells: s.cells, parts: s.parts, catalog: s.catalog, inventory: s.inventory,
+	s.budget.repairAttempts++
+	local := &shapeSearch{budget: s.budget, start: s.budget.used, target: s.target, cells: s.cells, parts: s.parts, catalog: s.catalog, inventory: s.inventory,
 		remaining: s.inventory.quantities(), occupied: map[DesignVector]int{}, exactColors: s.exactColors,
-		exactCount: s.exactCount, limit: min(limit, s.budget-s.visited), variant: round % 3, seamPriority: s.seamPriority}
+		exactCount: s.exactCount, limit: min(limit, s.budget.limit-s.budget.used), variant: round % 3, seamPriority: s.seamPriority}
 	for k, p := range placements {
+		if s.budget.ctx.Err() != nil {
+			s.limited = true
+			return nil, false
+		}
 		if removed[k] {
 			continue
 		}
@@ -82,6 +99,9 @@ func (s *shapeSearch) retileSeamRegion(placements []Placement, region []int, cou
 		}
 	}
 	local.accept = func(candidate []Placement) bool {
+		if s.budget.ctx.Err() != nil {
+			return false
+		}
 		_, nextCount := layoutComponents(candidate, s.catalog)
 		if nextCount >= count {
 			return false
@@ -95,8 +115,10 @@ func (s *shapeSearch) retileSeamRegion(placements []Placement, region []int, cou
 		return true
 	}
 	ok := local.walk(0)
-	s.visited += local.visited
-	if s.visited >= s.budget || s.ctx.Err() != nil {
+	if ok {
+		s.budget.repairs++
+	}
+	if s.budget.used >= s.budget.limit || s.budget.ctx.Err() != nil {
 		s.limited = true
 	}
 	return local.result, ok
