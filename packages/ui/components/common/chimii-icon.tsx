@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { cn } from "../../lib/utils";
+import { CHIMII_BRAND_MARK_SRC } from "./brand-mark";
 
 interface ChimiiIconProps extends React.ComponentProps<"span"> {
   /**
@@ -27,8 +28,8 @@ const borderedSizes = {
 };
 
 /**
- * 项目 logo — 内联 apps/web/public/logo.svg 的路径图形。
- * 使用 currentColor 适配深浅主题。
+ * Chimii mascot mark. The cream tile keeps the navy body legible on both
+ * light and dark surfaces, and matches the favicon / app icon artwork.
  */
 export function ChimiiIcon({
   className,
@@ -46,21 +47,13 @@ export function ChimiiIcon({
     return () => clearTimeout(timer);
   }, [animate]);
 
-  const svg = (
-    <svg
-      viewBox="0 0 48 48"
-      fill="none"
-      className="block size-full"
-      aria-hidden="true"
-    >
-      <path
-        d="M31 21L35 18L44 24V34L34 40L24 34V13L13 7L4 13V24L13 30L17 27"
-        stroke="currentColor"
-        strokeWidth={4}
-        strokeLinecap="square"
-        strokeLinejoin="bevel"
-      />
-    </svg>
+  const mark = (
+    <img
+      src={CHIMII_BRAND_MARK_SRC}
+      alt=""
+      draggable={false}
+      className="block size-full select-none"
+    />
   );
 
   if (bordered) {
@@ -83,7 +76,7 @@ export function ChimiiIcon({
             entranceDone && !noSpin && "hover:animate-spin"
           )}
         >
-          {svg}
+          {mark}
         </span>
       </span>
     );
@@ -100,7 +93,7 @@ export function ChimiiIcon({
       aria-hidden="true"
       {...props}
     >
-      {svg}
+      {mark}
     </span>
   );
 }

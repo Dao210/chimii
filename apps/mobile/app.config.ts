@@ -26,9 +26,9 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     orientation: "portrait",
     userInterfaceStyle: "automatic",
     scheme: "chimii",
-    // 1024x1024 source shared with the desktop client
-    // (apps/desktop/build/icon.png). Expo prebuild generates every required
-    // iOS icon size from this single PNG.
+    // 1024x1024 opaque tile using the same mascot artwork as the web
+    // favicon and desktop icon. iOS rejects icons with an alpha channel, so
+    // this file intentionally keeps a solid cream background.
     icon: "./assets/icon.png",
     android: {
       package: isProd
@@ -37,6 +37,10 @@ export default ({ config }: ConfigContext): ExpoConfig => {
           ? "ai.chimii.mobile.staging"
           : "ai.chimii.mobile.dev",
       versionCode: Number(process.env.ANDROID_VERSION_CODE ?? "3"),
+      adaptiveIcon: {
+        foregroundImage: "./assets/adaptive-icon.png",
+        backgroundColor: "#f5f0e6",
+      },
       softwareKeyboardLayoutMode: "resize",
       // The release app does not use the development overlay window.
       blockedPermissions: isProd ? ["android.permission.SYSTEM_ALERT_WINDOW"] : [],

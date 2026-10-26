@@ -1,6 +1,7 @@
 import * as React from "react";
 
 import { cn } from "../../lib/utils";
+import { CHIMII_BRAND_MARK_SRC } from "./brand-mark";
 
 interface ChimiiInventorBrandProps extends React.ComponentProps<"span"> {
   inverse?: boolean;
@@ -8,8 +9,8 @@ interface ChimiiInventorBrandProps extends React.ComponentProps<"span"> {
 
 /**
  * Shared CHIMII 奇觅 inventor lockup used by the marketing and auth surfaces.
- * The parent controls the centre-dot cutout with --chimii-brand-surface so the
- * same mark stays crisp on canvas, paper, and inverse backgrounds.
+ * The mascot tile reads on canvas, paper, and inverse backgrounds without any
+ * surface-dependent cutout.
  */
 export function ChimiiInventorBrand({
   className,
@@ -21,11 +22,13 @@ export function ChimiiInventorBrand({
       className={cn("inline-flex shrink-0 items-center gap-2.5", className)}
       {...props}
     >
-      <span className="relative block size-7" aria-hidden="true">
-        <span className="absolute left-0 top-0 size-3.5 rounded-[4px] bg-[#f05a3f] transition-transform duration-200 group-hover:-rotate-6" />
-        <span className="absolute bottom-0 right-0 size-4 rounded-[4px] bg-[#4b79d8] transition-transform duration-200 group-hover:rotate-6" />
-        <span className="absolute left-[9px] top-[8px] size-2.5 rounded-full border-2 border-[var(--chimii-brand-surface,#f5f0e6)] bg-[#f6c84a]" />
-      </span>
+      <img
+        src={CHIMII_BRAND_MARK_SRC}
+        alt=""
+        draggable={false}
+        aria-hidden="true"
+        className="block size-8 shrink-0 select-none"
+      />
       <span
         className={cn(
           "text-[15px] font-extrabold tracking-[0.13em] sm:text-base",

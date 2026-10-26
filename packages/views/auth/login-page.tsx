@@ -399,9 +399,7 @@ export function LoginPage({
 
           <div className="animate-auth-panel-enter relative w-full max-w-[440px]">
             {logo && (
-              <div className="mb-5 flex justify-center [--chimii-brand-surface:#f5f0e6] lg:[--chimii-brand-surface:#fffdf7]">
-                {logo}
-              </div>
+              <div className="mb-5 flex justify-center">{logo}</div>
             )}
 
             <div

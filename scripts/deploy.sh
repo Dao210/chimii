@@ -1185,7 +1185,7 @@ curl -fsS "http://127.0.0.1:$BACKEND_PORT/healthz" >/dev/null
 curl -fsS -o /dev/null "http://127.0.0.1:$WEB_PORT/"
 curl -fsS -o /dev/null -H "Host: $DOMAIN" http://127.0.0.1/api/config
 curl -fsS -o /dev/null -H "Host: $DOMAIN" http://127.0.0.1/login
-curl -fsS -o /dev/null -H "Host: $DOMAIN" http://127.0.0.1/logo.svg
+curl -fsS -o /dev/null -H "Host: $DOMAIN" http://127.0.0.1/favicon.ico
 ss -lnt | grep -Eq "127.0.0.1:$BACKEND_PORT"
 ss -lnt | grep -Eq "127.0.0.1:$WEB_PORT"
 ss -lnt | grep -Eq '127\.0\.0\.1:6379'

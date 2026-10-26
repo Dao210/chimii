@@ -82,7 +82,7 @@ export function StepWelcome({
         <div className="relative flex flex-1 flex-col justify-center px-6 pb-8 pt-2 sm:px-10 md:px-16 lg:px-16 xl:px-24">
           <div className="flex w-full max-w-[590px] flex-col gap-6 xl:gap-7">
             <div className="flex flex-col items-start gap-4">
-              <ChimiiInventorBrand className="[--chimii-brand-surface:#f5f0e6]" />
+              <ChimiiInventorBrand />
               <span className="rounded-full border border-[#12130f]/14 bg-[#fffdf7]/65 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.2em] text-[#12130f]/48">
                 {t(($) => $.welcome.wordmark)}
               </span>

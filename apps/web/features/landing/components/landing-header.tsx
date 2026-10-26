@@ -34,13 +34,7 @@ export function LandingHeader({
       <div className="mx-auto flex h-[76px] max-w-[1320px] items-center justify-between px-4 sm:px-6 lg:px-8">
         <div className="flex min-w-0 items-center gap-6 lg:gap-8">
           <Link href="/" className="flex shrink-0 items-center gap-3">
-            <ChimiiIcon
-              className={cn(
-                "size-5",
-                variant === "dark" ? "text-white" : "text-[#0a0d12]",
-              )}
-              noSpin
-            />
+            <ChimiiIcon className="size-7" noSpin />
             <span
               className={cn(
                 "text-[18px] font-semibold tracking-[0.04em] lowercase sm:text-[20px]",

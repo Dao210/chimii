@@ -27,7 +27,7 @@ export function LandingFooter() {
           {/* Left — newsletter / CTA */}
           <div className="lg:w-[340px] lg:shrink-0">
             <Link href="#product" className="flex items-center gap-3">
-              <ChimiiIcon className="size-5 text-white" noSpin />
+              <ChimiiIcon className="size-7" noSpin />
               <span className="text-[18px] font-semibold tracking-[0.04em] lowercase">
                 chimii
               </span>

@@ -221,14 +221,7 @@ function BrandLockup({ inverse = false }: { inverse?: boolean }) {
       className="group flex shrink-0 items-center gap-2.5 rounded-sm focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-current"
       aria-label="CHIMII 奇觅"
     >
-      <ChimiiInventorBrand
-        inverse={inverse}
-        className={cn(
-          inverse
-            ? "[--chimii-brand-surface:#11120f]"
-            : "[--chimii-brand-surface:#f5f0e6]",
-        )}
-      />
+      <ChimiiInventorBrand inverse={inverse} />
     </Link>
   );
 }
