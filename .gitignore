@@ -90,3 +90,7 @@ data/
 .kilo
 .idea
 .gstack/
+
+# Local upstream reference checkouts (not part of the app)
+/server/ldraw-nova-master/
+/server/brickify-main/
