@@ -10,7 +10,7 @@ The former `apps/docs/content/docs/developers/conventions*.mdx` links are absent
 
 ## Project Shape
 
-Chimii is an AI invention and building product for children and families. Brick and circuit creation build on the existing workspace, agent execution, and multi-platform foundation. Build planning uses generic target shapes or reviewed modules, with catalog-backed compilation. Parts are reusable: generation never freezes, reserves or consumes inventory; current configured quantities constrain one simultaneous model. Generated checks do not establish physical verification.
+Chimii is an AI invention and building product for children and families. Brick and circuit creation build on the existing workspace, agent execution, and multi-platform foundation. New brick planning uses recipe v4 / SceneSpec v2 generic constructions with subject-interface contracts, incremental catalog-backed compilation, bounded repair and real-GLB image review. Historical SceneSpec v1 remains compatible. Reference gravity-load estimates have a restricted domain and remain independent of geometric acceptance. It chooses scale, colors and a stable pose unless specified. Inventory is advisory for scenes: generation never freezes, reserves or consumes parts, and configured quantities produce a missing-parts list. Existing version-2/3 module/shape API requests retain their inventory constraints. Generated checks do not establish physical verification or retail part/color availability.
 
 - `server/`: Go backend, Chi router, sqlc, gorilla/websocket.
 - `apps/web/`: Next.js App Router.

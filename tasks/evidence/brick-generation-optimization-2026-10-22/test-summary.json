@@ -1,0 +1,194 @@
+{
+  "date": "2026-10-22",
+  "full_go": {
+    "counts": {
+      "build": {
+        "pass_cases": 101,
+        "pass_tests": 66
+      },
+      "llm": {
+        "pass_cases": 10,
+        "pass_tests": 10
+      },
+      "ldrawsync": {
+        "pass_cases": 8,
+        "pass_tests": 8,
+        "skip_cases": 2,
+        "skip_tests": 2
+      },
+      "buildeval": {
+        "pass_cases": 6,
+        "pass_tests": 6
+      }
+    },
+    "packages": {
+      "llm": "pass",
+      "ldrawsync": "pass",
+      "build": "pass",
+      "buildeval": "pass"
+    },
+    "skipped": [
+      "TestLongBrickAssetsMatchReviewedSemantics",
+      "TestEmbeddedCatalogMatchesServerCompiler"
+    ],
+    "failures": []
+  },
+  "scoped_go": {
+    "counts": {
+      "build": {
+        "pass_cases": 47,
+        "pass_tests": 33
+      },
+      "ldrawsync": {
+        "pass_cases": 2,
+        "pass_tests": 2
+      },
+      "llm": {
+        "pass_cases": 1,
+        "pass_tests": 1
+      },
+      "handler": {
+        "pass_cases": 73,
+        "pass_tests": 54,
+        "skip_cases": 5,
+        "skip_tests": 5
+      }
+    },
+    "packages": {
+      "buildeval": "pass",
+      "ldrawsync": "pass",
+      "llm": "pass",
+      "server": "pass",
+      "handler": "pass",
+      "build": "pass"
+    },
+    "skipped": [
+      "TestBuildLongBrickCatalogRoundTrip",
+      "TestBuildConversationLivePlanner",
+      "TestBuildSceneLiveGeneration",
+      "TestBuildSceneCatalogFixture",
+      "TestBuildSceneLiveSavedReview"
+    ],
+    "failures": []
+  },
+  "typescript": {
+    "core": "passed",
+    "views": "passed",
+    "web": "passed",
+    "desktop": "passed"
+  },
+  "vitest": {
+    "core": {
+      "files": 6,
+      "tests": 23,
+      "status": "passed"
+    },
+    "views": {
+      "files": 10,
+      "tests": 39,
+      "status": "passed",
+      "note": "One initial concurrent timeout; focused and full maxWorkers=2 reruns passed."
+    }
+  },
+  "browser": {
+    "status": "passed",
+    "authored_fixtures": [
+      {
+        "parts": 102,
+        "steps": 25,
+        "catalog": "embedded pinned 10-part fallback"
+      },
+      {
+        "parts": 291,
+        "steps": 60,
+        "catalog": "isolated 100-part official snapshot"
+      }
+    ],
+    "viewports": [
+      {
+        "width": 1440,
+        "height": 1100
+      },
+      {
+        "width": 390,
+        "height": 844
+      }
+    ],
+    "checks": [
+      "real GLB rendering",
+      "BOM CSV part totals",
+      "step 1/2 persistence",
+      "no horizontal overflow",
+      "no uncaught page errors"
+    ],
+    "notes": [
+      "Software WebGL emitted ReadPixels performance warnings.",
+      "Navigation aborted one usage telemetry request."
+    ]
+  },
+  "catalog": {
+    "production_lock_changed": false,
+    "acceptance_version": "ldraw-official-acceptance-2026-10-22-f3e496d0ede6-r2",
+    "source": "https://library.ldraw.org/library/updates/complete.zip",
+    "download_sha256": "f3e496d0ede69ca7942fa4aa198e661ee2d22723906101e2e339d8917a4dd5f2",
+    "parts_synced": 100,
+    "database": "isolated temporary PostgreSQL18"
+  },
+  "provider_generation": {
+    "status": "completed_no_accepted_delivery",
+    "authorization": "explicit user approval",
+    "provider": "DeepSeek at api.deepseek.com",
+    "model": "deepseek-v4-pro",
+    "unique_cases": 2,
+    "configurations": [
+      "high",
+      "low"
+    ],
+    "generation_requests": 7,
+    "accepted_deliveries": 0,
+    "compiled_candidates": 1,
+    "figure_parts": 55,
+    "figure_steps": 40,
+    "images_prepared": 6,
+    "evaluation": "live-deepseek/evaluation.json"
+  },
+  "physical_tests": "not_tested",
+  "deployment": "not_performed",
+  "desktop_packaging": "not_performed",
+  "handler_final": {
+    "counts": {
+      "skip_cases": 5,
+      "skip_tests": 5,
+      "pass_cases": 63,
+      "pass_tests": 53
+    },
+    "skipped": [
+      "TestBuildLongBrickCatalogRoundTrip",
+      "TestBuildConversationLivePlanner",
+      "TestBuildSceneLiveGeneration",
+      "TestBuildSceneCatalogFixture",
+      "TestBuildSceneLiveSavedReview"
+    ],
+    "database": "isolated temporary PostgreSQL18"
+  },
+  "interface_final": "passed: no pedestal-only subjects, bridging parts, no duplicate bridge contribution, complex fixture",
+  "palette_consistency": "passed: review/API and delivered viewer use the same 15 official color values",
+  "source_recovery": {
+    "scope": "missing build sources only; pre-existing modifications preserved",
+    "backup": "/private/tmp/chimii-before-brick-optimization"
+  },
+  "cleanup": "temporary Web/API stopped; isolated PostgreSQL stopped after post-live regression; all source and evidence preserved",
+  "post_live_regression": {
+    "counts": {
+      "llm": {
+        "pass": 6
+      },
+      "handler": {
+        "pass": 77,
+        "skip": 5
+      }
+    },
+    "failures": [],
+    "default_planner_effort": "low"
+  }
+}

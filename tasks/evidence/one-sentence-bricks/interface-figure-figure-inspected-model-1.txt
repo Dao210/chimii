@@ -1,0 +1,44 @@
+```json
+{
+  "outcome": "ready",
+  "message": "双臂目前是独立立在底座上的细柱，没有与躯干连接，不能算作宇航员的手臂；右臂甚至几乎不与底座相连。需要修复双臂，使它们从躯干两侧连接或拥有独立支撑，同时保证造型比例合理、稳定。",
+  "updates": [
+    {
+      "object": "astronaut",
+      "module": "left-arm",
+      "size": {
+        "x": 2,
+        "y": 15,
+        "z": 4
+      },
+      "attach": {
+        "parent": "torso",
+        "anchor": "left",
+        "offset": {
+          "x": -1,
+          "y": -6,
+          "z": 1
+        }
+      }
+    },
+    {
+      "object": "astronaut",
+      "module": "right-arm",
+      "size": {
+        "x": 2,
+        "y": 15,
+        "z": 4
+      },
+      "attach": {
+        "parent": "torso",
+        "anchor": "right",
+        "offset": {
+          "x": 1,
+          "y": -6,
+          "z": 1
+        }
+      }
+    }
+  ]
+}
+```

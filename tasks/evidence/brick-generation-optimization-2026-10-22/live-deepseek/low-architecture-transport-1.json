@@ -1,0 +1,23 @@
+{
+  "sample": "architecture",
+  "request_id": 1,
+  "host": "api.deepseek.com",
+  "http_status": 200,
+  "elapsed_ms": 103057,
+  "deadline_exceeded": false,
+  "error_type": "\u003cnil\u003e",
+  "stages": [
+    {
+      "stage": "connection_ready",
+      "milliseconds": 32
+    },
+    {
+      "stage": "request_written",
+      "milliseconds": 32
+    },
+    {
+      "stage": "first_response_byte",
+      "milliseconds": 129
+    }
+  ]
+}

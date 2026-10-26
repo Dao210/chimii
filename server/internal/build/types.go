@@ -99,6 +99,7 @@ type Placement struct {
 	Rotation int    `json:"rotation"`
 	Step     int    `json:"step"`
 	Module   string `json:"module"`
+	Object   string `json:"object,omitempty"`
 }
 
 type Connection struct {
@@ -133,6 +134,7 @@ type AssemblyRecipe struct {
 	Constraints  RecipeConstraints `json:"constraints"`
 	Modules      []ModuleInstance  `json:"modules"`
 	Design       *DesignSpec       `json:"design,omitempty"`
+	Scene        *SceneSpec        `json:"scene,omitempty"`
 }
 
 type ValidationIssue struct {
@@ -149,6 +151,7 @@ type ValidationReport struct {
 	ConnectionCount            int               `json:"connection_count,omitempty"`
 	MinimumStabilityMarginMils int               `json:"minimum_stability_margin_mils,omitempty"`
 	UsedParts                  map[string]int    `json:"used_parts"`
+	Evidence                   *BuildEvidence    `json:"evidence,omitempty"`
 }
 
 type BuildPlan struct {
@@ -173,6 +176,8 @@ type BuildPlan struct {
 	ContentHash            string              `json:"content_hash"`
 	GeneratedAt            time.Time           `json:"generated_at"`
 	Document               *BuildDocument      `json:"document,omitempty"`
+	MissingParts           []InventoryItem     `json:"missing_parts,omitempty"`
+	InventoryCompared      bool                `json:"inventory_compared,omitempty"`
 }
 
 type ClarifyingQuestion struct {

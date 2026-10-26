@@ -7,6 +7,7 @@ import { cn } from "@chimii/ui/lib/utils";
 import type { BuildPartSpec, BuildPlacement } from "@chimii/core/build";
 import { useT } from "../../i18n";
 import { LDrawModelCanvas } from "./ldraw-model-canvas";
+import { LDRAW_DEFAULT_YAW, LDRAW_OFFICIAL_COLORS } from "./ldraw-render-preset";
 
 const LDRAW_COLORS: Record<number, { top: string; front: string; side: string }> = {
   1: { top: "#4e83e6", front: "#2f62bf", side: "#254e99" },
@@ -24,7 +25,11 @@ function polygon(points: Point[]) {
 }
 
 function shadeFor(color: number) {
-  return LDRAW_COLORS[color] ?? LDRAW_COLORS[71]!;
+  if (LDRAW_COLORS[color]) return LDRAW_COLORS[color]!;
+  const rgb = LDRAW_OFFICIAL_COLORS[color];
+  if (rgb == null) return LDRAW_COLORS[71]!;
+  const hex = (ratio: number) => `#${[rgb >> 16, (rgb >> 8) & 255, rgb & 255].map(c => Math.round(c * ratio).toString(16).padStart(2, "0")).join("")}`;
+  return { top: hex(1), front: hex(0.85), side: hex(0.7) };
 }
 
 function projectedPart(placement: BuildPlacement, part: BuildPartSpec, yaw: number, highlighted: boolean) {
@@ -68,6 +73,7 @@ export function BuildModelViewer({
   className,
   renderMode = "ldraw",
   catalogVersion,
+  initialYaw = LDRAW_DEFAULT_YAW,
 }: {
   placements: BuildPlacement[];
   parts: Record<string, BuildPartSpec>;
@@ -76,9 +82,10 @@ export function BuildModelViewer({
   className?: string;
   renderMode?: "ldraw" | "projection";
   catalogVersion?: string;
+  initialYaw?: number;
 }) {
   const { t } = useT("build");
-  const [yaw, setYaw] = useState(-Math.PI / 4);
+  const [yaw, setYaw] = useState(initialYaw);
   const [ldrawStatus, setLDrawStatus] = useState<"loading" | "ready" | "failed">("loading");
   const [loadAttempt, setLoadAttempt] = useState(0);
   const drag = useRef<{ x: number; yaw: number } | null>(null);
@@ -89,14 +96,14 @@ export function BuildModelViewer({
   );
   const highlighted = useMemo(() => new Set(highlightPlacementIds), [highlightPlacementIds]);
   const shapes = useMemo(
-    () => visible
+    () => (renderMode === "ldraw" && ldrawStatus === "ready" ? [] : visible)
       .map((placement) => {
         const part = parts[placement.part_id];
         return part ? projectedPart(placement, part, yaw, highlighted.has(placement.id)) : null;
       })
       .filter((shape): shape is NonNullable<typeof shape> => shape != null)
       .sort((a, b) => a.depth - b.depth),
-    [highlighted, parts, visible, yaw],
+    [highlighted, parts, visible, yaw, renderMode, ldrawStatus],
   );
   const modelLayout = useMemo(() => {
     const points = shapes.flatMap((shape) => [...shape.top, ...shape.front, ...shape.side]);

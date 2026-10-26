@@ -1,0 +1,9 @@
+{
+  "status": 200,
+  "elapsed_ms": 160,
+  "configured_model": "deepseek-v4-pro",
+  "models": [
+    "deepseek-flash",
+    "deepseek-v4-pro"
+  ]
+}

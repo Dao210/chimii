@@ -5,7 +5,8 @@ import { LDrawConditionalLineMaterial } from "three/addons/materials/LDrawCondit
 import type { BuildPartSpec, BuildPlacement } from "@chimii/core/build";
 import { LDrawModelCanvas, loadLDrawTemplate } from "./ldraw-model-canvas";
 
-const capture = vi.hoisted(() => ({ draw: vi.fn(), parse: vi.fn() }));
+const capture = vi.hoisted(() => ({ draw: vi.fn(), parse: vi.fn(), binary: vi.fn() }));
+vi.mock("@chimii/core/api", () => ({ api: { getBuildCatalogPart: capture.binary } }));
 vi.mock("three", async (importOriginal) => {
   const actual = await importOriginal<typeof import("three")>();
   return { ...actual, WebGLRenderer: class {
@@ -26,8 +27,7 @@ function model() {
 }
 
 it("loads the requested catalog version and retries failed fetches", async () => {
-  const fetcher = vi.fn().mockRejectedValueOnce(new Error("offline")).mockResolvedValue(new Response(new Uint8Array([0])));
-  vi.stubGlobal("fetch", fetcher);
+  const fetcher = capture.binary.mockReset().mockRejectedValueOnce(new Error("offline")).mockResolvedValue(new Uint8Array([0]).buffer);
   const runtime = { three, ConditionalLineMaterial: LDrawConditionalLineMaterial, loader: { parseAsync: vi.fn(async () => model()) }, catalog: {
     LDRAW_CATALOG_VERSION: "bundled", LDRAW_SOURCE: { release: "", archiveSha256: "", url: "" },
     LDRAW_CATALOG: { "asset.dat": { hash: "old", assetName: "old.glb", glbBase64: "AA==", triangleCount: 1, dependencies: [], bounds: [0, 0, 0, 1, 1, 1] as const } },
@@ -35,14 +35,13 @@ it("loads the requested catalog version and retries failed fetches", async () =>
   await expect(loadLDrawTemplate(runtime, "new-catalog", "asset.dat")).rejects.toThrow("offline");
   await loadLDrawTemplate(runtime, "new-catalog", "asset.dat");
   expect(fetcher).toHaveBeenCalledTimes(2);
-  expect(fetcher).toHaveBeenLastCalledWith("/api/build/catalog/new-catalog/parts/asset.dat");
+  expect(fetcher).toHaveBeenLastCalledWith("new-catalog", "asset.dat");
   await loadLDrawTemplate(runtime, "new-catalog", "asset.dat");
   expect(fetcher).toHaveBeenCalledTimes(2);
 });
 
 it("refetches an asset after parsing fails instead of keeping the failed payload", async () => {
-  const fetcher = vi.fn().mockImplementation(async () => new Response(new Uint8Array([0])));
-  vi.stubGlobal("fetch", fetcher);
+  const fetcher = capture.binary.mockReset().mockResolvedValue(new Uint8Array([0]).buffer);
   const runtime = {
     three,
     ConditionalLineMaterial: LDrawConditionalLineMaterial,

@@ -191,6 +191,24 @@ export class TestApiClient {
     }
   }
 
+  async seedCompiledBrickCreation(result: { recipe: unknown; plan: { title: string; prompt: string; archetype: string; validation: unknown }; mpd: string }): Promise<string> {
+    if (!this.email || !this.workspaceId) throw new Error("Log in and select a workspace before seeding a compiled model");
+    const client = new pg.Client(DATABASE_URL);
+    await client.connect();
+    try {
+      await client.query("BEGIN");
+      const user = await client.query('SELECT id FROM "user" WHERE email=$1', [this.email]);
+      const session = await client.query("INSERT INTO build_session(workspace_id,creator_user_id,client_request_id,conversation_id,prompt,status,recipe) VALUES($1,$2,gen_random_uuid(),gen_random_uuid(),$3,'completed',$4) RETURNING id", [this.workspaceId, user.rows[0].id, result.plan.prompt || "Complex scene", JSON.stringify(result.recipe)]);
+      const creation = await client.query("INSERT INTO build_creation(workspace_id,creator_user_id,session_id,title,prompt,archetype,recipe,build_plan,validation,ldraw_mpd) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id", [this.workspaceId, user.rows[0].id, session.rows[0].id, result.plan.title, result.plan.prompt, result.plan.archetype, JSON.stringify(result.recipe), JSON.stringify(result.plan), JSON.stringify(result.plan.validation), result.mpd]);
+      await client.query("UPDATE build_session SET creation_id=$2 WHERE id=$1", [session.rows[0].id, creation.rows[0].id]);
+      await client.query("COMMIT");
+      return creation.rows[0].id;
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally { await client.end(); }
+  }
+
   async createIssue(title: string, opts?: Record<string, unknown>) {
     const res = await this.authedFetch("/api/issues", {
       method: "POST",

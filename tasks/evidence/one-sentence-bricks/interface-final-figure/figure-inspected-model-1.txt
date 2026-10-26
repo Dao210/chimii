@@ -1,0 +1,87 @@
+{
+  "outcome": "ready",
+  "message": "双臂目前独立立在底座上，没有与躯干连接，不符合稳定且可识别的人形姿态；左腿与躯干连接也偏弱。需要把双臂改为由躯干顶部支撑的下垂姿态，或让它们通过实际接触与躯干相连，并加强左腿与躯干的连接。",
+  "updates": [
+    {
+      "object": "astronaut",
+      "module": "left-arm",
+      "size": {
+        "x": 2,
+        "y": 24,
+        "z": 4
+      },
+      "attach": {
+        "parent": "torso",
+        "anchor": "top",
+        "offset": {
+          "x": -6,
+          "y": 0,
+          "z": 0
+        }
+      }
+    },
+    {
+      "object": "astronaut",
+      "module": "right-arm",
+      "size": {
+        "x": 2,
+        "y": 24,
+        "z": 4
+      },
+      "attach": {
+        "parent": "torso",
+        "anchor": "top",
+        "offset": {
+          "x": 6,
+          "y": 0,
+          "z": 0
+        }
+      }
+    },
+    {
+      "object": "astronaut",
+      "module": "torso",
+      "size": {
+        "x": 12,
+        "y": 12,
+        "z": 8
+      }
+    },
+    {
+      "object": "astronaut",
+      "module": "left-leg",
+      "size": {
+        "x": 4,
+        "y": 18,
+        "z": 6
+      },
+      "attach": {
+        "parent": "base",
+        "anchor": "top",
+        "offset": {
+          "x": -3,
+          "y": 0,
+          "z": 0
+        }
+      }
+    },
+    {
+      "object": "astronaut",
+      "module": "right-leg",
+      "size": {
+        "x": 4,
+        "y": 18,
+        "z": 6
+      },
+      "attach": {
+        "parent": "base",
+        "anchor": "top",
+        "offset": {
+          "x": 3,
+          "y": 0,
+          "z": 0
+        }
+      }
+    }
+  ]
+}

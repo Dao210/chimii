@@ -1,0 +1,24 @@
+package build
+import("testing";"encoding/json")
+func TestAuditCapacityIsNotALoadSolver(t *testing.T){
+ cat:=CatalogCopy(StarterCatalog)
+ cat["long-1x8"]=certifiedRectPart(PartSpec{ID:"long-1x8",LDrawID:"3008.dat",StudsX:8,StudsZ:1,PlatesY:3})
+ ps:=[]Placement{{ID:"base",PartID:"brick-2x4",Color:4,Step:1},{ID:"neck",PartID:"brick-1x2",Color:4,X:2,Y:3,Step:2},{ID:"beam",PartID:"long-1x8",Color:4,X:2,Y:6,Step:3}}
+ var reports []ValidationReport
+ for _,capacity:=range []int{1,1000}{
+  c:=CatalogCopy(cat)
+  for k,p:=range c{p.Connectors=append([]PartConnector(nil),p.Connectors...);for i:=range p.Connectors{p.Connectors[i].CapacityUnits=capacity};c[k]=p}
+  r:=ValidateWithCatalog(ps,UnlimitedInventory(),c);reports=append(reports,r)
+  t.Logf("capacity_units=%d buildable=%v connections=%d stability_margin_mils=%d issues=%v",capacity,r.Buildable,r.ConnectionCount,r.MinimumStabilityMarginMils,r.Issues)
+ }
+ a,_:=json.Marshal(reports[0]);b,_:=json.Marshal(reports[1]);if string(a)!=string(b){t.Fatal("capacity influenced the report; update diagnosis")}
+}
+func TestAuditSideConnectorIsRejectedByBottomSupportPolicy(t *testing.T){
+ cat:=CatalogCopy(StarterCatalog)
+ pillar:=cat["brick-2x2"];pillar.ID="side-pillar";pillar.Connectors=append(append([]PartConnector(nil),pillar.Connectors...),PartConnector{ID:"side-stud",Kind:"stud",Direction:"east",X:20,Y:12,Z:0,CapacityUnits:10});cat[pillar.ID]=pillar
+ side:=cat["brick-1x2"];side.ID="side-piece";side.Connectors=append(append([]PartConnector(nil),side.Connectors...),PartConnector{ID:"side-receptor",Kind:"receptor",Direction:"west",X:-20,Y:12,Z:10,CapacityUnits:10});cat[side.ID]=side
+ ps:=[]Placement{{ID:"base",PartID:"brick-2x2",Color:4,Step:1},{ID:"pillar",PartID:pillar.ID,Color:4,Y:3,Step:2},{ID:"side",PartID:side.ID,Color:4,X:2,Y:3,Step:3}}
+ cs:=deriveExactConnections(ps,cat);r:=ValidateWithCatalog(ps,UnlimitedInventory(),cat)
+ t.Logf("exact_connections=%d buildable=%v issues=%v",len(cs),r.Buildable,r.Issues)
+ if len(cs)!=2||!hasValidationIssue(r,"unsupported"){t.Fatal("side support behavior changed")}
+}

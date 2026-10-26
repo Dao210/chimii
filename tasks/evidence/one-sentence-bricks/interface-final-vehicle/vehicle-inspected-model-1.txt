@@ -1,0 +1,36 @@
+```json
+{
+  "outcome": "ready",
+  "message": "The bus body currently has a footprint of 16x16 studs, giving it square proportions which undermine the requested long, narrow retro bus silhouette. The lower body should be narrowed while keeping the chassis and roof aligned. The cabin frame also has equal dimensions (12x12), which produces a boxy greenhouse instead of an elongated side-window band. The roof and luggage rails are already correctly full-length, but their offsets need adjusting to remain centered on the narrowed body. Please refine the lower body, cabin, roof, and rails to create a recognizable long-wheelbase bus profile.",
+  "updates": [
+    {
+      "object": "retro_bus",
+      "module": "lower",
+      "size": { "x": 16, "y": 6, "z": 8 },
+      "attach": { "parent": "chassis", "anchor": "top", "offset": { "x": 0, "y": 0, "z": 4 } }
+    },
+    {
+      "object": "retro_bus",
+      "module": "cabin",
+      "size": { "x": 12, "y": 9, "z": 8 },
+      "attach": { "parent": "lower", "anchor": "top", "offset": { "x": 0, "y": 0, "z": 0 } }
+    },
+    {
+      "object": "retro_bus",
+      "module": "roof",
+      "size": { "x": 14, "y": 3, "z": 10 },
+      "attach": { "parent": "cabin", "anchor": "top", "offset": { "x": 0, "y": 0, "z": -1 } }
+    },
+    {
+      "object": "retro_bus",
+      "module": "rail-left",
+      "attach": { "parent": "roof", "anchor": "top", "offset": { "x": -3, "y": 0, "z": 0 } }
+    },
+    {
+      "object": "retro_bus",
+      "module": "rail-right",
+      "attach": { "parent": "roof", "anchor": "top", "offset": { "x": 3, "y": 0, "z": 0 } }
+    }
+  ]
+}
+```

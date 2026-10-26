@@ -219,6 +219,8 @@ func NewRouterWithOptions(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus
 		LLMAPIKey:                strings.TrimSpace(os.Getenv("CHIMII_LLM_API_KEY")),
 		LLMBaseURL:               strings.TrimSpace(os.Getenv("CHIMII_LLM_BASE_URL")),
 		LLMDefaultModel:          strings.TrimSpace(os.Getenv("CHIMII_LLM_DEFAULT_MODEL")),
+		BuildPlannerEffort:       strings.TrimSpace(os.Getenv("CHIMII_BUILD_PLANNER_EFFORT")),
+		BuildReviewEffort:        strings.TrimSpace(os.Getenv("CHIMII_BUILD_REVIEW_EFFORT")),
 		RuntimeConfig:            runtimeConfig,
 		ServerVersion:            normalizeServerVersion(version),
 	}

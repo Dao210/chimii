@@ -15,12 +15,21 @@ export const LDRAW_RENDER_PRESET_VERSION = "ldraw-studio-v2";
 export const LDRAW_DEFAULT_YAW = -Math.PI / 4;
 
 export const LDRAW_OFFICIAL_COLORS: Readonly<Record<number, number>> = {
+  0: 0x1b2a34,
   1: 0x1e5aa8,
   2: 0x00852b,
   4: 0xb40000,
   14: 0xfac80a,
   15: 0xf4f4f4,
   71: 0x969696,
+  19: 0xd7ba8c,
+  25: 0xd67923,
+  28: 0x897d62,
+  29: 0xff9ecd,
+  70: 0x5f3109,
+  72: 0x646464,
+  272: 0x19325a,
+  288: 0x00451a,
 };
 
 const edgeGeometryCache = new WeakMap<BufferGeometry, BufferGeometry>();
@@ -146,7 +155,7 @@ export function instantiateLDrawPart(
       } else if (object instanceof three.LineSegments) {
         const line = material as Material & { color: Color };
         if (source.name === "current") line.color.setHex(LDRAW_OFFICIAL_COLORS[colorCode] ?? LDRAW_OFFICIAL_COLORS[71]!);
-        // All six supported placement colors use #333333 edges in the pinned LDConfig.
+        // Use a consistent dark outline for current-color surfaces.
         if (source.name === "edge-current") line.color.setHex(0x333333);
         line.userData.baseColor = line.color.getHex();
         line.userData.baseOpacity = line.opacity;
@@ -182,6 +191,13 @@ export function ldrawMeshBounds(three: ThreeModule, assembly: Group) {
   const box = new three.Box3();
   assembly.traverse((object) => {
     if (!(object instanceof three.Mesh)) return;
+    if (object.userData.excludeFromFraming === true) return;
+    if (object.userData.excludeFromFraming === true) return;
+    if (object instanceof three.InstancedMesh) {
+      if (!object.boundingBox) object.computeBoundingBox();
+      if (object.boundingBox) box.union(object.boundingBox.clone().applyMatrix4(object.matrixWorld));
+      return;
+    }
     if (!object.geometry.boundingBox) object.geometry.computeBoundingBox();
     if (object.geometry.boundingBox) box.union(object.geometry.boundingBox.clone().applyMatrix4(object.matrixWorld));
   });

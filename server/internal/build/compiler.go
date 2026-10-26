@@ -20,6 +20,9 @@ func Compile(recipe AssemblyRecipe, inventory InventorySnapshot, now time.Time) 
 // CompileWithCatalog tries only explicitly permitted layout alternatives, within
 // a fixed budget. It never changes required colors, part counts, or module kinds.
 func CompileWithCatalog(recipe AssemblyRecipe, inventory InventorySnapshot, catalogVersion string, catalog PartCatalog, now time.Time) (CompileResult, error) {
+	if recipe.Scene != nil {
+		return CompileScene(context.Background(), recipe, inventory, catalogVersion, catalog, now)
+	}
 	if recipe.Design != nil {
 		return CompileDesign(context.Background(), recipe, inventory, catalogVersion, catalog, now)
 	}
@@ -97,6 +100,9 @@ func compilePlacements(recipe AssemblyRecipe, placements []Placement, inventory 
 	}
 	connections := deriveExactConnections(placements, catalog)
 	report := validateWithConnections(placements, connections, inventory, catalog)
+	if recipe.Scene != nil {
+		report = validateScenePlacements(placements, recipe.Scene, catalog)
+	}
 	plan := BuildPlan{
 		Version: 3, KitID: StarterKitID, CatalogVersion: catalogVersion,
 		ConnectorSchemaVersion: ConnectorSchemaVersion, PhysicsProfileVersion: PhysicsProfileVersion,
@@ -162,11 +168,15 @@ func physicalContentHash(plan BuildPlan) string {
 		ValidatorVersion       string      `json:"validator_version"`
 		Archetype              string      `json:"archetype"`
 		Placements             []Placement `json:"placements"`
+		SceneHash              string      `json:"scene_hash,omitempty"`
 	}{
 		KitID: plan.KitID, CatalogVersion: plan.CatalogVersion, ConnectorSchemaVersion: plan.ConnectorSchemaVersion,
 		PhysicsProfileVersion: plan.PhysicsProfileVersion, GeneratorVersion: plan.GeneratorVersion,
 		ModuleLibraryVersion: plan.ModuleLibraryVersion, CompilerVersion: plan.CompilerVersion,
 		ValidatorVersion: plan.ValidatorVersion, Archetype: plan.Archetype, Placements: plan.Placements,
+	}
+	if plan.Document != nil && plan.Document.Scene != nil {
+		payload.SceneHash = plan.Document.DesignHash
 	}
 	raw, _ := json.Marshal(payload)
 	sum := sha256.Sum256(raw)
@@ -182,6 +192,10 @@ func ValidateWithCatalog(placements []Placement, inventory InventorySnapshot, ca
 }
 
 func validateWithConnections(placements []Placement, connections []Connection, inventory InventorySnapshot, catalog PartCatalog) ValidationReport {
+	return validateAssembly(placements, connections, inventory, catalog, -16, 17)
+}
+
+func validateAssembly(placements []Placement, connections []Connection, inventory InventorySnapshot, catalog PartCatalog, lower, upper int) ValidationReport {
 	report := ValidationReport{
 		Buildable:       true,
 		Issues:          make([]ValidationIssue, 0),
@@ -226,7 +240,7 @@ func validateWithConnections(placements []Placement, connections []Connection, i
 			report.Issues = append(report.Issues, ValidationIssue{Code: "inventory_exceeded", Message: "使用数量超过我的积木块库存", PlacementID: p.ID})
 		}
 		size := orientedSizeWith(p, catalog)
-		if p.Y < 0 || p.X < -16 || p.X+size.x > 17 || p.Z < -16 || p.Z+size.z > 17 {
+		if p.Y < 0 || p.X < lower || p.X+size.x > upper || p.Z < lower || p.Z+size.z > upper {
 			report.Issues = append(report.Issues, ValidationIssue{Code: "out_of_bounds", Message: "零件超出安全搭建范围", PlacementID: p.ID})
 		}
 		if p.Rotation%90 != 0 {

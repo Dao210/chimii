@@ -1,0 +1,43 @@
+{
+  "fixture_kind": "hand-authored construction scene automatically compiled against real GLB catalog",
+  "catalog_version": "ldraw-official-2026-09-f3e496d0ede6-r2",
+  "placements": 625,
+  "steps": 166,
+  "validation": {
+    "buildable": true,
+    "issues": [],
+    "part_count": 625,
+    "step_count": 166,
+    "connection_count": 1212,
+    "minimum_stability_margin_mils": 1000,
+    "used_parts": {
+      "brick-1x1": 15,
+      "brick-1x2": 33,
+      "brick-2x2": 39,
+      "brick-2x4": 39,
+      "ldraw-2456": 332,
+      "ldraw-3008": 63,
+      "ldraw-3009": 4,
+      "ldraw-3010": 13,
+      "ldraw-3024": 7,
+      "ldraw-3031": 26,
+      "plate-1x2": 19,
+      "plate-2x2": 15,
+      "plate-2x4": 12,
+      "wheel": 4,
+      "wheel-holder-2x2": 4
+    },
+    "evidence": {
+      "objects": 5,
+      "modules": 38,
+      "geometry": "catalog_occupancy_and_exact_connectors",
+      "steps": "earlier_step_support_and_static_volume_mass",
+      "semantic": "requirements_attributed_not_proven",
+      "physical": "not_tested",
+      "retail_colors": "not_verified",
+      "requirements": []
+    }
+  },
+  "model_generation_evidence": false,
+  "physical_tested": false
+}

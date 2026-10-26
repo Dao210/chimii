@@ -13,6 +13,7 @@ import { useQuery } from "@tanstack/react-query";
 import { BuildModelViewer } from "./build-model-viewer";
 import { useT } from "../../i18n";
 import { BuildDesignEditor } from "./build-design-editor";
+import { BuildSceneDetails } from "./build-scene-details";
 
 export function BuildResult({ creation, onAgain, embedded = false, onDiscuss, discussDisabled = false, initialEditing = false }: { creation: BuildCreation; onAgain?: () => void; embedded?: boolean; onDiscuss?: (prompt: string) => Promise<boolean>; discussDisabled?: boolean; initialEditing?: boolean }) {
   const { t } = useT("build");
@@ -73,11 +74,12 @@ export function BuildResult({ creation, onAgain, embedded = false, onDiscuss, di
     <div className={embedded ? "grid gap-5" : "grid gap-5 xl:grid-cols-[minmax(0,1.25fr)_minmax(320px,.75fr)]"}>
       <div className="space-y-4">
         <BuildModelViewer
+          initialYaw={creation.build_plan.document?.scene ? 3 * Math.PI / 4 + (creation.build_plan.document.scene.objects[0]?.rotation ?? 0) * Math.PI / 180 : undefined}
           placements={creation.build_plan.placements}
           parts={creation.build_plan.parts}
           catalogVersion={creation.build_plan.catalog_version}
           maxStep={step}
-          highlightPlacementIds={currentStep?.added_placement_ids}
+          highlightPlacementIds={building || step < lastStep ? currentStep?.added_placement_ids : undefined}
           className="min-h-[420px] shadow-[8px_9px_0_#1d241f]"
         />
         <div className="rounded-[1.4rem] border-2 border-[#1d241f] bg-[#fffdf7] p-4 shadow-[4px_5px_0_#1d241f]">
@@ -143,7 +145,7 @@ export function BuildResult({ creation, onAgain, embedded = false, onDiscuss, di
 
         <div className="mb-6 flex items-start gap-2 rounded-2xl border border-[#9bc7ae] bg-[#e9f7ed] p-3 text-sm font-semibold text-[#285a43]">
           <CheckCircle2 className="mt-0.5 size-4 shrink-0" />
-          {t($ => $.result_validation_hint)}
+          {t($ => creation.build_plan.validation.evidence ? $.scene_validation_hint : $.result_validation_hint)}
         </div>
 
         <div className="mb-5 grid gap-2">
@@ -181,6 +183,7 @@ export function BuildResult({ creation, onAgain, embedded = false, onDiscuss, di
           </p>
         </div>
       </aside>
+      <BuildSceneDetails creation={creation} />
       {editing && creation.build_plan.document?.design?.shapes?.length ? <BuildDesignEditor key={creation.id} creation={creation} onClose={() => setEditing(false)} onDiscuss={onDiscuss} discussDisabled={discussDisabled} /> : null}
       {onDiscuss && !creation.build_plan.document?.design?.shapes?.length && (
         <details

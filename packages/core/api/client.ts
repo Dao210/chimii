@@ -3316,6 +3316,11 @@ export class ApiClient {
     return creation;
   }
 
+  async getBuildCatalogPart(catalogVersion: string, ldrawId: string): Promise<ArrayBuffer> {
+    const response = await this.fetchRaw(`/api/build/catalog/${encodeURIComponent(catalogVersion)}/parts/${encodeURIComponent(ldrawId)}`);
+    return response.arrayBuffer();
+  }
+
   async downloadBuildMPD(id: string): Promise<Blob> {
     const response = await this.fetchRaw(`/api/build/creations/${encodeURIComponent(id)}/export.mpd`);
     return response.blob();

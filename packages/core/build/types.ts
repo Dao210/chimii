@@ -146,6 +146,7 @@ export interface BuildPlacement {
   rotation: number;
   step: number;
   module: string;
+  object?: string;
 }
 
 export interface BuildConnection {
@@ -180,10 +181,37 @@ export interface BuildValidationReport {
   connection_count?: number;
   minimum_stability_margin_mils?: number;
   used_parts: Record<string, number>;
+  evidence?: BuildEvidence;
+}
+
+export interface BuildEvidence {
+  objects: number;
+  modules: number;
+  geometry: string;
+  steps: string;
+  semantic: string;
+  physical: string;
+  retail_colors: string;
+  requirements: { requirement: string; modules: string[] }[];
+  review?: string;
+  interfaces?: { object: string; interface: string; a: string; b: string; connections: string[]; shared_parts: string[] }[];
+  visual?: { renderer: string; content_hash: string; views: { direction: string; sha256: string }[] };
+  load_estimate?: {
+    status: "not_evaluated" | "feasible_in_model" | "infeasible_in_model";
+    model: string;
+    reason?: string;
+    mass_source: string;
+    clutch_per_stud_n: number;
+    maximum_residual?: number;
+    maximum_pull_ratio?: number;
+    physical: "not_tested";
+  };
 }
 
 export interface BuildPlan {
   document?: BuildDocument;
+  missing_parts?: BrickInventoryItem[];
+  inventory_compared?: boolean;
   version: number;
   kit_id: string;
   catalog_version: string;
@@ -217,6 +245,7 @@ export interface BuildModuleInstance {
 
 export interface BuildRecipe {
   design?: BuildDesignSpec;
+  scene?: BuildSceneSpec;
   subject?: string;
   summary?: string;
   requirements?: string[];
@@ -259,7 +288,8 @@ export interface BuildDesignSpec {
 }
 export interface BuildDocument {
   version: number;
-  design: BuildDesignSpec;
+  design?: BuildDesignSpec;
+  scene?: BuildSceneSpec;
   design_hash: string;
   parent_creation_id?: string;
   parent_hash?: string;
@@ -269,6 +299,35 @@ export interface BuildDocument {
     target_cells: number;
     matched_cells: number;
   };
+}
+
+export interface BuildSceneSpec {
+  version: number;
+  brief: string;
+  objects: {
+    id: string;
+    label: string;
+    family: string;
+    position: BuildDesignVector;
+    rotation: number;
+    interfaces?: { id: string; a: string; b: string; minimum_connections: number }[];
+    modules: {
+      id: string;
+      label: string;
+      kind: string;
+      role?: "subject" | "structure" | "detail" | "display_support";
+      parent?: string;
+      attach?: { parent?: string; parents?: string[]; anchor: string; offset: BuildDesignVector };
+      position: BuildDesignVector;
+      size: BuildDesignVector;
+      rotation: number;
+      color: number;
+      openings?: { face?: "front" | "back" | "left" | "right"; x: number; y: number; width: number; height: number }[];
+	  ceiling_openings?: { x: number; z: number; width: number; depth: number }[];
+      requirements?: number[];
+      design?: BuildDesignSpec;
+    }[];
+  }[];
 }
 export interface BuildDesignInput {
   design?: BuildDesignSpec;

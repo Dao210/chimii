@@ -1,0 +1,65 @@
+{
+  "outcome": "ready",
+  "message": "飞船主体、机翼和发动机均已搭建，但机翼直接落在底座顶部且未与飞船主体连接，主体仅靠纤细的尾翼和驾驶舱部分连接，缺乏从主体到两侧机翼的结构支撑，从正视图看两侧机翼与主体明显分离。请为两侧机翼添加与飞船主体相连的横向支撑梁，使其成为机翼与主体之间的真实结构连接。",
+  "updates": [],
+  "additions": [
+    {
+      "object": "main",
+      "module": {
+        "id": "left_support",
+        "label": "左侧翼梁",
+        "kind": "solid",
+        "attach": {
+          "parent": "hull",
+          "anchor": "left",
+          "offset": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          }
+        },
+        "position": {
+          "x": 8,
+          "y": 9,
+          "z": 5
+        },
+        "size": {
+          "x": 8,
+          "y": 3,
+          "z": 6
+        },
+        "rotation": 0,
+        "color": 15
+      }
+    },
+    {
+      "object": "main",
+      "module": {
+        "id": "right_support",
+        "label": "右侧翼梁",
+        "kind": "solid",
+        "attach": {
+          "parent": "hull",
+          "anchor": "right",
+          "offset": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          }
+        },
+        "position": {
+          "x": 16,
+          "y": 9,
+          "z": 5
+        },
+        "size": {
+          "x": 8,
+          "y": 3,
+          "z": 6
+        },
+        "rotation": 0,
+        "color": 15
+      }
+    }
+  ]
+}

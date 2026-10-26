@@ -17,7 +17,7 @@ export function BuildDesignEditor({ creation, onClose, onDiscuss, discussDisable
   const { t } = useT("build");
   const wsId = useWorkspaceId();
   const workspacePaths = useWorkspacePaths();
-  const design = creation.build_plan.document!.design;
+  const design = creation.build_plan.document!.design!;
   const [history, dispatch] = useReducer(reduceBuildDesignHistory, { present: design, past: [], future: [] } satisfies BuildDesignHistory);
   const [selectedId, setSelectedId] = useState(design.shapes[0]?.id ?? "");
   const [prompt, setPrompt] = useState("");

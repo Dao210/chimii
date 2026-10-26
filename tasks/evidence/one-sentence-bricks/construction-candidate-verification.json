@@ -1,0 +1,163 @@
+{
+  "checked_at": "2026-10-06",
+  "environment": "isolated local PostgreSQL 55472, backend 58083, Next.js 53003; not deployed",
+  "cases": [
+    {
+      "family": "architecture",
+      "source": "authored_fixture",
+      "artifact": "storey-fixture.json",
+      "sha256": "b7d1f4d47cd68bda1f5b5a5ee9e9e408464c18d318db1e175b49f7f618dfaffb",
+      "generator": "construction-scene-v2",
+      "content_hash": "e5864d14f57f1a6be2dd12e5670878111f9918399d29cb7d565de2f98bd138f0",
+      "objects": 1,
+      "modules": 5,
+      "parts": 291,
+      "steps": 60,
+      "catalog_occupancy": {
+        "width_studs": 14,
+        "depth_studs": 18,
+        "height_plates": 51
+      },
+      "catalog_version": "ldraw-official-2026-09-f3e496d0ede6-r2",
+      "geometry": true,
+      "semantic": "requirements_attributed_not_proven",
+      "browser": {
+        "desktop": true,
+        "width_390": true,
+        "bom_quantity_sum": 291,
+        "saved_progress": 33,
+        "page_errors": []
+      },
+      "appearance_observation": "stair ceiling opening preserved; authored fixture does not establish one-sentence generation",
+      "qualified_high_complexity_generation": false
+    },
+    {
+      "family": "vehicle",
+      "source": "real_model_candidate",
+      "artifact": "bus-candidate.json",
+      "sha256": "d55f1b993ee41e7c4d0168465a163386e1e9cbcea35c8859ecc458cc438e0e1b",
+      "generator": "construction-scene-v2",
+      "content_hash": "71b452cfd201521ac76c8f6592f8c34ab56880a44a88f9c393e16a0fa8c6fe21",
+      "objects": 1,
+      "modules": 8,
+      "parts": 201,
+      "steps": 40,
+      "catalog_occupancy": {
+        "width_studs": 16,
+        "depth_studs": 17,
+        "height_plates": 26
+      },
+      "catalog_version": "ldraw-official-2026-09-f3e496d0ede6-r2",
+      "geometry": true,
+      "semantic": "requirements_attributed_not_proven",
+      "browser": {
+        "desktop": true,
+        "width_390": true,
+        "bom_quantity_sum": 201,
+        "saved_progress": 2,
+        "page_errors": []
+      },
+      "appearance_observation": "four mounted wheels and actual window holes; squat body; generated prose dimensions disagree with compiled occupancy",
+      "qualified_high_complexity_generation": false
+    },
+    {
+      "family": "spacecraft",
+      "source": "real_model_candidate",
+      "artifact": "ship-candidate.json",
+      "sha256": "068bdd89bd7ec4aeb3951fad9ffd45b0cfaa64d419f4b838b849741cb7d5f351",
+      "generator": "construction-scene-v2",
+      "content_hash": "1e1d51c0dae6c7d04c35b7e86ed769db668cc79c81662b553c18900f91885619",
+      "objects": 1,
+      "modules": 9,
+      "parts": 208,
+      "steps": 46,
+      "catalog_occupancy": {
+        "width_studs": 24,
+        "depth_studs": 28,
+        "height_plates": 21
+      },
+      "catalog_version": "ldraw-official-2026-09-f3e496d0ede6-r2",
+      "geometry": true,
+      "semantic": "requirements_attributed_not_proven",
+      "browser": {
+        "desktop": true,
+        "width_390": true,
+        "bom_quantity_sum": 208,
+        "saved_progress": 2,
+        "page_errors": []
+      },
+      "appearance_observation": "coarse block silhouette; wings and hull rely on a common stand rather than a connected ship subassembly",
+      "qualified_high_complexity_generation": false
+    },
+    {
+      "family": "figure",
+      "source": "real_model_candidate",
+      "artifact": "figure-unreviewed-candidate.json",
+      "sha256": "5ba2e5b27a3ff9b9e36f9e439816e6ffd1bcbf3819d9d605e23035f827d2e0a2",
+      "generator": "construction-scene-v2",
+      "content_hash": "eea45d0dfc0555eb7d5f34619a67148b53ef0a9aeb00f4957e89ac4eb385600e",
+      "objects": 1,
+      "modules": 9,
+      "parts": 158,
+      "steps": 56,
+      "catalog_occupancy": {
+        "width_studs": 20,
+        "depth_studs": 20,
+        "height_plates": 42
+      },
+      "catalog_version": "ldraw-official-2026-09-f3e496d0ede6-r2",
+      "geometry": true,
+      "semantic": "requirements_attributed_not_proven",
+      "browser": {
+        "desktop": true,
+        "width_390": true,
+        "bom_quantity_sum": 158,
+        "saved_progress": 2,
+        "page_errors": []
+      },
+      "appearance_observation": "coarse figure silhouette; arms attach to the display base rather than shoulders",
+      "qualified_high_complexity_generation": false
+    }
+  ],
+  "external_review": {
+    "state": "authorized_review_completed",
+    "authorized_scope": "vehicle, spacecraft and figure test candidate structure data and simplified views to the project-configured model service",
+    "authorization": "explicit human user message on 2026-10-06",
+    "first_review_results": {
+      "vehicle": {
+        "parts": 216,
+        "steps": 43,
+        "repairs_used": 1,
+        "semantic": "model_reviewed_not_proven"
+      },
+      "spacecraft": {
+        "parts": 220,
+        "steps": 48,
+        "repairs_used": 2,
+        "semantic": "model_reviewed_not_proven"
+      },
+      "figure": {
+        "parts": 158,
+        "steps": 56,
+        "repairs_used": 0,
+        "semantic": "model_reviewed_not_proven"
+      }
+    },
+    "limits": "Text/occupancy review approved all three, but manual rendering and actual part-graph audit did not establish high-quality subject design. These results do not establish physical validation.",
+    "final_policy": "construction-review-v3",
+    "final_status": {
+      "vehicle": "rejected_search_limit",
+      "spacecraft": "rejected_unsupported_side_attachment",
+      "figure": "166_parts_model_reviewed_not_proven_visual_quality_inadequate"
+    },
+    "verification_artifact": "authorized-review-verification.json"
+  },
+  "physical": "not_tested",
+  "retail_colors": "not_verified",
+  "source_batch": "real candidates came from the fixed five-prompt long-prompt/reasoning run; bus and ship review timed out, figure interrupted by aggregate Go test timeout and recompiled locally; latest shorter prompt/text review not live-validated",
+  "notes": [
+    "Manual 291-part fixture is not a real-model generation success.",
+    "Browser/geometry pass is not semantic or physical acceptance.",
+    "These cases cannot establish a success rate across families."
+  ]
+}

@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	buildstudio "github.com/chimii-ai/chimii/server/internal/build"
 	"log/slog"
 	"net/http"
 	"net/netip"
@@ -123,9 +124,13 @@ type Config struct {
 	//   - LLMAPIKey       -> CHIMII_LLM_API_KEY
 	//   - LLMBaseURL       -> CHIMII_LLM_BASE_URL (Anthropic API origin or compatible gateway)
 	//   - LLMDefaultModel  -> CHIMII_LLM_DEFAULT_MODEL (used when a request omits `model`)
-	LLMAPIKey       string
-	LLMBaseURL      string
-	LLMDefaultModel string
+	LLMAPIKey          string
+	LLMBaseURL         string
+	LLMDefaultModel    string
+	BuildPlannerEffort string
+	BuildReviewEffort  string
+	// BuildSceneViewRenderer is an explicit asset/render dependency for isolated tests.
+	BuildSceneViewRenderer func(context.Context, buildstudio.BuildPlan) ([]buildstudio.SceneView, error)
 	// RuntimeConfig is the validated execution-plane configuration. It is
 	// parsed once at server startup; handlers use it to expose public
 	// capabilities and to reject disabled Cloud runtime mutations.

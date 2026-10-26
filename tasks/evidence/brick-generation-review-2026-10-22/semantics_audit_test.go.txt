@@ -1,0 +1,10 @@
+package ldrawsync
+import("testing";"encoding/json";"os")
+func TestAuditManifestCoverage(t *testing.T){
+ raw,err:=os.ReadFile("manifest.json");if err!=nil{t.Fatal(err)}
+ var m struct{Parts []StarterKitPart `json:"parts"`};if err=json.Unmarshal(raw,&m);err!=nil{t.Fatal(err)}
+ counts:=map[string]int{};tiling:=0
+ for _,p:=range m.Parts{s:=DerivePartSemantics(p);key:=s.CertificationLevel;if s.AutoBuildEligible{key+="_auto"};counts[key]++;if s.AutoBuildEligible&&s.GeometryProfile=="stud_tube_rect"&&s.HasTopStuds&&s.HasBottomReceptors{tiling++}}
+ out,_:=json.Marshal(counts);t.Logf("manifest=%d classifications=%s rectangular_tiling_candidates_before_GLB_bounds_checks=%d",len(m.Parts),out,tiling)
+ if len(m.Parts)!=1000{t.Fatal("unexpected manifest")}
+}

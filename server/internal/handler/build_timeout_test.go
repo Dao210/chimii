@@ -24,7 +24,7 @@ func TestBuildPlannerSlowResponseAndTimeout(t *testing.T) {
 		wantTimeout bool
 	}{
 		{"slow_complete_response", 25 * time.Second, false},
-		{"planner_deadline", 65 * time.Second, true},
+		{"planner_deadline", 125 * time.Second, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			synctest.Test(t, func(t *testing.T) {
@@ -49,7 +49,7 @@ func TestBuildPlannerSlowResponseAndTimeout(t *testing.T) {
 					if code != "BUILD_PLANNER_TIMEOUT" || !errors.Is(err, context.DeadlineExceeded) {
 						t.Fatalf("expected a classified planner timeout, got %v", err)
 					}
-					if time.Since(started) != 60*time.Second {
+					if time.Since(started) != buildRecipeTimeout {
 						t.Fatalf("timeout after %s", time.Since(started))
 					}
 				} else if err != nil || decision.Outcome != "ready" {

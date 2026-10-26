@@ -1,0 +1,121 @@
+{
+  "date": "2026-10-06",
+  "authorization": "Explicit user authorization for these three test candidates structure data and simplified views to the project-configured external model service",
+  "review_policy": "construction-review-v3",
+  "scope": "Existing vehicle, spacecraft and figure candidates; source requirements and persisted repair budgets retained",
+  "final_results": [
+    {
+      "family": "vehicle",
+      "status": "rejected",
+      "error_code": "BUILD_SEARCH_LIMIT",
+      "repairs_used": 2,
+      "source": "continuation of the same real-model candidate; no fresh planning",
+      "recipe_sha256": "cfe725a382388d13fdea6fe9403eb84391b88fba038563526d8abea647820ac8",
+      "source_prompt": "搭一辆复古旅行巴士，有四个真实车轮、车窗、前灯、行李架，尺度配色由你决定",
+      "log": "tasks/evidence/one-sentence-bricks/interface-final-vehicle/run.log",
+      "result": "tasks/evidence/one-sentence-bricks/interface-final-vehicle/vehicle-inspected.json",
+      "qualified_high_complexity_generation": false,
+      "physical": "not_tested"
+    },
+    {
+      "family": "spacecraft",
+      "status": "rejected",
+      "error_code": "BUILD_REQUIREMENTS_UNMET",
+      "repairs_used": 2,
+      "source": "continuation of the same real-model candidate; no fresh planning",
+      "recipe_sha256": "84db647df12cb5677d3cc3e6ddf3b5dde714c58bb11b60733f63bd56fc503084",
+      "source_prompt": "搭一艘探索飞船，有驾驶舱、两侧机翼和两个发动机，作为有底座的展示模型",
+      "log": "tasks/evidence/one-sentence-bricks/interface-final-spacecraft/run.log",
+      "result": "tasks/evidence/one-sentence-bricks/interface-final-spacecraft/spacecraft-inspected.json",
+      "qualified_high_complexity_generation": false,
+      "physical": "not_tested"
+    },
+    {
+      "family": "figure",
+      "status": "model_reviewed_not_proven",
+      "error_code": null,
+      "repairs_used": 2,
+      "source": "continuation of the same real-model candidate; no fresh planning",
+      "recipe_sha256": "bd20d3d566a1d63f394c8a9d59aadb7180401740fd318d90cadb9e89a10b046a",
+      "source_prompt": "搭一个站着的宇航员，有头盔、胸前面板、双臂和双腿，姿态由你决定",
+      "log": "tasks/evidence/one-sentence-bricks/interface-final-figure/run.log",
+      "result": "tasks/evidence/one-sentence-bricks/interface-final-figure/figure-inspected.json",
+      "qualified_high_complexity_generation": false,
+      "physical": "not_tested",
+      "parts": 166,
+      "steps": 56,
+      "catalog_version": "ldraw-official-2026-09-f3e496d0ede6-r2",
+      "content_hash": "5aad8171d2cade3dfe294bcaebbd0c17b125b94b8485bc5868bd44aeaafd2770",
+      "catalog_occupancy": {
+        "width_studs": 20,
+        "depth_studs": 20,
+        "height_plates": 60
+      },
+      "parts_assigned_to_each_module": {
+        "astronaut/base": 78,
+        "astronaut/left-leg": 12,
+        "astronaut/right-leg": 12,
+        "astronaut/torso": 34,
+        "astronaut/chest-panel": 2,
+        "astronaut/helmet": 11,
+        "astronaut/left-arm": 8,
+        "astronaut/right-arm": 8,
+        "astronaut/visor": 1
+      },
+      "subject_components_excluding_assigned_base_parts": [
+        {
+          "parts": 88,
+          "modules": [
+            "astronaut/chest-panel",
+            "astronaut/helmet",
+            "astronaut/left-arm",
+            "astronaut/left-leg",
+            "astronaut/right-arm",
+            "astronaut/right-leg",
+            "astronaut/torso",
+            "astronaut/visor"
+          ]
+        }
+      ],
+      "browser": {
+        "desktop": true,
+        "mobile_width": 390,
+        "bom_quantity_sum": 166,
+        "saved_step": 2,
+        "page_errors": []
+      },
+      "visual_assessment": "Arms are actually raised from the torso; reviewer prose incorrectly says hanging down. Coarse silhouette; not accepted as a high-complexity model."
+    }
+  ],
+  "earlier_review": {
+    "policy": "before interface evidence and obsolete-approval removal",
+    "vehicle": {
+      "parts": 216,
+      "steps": 43,
+      "repairs": 1
+    },
+    "spacecraft": {
+      "parts": 220,
+      "steps": 48,
+      "repairs": 2
+    },
+    "figure": {
+      "parts": 158,
+      "steps": 56,
+      "repairs": 0
+    },
+    "meaning": "All were approved by a coarse text review. These approvals are not final acceptance under the current policy."
+  },
+  "interface_audit_of_earlier_candidates": {
+    "spacecraft_components_excluding_assigned_foundation_parts": 24,
+    "figure_components_excluding_assigned_base_parts": 3
+  },
+  "physical": "not_tested",
+  "retail_colors": "not_verified",
+  "deployment": "local code, isolated test database and browser only; no commit, push or deployment",
+  "limits": [
+    "Compiled connectivity is not physical clutch-strength or detachable-assembly proof.",
+    "Source candidates came from interrupted/partial prior model generation, followed by continued review; this is not an uninterrupted one-sentence worker success rate.",
+    "One part may span construction boundaries. Removal audit excludes whole assigned parts."
+  ]
+}

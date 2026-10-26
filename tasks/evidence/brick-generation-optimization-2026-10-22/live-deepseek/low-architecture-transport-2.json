@@ -1,0 +1,23 @@
+{
+  "sample": "architecture",
+  "request_id": 2,
+  "host": "api.deepseek.com",
+  "http_status": 200,
+  "elapsed_ms": 90001,
+  "deadline_exceeded": true,
+  "error_type": "context.deadlineExceededError",
+  "stages": [
+    {
+      "stage": "connection_ready",
+      "milliseconds": 0
+    },
+    {
+      "stage": "request_written",
+      "milliseconds": 0
+    },
+    {
+      "stage": "first_response_byte",
+      "milliseconds": 91
+    }
+  ]
+}

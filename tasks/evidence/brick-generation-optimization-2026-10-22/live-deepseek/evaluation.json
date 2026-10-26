@@ -1,0 +1,83 @@
+{
+  "authorization": "explicit user approval",
+  "destination": "api.deepseek.com",
+  "case_count": 2,
+  "high_effort": {
+    "architecture": {
+      "status": "planning_timeout",
+      "seconds": 120.008943958,
+      "compiled": false,
+      "images_reviewed": false
+    },
+    "figure": {
+      "status": "planning_timeout",
+      "seconds": 120.013908291,
+      "compiled": false,
+      "images_reviewed": false
+    }
+  },
+  "low_effort": {
+    "architecture": {
+      "status": "compiler_search_limit_then_repair_timeout",
+      "planning_seconds": 103.057,
+      "planning_input_tokens": 2799,
+      "planning_output_tokens": 7564,
+      "compiler_nodes": 96000,
+      "compiler_frontier_below_y": 24,
+      "whole_object_same_budget_comparison": "also_search_limit",
+      "repair_seconds": 90.001,
+      "total_seconds": 195.21,
+      "compiled": false,
+      "images_reviewed": false
+    },
+    "figure": {
+      "status": "visual_review_timeout_after_compiling",
+      "planning_seconds": 115.749,
+      "planning_input_tokens": 2799,
+      "planning_output_tokens": 8900,
+      "initial_format_error": "missing kind fields",
+      "format_correction_seconds": 77.63,
+      "correction_input_tokens": 3940,
+      "correction_output_tokens": 6359,
+      "parts": 55,
+      "steps": 40,
+      "subject_interfaces": 5,
+      "compiled": true,
+      "real_views_prepared": 6,
+      "visual_review_seconds": 90.0,
+      "approved": false,
+      "total_seconds": 283.44,
+      "deterministic_replay_matches_original": true,
+      "load_estimate": "not_evaluated: outside 32-brick reference domain"
+    }
+  },
+  "connectivity": {
+    "method": "unauthenticated_HEAD",
+    "http_status": 401,
+    "first_byte_seconds": 0.084207,
+    "total_seconds": 0.084337
+  },
+  "physical": "not_tested",
+  "status": "completed_with_no_accepted_deliveries",
+  "transport": {
+    "authenticated_models_status": 200,
+    "model_available": true,
+    "connection_ms_max_observed": 32,
+    "first_byte_ms_range": [
+      91,
+      129
+    ],
+    "observation": "response generation/body completion is slow; connection and credential checks succeeded; no private thinking was recorded"
+  },
+  "accepted_deliveries": 0,
+  "unique_prompts": 2,
+  "configurations": [
+    "high",
+    "low"
+  ],
+  "generation_http_attempts": 7,
+  "production_adjustments": [
+    "restore default planner effort low; retain explicit override",
+    "log task failure timing without prompts/images/keys"
+  ]
+}

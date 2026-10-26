@@ -19,7 +19,7 @@ func (s *shapeSearch) repairSeams(input []Placement) ([]Placement, bool) {
 	for round := 0; round < 48 && s.budget.ctx.Err() == nil; round++ {
 		components, count := layoutComponents(placements, s.catalog)
 		if count == 1 {
-			return placements, ValidateWithCatalog(placements, s.inventory, s.catalog).Buildable
+			return placements, s.validation(placements).Buildable
 		}
 		improved := false
 		for i := 0; i < len(placements) && !improved && s.budget.ctx.Err() == nil; i++ {
@@ -29,7 +29,7 @@ func (s *shapeSearch) repairSeams(input []Placement) ([]Placement, bool) {
 					return nil, false
 				}
 				a, b := placements[i], placements[j]
-				if components[i] == components[j] || a.Y != b.Y || a.Module != b.Module || a.Color != b.Color || s.catalog[a.PartID].PlatesY != s.catalog[b.PartID].PlatesY {
+				if components[i] == components[j] || a.Y != b.Y || a.Module != b.Module || a.Color != b.Color || s.catalog[a.PartID].PlatesY != s.catalog[b.PartID].PlatesY || !IsShapePartEligible(s.catalog[a.PartID]) || !IsShapePartEligible(s.catalog[b.PartID]) {
 					continue
 				}
 				as, bs := orientedSizeWith(a, s.catalog), orientedSizeWith(b, s.catalog)
@@ -72,12 +72,16 @@ func (s *shapeSearch) retileSeamRegion(placements []Placement, region []int, cou
 	}
 	removed := map[int]bool{}
 	for _, index := range region {
+		if s.frozenIDs[placements[index].ID] || !IsShapePartEligible(s.catalog[placements[index].PartID]) {
+			continue
+		}
 		removed[index] = true
 	}
 	s.budget.repairAttempts++
 	local := &shapeSearch{budget: s.budget, start: s.budget.used, target: s.target, cells: s.cells, parts: s.parts, catalog: s.catalog, inventory: s.inventory,
 		remaining: s.inventory.quantities(), occupied: map[DesignVector]int{}, exactColors: s.exactColors,
-		exactCount: s.exactCount, limit: min(limit, s.budget.limit-s.budget.used), variant: round % 3, seamPriority: s.seamPriority}
+		exactCount: s.exactCount, limit: min(limit, s.budget.limit-s.budget.used), variant: round % 3, seamPriority: s.seamPriority,
+		maxParts: s.maxParts, validate: s.validate, normalize: s.normalize, frozenIDs: s.frozenIDs}
 	for k, p := range placements {
 		if s.budget.ctx.Err() != nil {
 			s.limited = true
@@ -94,6 +98,9 @@ func (s *shapeSearch) retileSeamRegion(placements []Placement, region []int, cou
 			for z := 0; z < size.z; z++ {
 				for y := 0; y < s.catalog[p.PartID].PlatesY; y++ {
 					local.occupied[DesignVector{p.X + x, p.Y + y, p.Z + z}] = index
+					if _, ok := local.target[DesignVector{p.X + x, p.Y + y, p.Z + z}]; !ok {
+						local.seedCells++
+					}
 				}
 			}
 		}
@@ -106,7 +113,7 @@ func (s *shapeSearch) retileSeamRegion(placements []Placement, region []int, cou
 		if nextCount >= count {
 			return false
 		}
-		validation := ValidateWithCatalog(candidate, s.inventory, s.catalog)
+		validation := s.validation(candidate)
 		for _, issue := range validation.Issues {
 			if issue.Code != "disconnected" {
 				return false

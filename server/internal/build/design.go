@@ -52,7 +52,8 @@ type ShapeNode struct {
 // Editing creates a new creation; an in-progress build never changes underneath it.
 type BuildDocument struct {
 	Version          int          `json:"version"`
-	Design           DesignSpec   `json:"design"`
+	Design           *DesignSpec  `json:"design,omitempty"`
+	Scene            *SceneSpec   `json:"scene,omitempty"`
 	DesignHash       string       `json:"design_hash"`
 	ParentCreationID string       `json:"parent_creation_id,omitempty"`
 	ParentHash       string       `json:"parent_hash,omitempty"`
@@ -70,6 +71,8 @@ type SolverReport struct {
 	Attempts       int    `json:"-"`
 	Pruned         int    `json:"-"`
 	StopReason     string `json:"-"`
+	CompileStages  int    `json:"-"`
+	ReusedStages   int    `json:"-"`
 }
 
 type targetCell struct {

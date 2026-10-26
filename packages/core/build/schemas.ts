@@ -154,6 +154,7 @@ const PlacementSchema = z.looseObject({
   rotation: z.number().int(),
   step: z.number().int().positive(),
   module: z.string(),
+  object: z.string().optional().catch(undefined),
 });
 
 export const BuildValidationSchema = z.looseObject({
@@ -175,6 +176,17 @@ export const BuildValidationSchema = z.looseObject({
   connection_count: z.number().int().nonnegative().optional(),
   minimum_stability_margin_mils: z.number().int().optional(),
   used_parts: z.record(z.string(), z.number().int().nonnegative()),
+  evidence: z.looseObject({
+    objects: z.number().int().positive(), modules: z.number().int().positive(), geometry: z.string(), steps: z.string(),
+    semantic: z.string(), physical: z.string(), retail_colors: z.string(),
+    requirements: z.array(z.object({ requirement: z.string(), modules: z.array(z.string()) })), review: z.string().optional(),
+    interfaces: z.array(z.object({ object: z.string(), interface: z.string(), a: z.string(), b: z.string(), connections: z.array(z.string()), shared_parts: z.array(z.string()) })).max(1024).optional().catch(undefined),
+    visual: z.object({ renderer: z.string(), content_hash: z.string(), views: z.array(z.object({ direction: z.enum(["front", "back", "left", "right", "top", "isometric"]), sha256: z.string().regex(/^[a-f0-9]{64}$/) })).length(6) }).optional().catch(undefined),
+    load_estimate: z.object({
+      status: z.enum(["not_evaluated", "feasible_in_model", "infeasible_in_model"]), model: z.string(), reason: z.string().optional(),
+      mass_source: z.string(), clutch_per_stud_n: z.number().finite().nonnegative(), maximum_residual: z.number().finite().nonnegative().optional(), maximum_pull_ratio: z.number().finite().nonnegative().optional(), physical: z.literal("not_tested"),
+    }).optional().catch(undefined),
+  }).optional().catch(undefined),
 });
 
 const DesignVectorSchema = z.object({
@@ -210,9 +222,27 @@ export const BuildDesignSpecSchema = z.object({
   mode: z.literal("static"),
   shapes: z.array(BuildShapeNodeSchema).min(1).max(48),
 });
+export const BuildSceneSpecSchema = z.looseObject({
+  version: z.union([z.literal(1), z.literal(2)]), brief: z.string(),
+  objects: z.array(z.looseObject({
+    id: z.string(), label: z.string(), family: z.string(), position: DesignVectorSchema, rotation: z.number().int(),
+    interfaces: z.array(z.object({ id: z.string(), a: z.string(), b: z.string(), minimum_connections: z.number().int().min(1).max(16) })).max(128).optional().catch(undefined),
+    modules: z.array(z.looseObject({
+      id: z.string(), label: z.string(), kind: z.string(), position: DesignVectorSchema, size: DesignVectorSchema,
+      parent: z.string().optional(),
+      role: z.enum(["subject", "structure", "detail", "display_support"]).optional().catch(undefined),
+      attach: z.looseObject({ parent: z.string().optional(), parents: z.array(z.string()).max(8).optional(), anchor: z.string(), offset: DesignVectorSchema }).optional(),
+      rotation: z.number().int(), color: z.number().int(),
+      openings: z.array(z.object({ face: z.enum(["front", "back", "left", "right"]).optional(), x: z.number().int(), y: z.number().int(), width: z.number().int(), height: z.number().int() })).optional(),
+	  ceiling_openings: z.array(z.object({ x: z.number().int(), z: z.number().int(), width: z.number().int(), depth: z.number().int() })).max(8).optional(),
+      requirements: z.array(z.number().int().nonnegative()).optional(), design: BuildDesignSpecSchema.optional(),
+    })).min(1).max(64),
+  })).min(1).max(8),
+});
 const BuildDocumentSchema = z.looseObject({
   version: z.number().int().positive(),
-  design: BuildDesignSpecSchema,
+  design: BuildDesignSpecSchema.optional(),
+  scene: BuildSceneSpecSchema.optional(),
   design_hash: z.string().min(1),
   parent_creation_id: z.string().optional(),
   parent_hash: z.string().optional(),
@@ -222,9 +252,11 @@ const BuildDocumentSchema = z.looseObject({
     target_cells: z.number().int().nonnegative(),
     matched_cells: z.number().int().nonnegative(),
   }),
-});
+}).refine(document => document.design != null || document.scene != null);
 const BuildPlanSchema = z.looseObject({
   document: BuildDocumentSchema.optional().catch(undefined),
+  missing_parts: z.array(InventoryItemSchema).optional().catch(undefined),
+  inventory_compared: z.boolean().optional().catch(undefined),
   version: z.number().int().positive(),
   kit_id: z.string(),
   catalog_version: z.string(),
@@ -267,6 +299,7 @@ const BuildPlanSchema = z.looseObject({
 
 const BuildRecipeSchema = z.looseObject({
   design: BuildDesignSpecSchema.optional().catch(undefined),
+  scene: BuildSceneSpecSchema.optional().catch(undefined),
   subject: z.string().optional(),
   summary: z.string().optional(),
   requirements: z.array(z.string()).optional(),
@@ -293,6 +326,8 @@ const BuildRecipeSchema = z.looseObject({
         alternative_ports: z.array(z.string()).optional(),
       }),
     )
+    .nullable()
+    .transform((modules) => modules ?? [])
     .optional(),
   version: z.number().int().positive(),
   archetype: z.string(),

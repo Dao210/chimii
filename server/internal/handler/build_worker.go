@@ -22,9 +22,9 @@ const (
 	// replicas. A small local pool prevents one slow LLM request from consuming
 	// the entire child-facing latency budget for unrelated families.
 	buildWorkerConcurrency = 4
-	// Optional routing (20s), a shape recipe (60s), then compilation. The SQL
-	// claim grants 120s, leaving time to commit a fenced terminal result.
-	buildWorkerTimeout = 90 * time.Second
+	// Routing/planning and two bounded scene revisions share one deadline.
+	// The SQL lease lasts 570s, leaving a terminal-write margin after 540s.
+	buildWorkerTimeout = 540 * time.Second
 )
 
 type BuildWorker struct {
@@ -189,7 +189,7 @@ func (w *BuildWorker) ProcessNext(ctx context.Context) (bool, error) {
 	if planned {
 		// A clarification draft deliberately has no executable design. Restore
 		// the immutable source as planning context when continuing an edit.
-		if recipe != nil && recipe.Design == nil && recipe.Metadata["parent_creation_id"] != "" {
+		if recipe != nil && recipe.Design == nil && recipe.Scene == nil && recipe.Metadata["parent_creation_id"] != "" {
 			parentID, parseErr := util.ParseUUID(recipe.Metadata["parent_creation_id"])
 			if parseErr != nil {
 				return true, w.failPermanently(ctx, job, buildstudio.BuildErrorRequirements, parseErr)
@@ -203,6 +203,7 @@ func (w *BuildWorker) ProcessNext(ctx context.Context) (bool, error) {
 				return true, w.failPermanently(ctx, job, buildstudio.BuildErrorRequirements, decodeErr)
 			}
 			recipe.Design = base.Design
+			recipe.Scene = base.Scene
 		}
 		planStarted := time.Now()
 		decision, planErr := w.h.planBuildRecipe(runCtx, session.Prompt, answers, recipe, session.Revision, inventory, catalog, history)
@@ -235,6 +236,9 @@ func (w *BuildWorker) ProcessNext(ctx context.Context) (bool, error) {
 		if recipe.Design != nil {
 			recipe.Metadata["shape_generator_version"] = buildstudio.ShapeGeneratorVersion
 		}
+		if recipe.Scene != nil {
+			recipe.Metadata["scene_generator_version"] = buildstudio.SceneGeneratorVersion
+		}
 		if err = w.withLease(runCtx, job, func(q *db.Queries) error {
 			_, saveErr := q.SaveBuildSessionRecipe(runCtx, db.SaveBuildSessionRecipeParams{ID: session.ID, Revision: session.Revision, LeaseToken: job.LeaseToken, Recipe: mustBuildJSON(recipe)})
 			return saveErr
@@ -251,6 +255,9 @@ func (w *BuildWorker) ProcessNext(ctx context.Context) (bool, error) {
 	if recipe.Design != nil && recipe.Metadata["shape_generator_version"] != buildstudio.ShapeGeneratorVersion {
 		return true, w.failPermanently(ctx, job, buildstudio.BuildErrorUnsupported, errors.New("saved shape generator version is unavailable"))
 	}
+	if recipe.Scene != nil && recipe.Metadata["scene_generator_version"] != buildstudio.SceneGeneratorVersion {
+		return true, w.failPermanently(ctx, job, buildstudio.BuildErrorUnsupported, errors.New("saved construction generator version is unavailable"))
+	}
 	if planned {
 		// Parts may have been edited during the model call. Compilation always
 		// uses a fresh availability read, with no transaction held across planning.
@@ -261,7 +268,17 @@ func (w *BuildWorker) ProcessNext(ctx context.Context) (bool, error) {
 	}
 	compileStarted := time.Now()
 	var result buildstudio.CompileResult
-	if recipe.Design != nil {
+	if recipe.Scene != nil {
+		result, err = w.h.compileAndReviewScene(runCtx, *recipe, inventory, catalog, func(next buildstudio.AssemblyRecipe) error {
+			return w.withLease(runCtx, job, func(q *db.Queries) error {
+				_, saveErr := q.SaveBuildSessionRecipe(runCtx, db.SaveBuildSessionRecipeParams{ID: session.ID, Revision: session.Revision, LeaseToken: job.LeaseToken, Recipe: mustBuildJSON(next)})
+				return saveErr
+			})
+		})
+		if err == nil {
+			recipe = &result.Recipe
+		}
+	} else if recipe.Design != nil {
 		result, err = buildstudio.CompileDesign(runCtx, *recipe, inventory, inventory.CatalogVersion, catalog, time.Now())
 	} else {
 		result, err = buildstudio.CompileWithCatalog(*recipe, inventory, inventory.CatalogVersion, catalog, time.Now())

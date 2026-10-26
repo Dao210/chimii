@@ -1788,3 +1788,18 @@ describe("ApiClient", () => {
     });
   });
 });
+
+describe("catalog model assets", () => {
+  it("loads binary assets with the API origin, authentication and workspace context", async () => {
+    const { setCurrentWorkspace } = await import("../platform/workspace-storage");
+    setCurrentWorkspace("scene-space", "scene-id");
+    try {
+      const fetcher = vi.fn().mockResolvedValue(new Response(new Uint8Array([1, 2, 3])));
+      vi.stubGlobal("fetch", fetcher);
+      const client = new ApiClient("https://api.example.test");
+      client.setToken("test-token");
+      expect(new Uint8Array(await client.getBuildCatalogPart("catalog-1", "3008.dat"))).toEqual(new Uint8Array([1, 2, 3]));
+      expect(fetcher).toHaveBeenCalledWith("https://api.example.test/api/build/catalog/catalog-1/parts/3008.dat", expect.objectContaining({ credentials: "include", headers: expect.objectContaining({ Authorization: "Bearer test-token", "X-Workspace-Slug": "scene-space" }) }));
+    } finally { setCurrentWorkspace(null, null); }
+  });
+});

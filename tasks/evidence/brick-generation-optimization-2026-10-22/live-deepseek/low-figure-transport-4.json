@@ -1,0 +1,23 @@
+{
+  "sample": "figure",
+  "request_id": 4,
+  "host": "api.deepseek.com",
+  "http_status": 200,
+  "elapsed_ms": 77628,
+  "deadline_exceeded": false,
+  "error_type": "\u003cnil\u003e",
+  "stages": [
+    {
+      "stage": "connection_ready",
+      "milliseconds": 0
+    },
+    {
+      "stage": "request_written",
+      "milliseconds": 0
+    },
+    {
+      "stage": "first_response_byte",
+      "milliseconds": 107
+    }
+  ]
+}

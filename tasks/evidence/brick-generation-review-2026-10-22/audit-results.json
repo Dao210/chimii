@@ -1,0 +1,107 @@
+{
+  "date": "2026-10-22",
+  "timezone": "Asia/Shanghai",
+  "head": "fbc8d166e04ea3918065ca910524f2378ab84c5a",
+  "scope": "Read-only diagnosis of the existing implementation and primary-source web research; report/evidence files added, no product code restored or modified.",
+  "source_sha256": {
+    "server/internal/handler/build_scene_planner.go": "22e363617a8fccbf293aea1503421ef82d934d02032762f54ad3fa3e3e371341",
+    "server/internal/handler/build_planner.go": "1047d743f00d51a3977f24924f2e909218713d5b4929403387a4ccd5ab5fff2f",
+    "server/internal/handler/build_worker.go": "18c17da59568f0dbc741441fc2f8654ec95ee433c2a834f6f9f2901af0979d44",
+    "server/pkg/llm/client.go": "484eb7cca475465b52756b2131d4cb622297d3d7b301939b07c468db0e7a811f",
+    "server/internal/ldrawsync/semantics.go": "5305bb01b5513e8620e7f28e54d505db6a3479a3db36b0061991b76e25f3957e",
+    "server/internal/ldrawsync/starter-kit-1000.json": "30fb5c2c1c5f0918b6fe6cc9515e15a3c316849f3a0b32988022f10e11f7c1d0",
+    "tasks/evidence/one-sentence-bricks/authorized-review-verification.json": "50f00144be08bc4df8f165335eed70b7154c4abd4ad2b2133a7296d20ba8481c",
+    "tasks/evidence/one-sentence-bricks/fixture-verification.json": "43d1fd772bd6fbe64ea0fd6ac91098e0c4498da63323a84c11eddce64546b1e2"
+  },
+  "current_checkout": {
+    "build_package_present": false,
+    "core_build_present": false,
+    "views_build_present": false,
+    "build_test": "setup failed: internal/build directory not found",
+    "deployment_version_verified": false
+  },
+  "isolated_head_snapshot": {
+    "path": "/private/tmp/chimii-brick-audit-4lia27t_",
+    "module": "chimii-brick-audit",
+    "external_dependencies": false,
+    "existing_tests_passed": [
+      "TestCompileStarterArchetypesAreBuildableAndDeterministic",
+      "TestExactConnectorsRejectBoundingBoxPhantomConnection",
+      "TestStabilityUsesConvexSupportHullInsteadOfBoundingBox",
+      "TestValidateRejectsPartWithoutCertifiedMechanicalSemantics",
+      "TestShapeCompilerKeepsUnconstrainedBridgeSearch"
+    ],
+    "limitations": "This snapshot contains the committed v3 compiler, not the missing uncommitted v4 scene implementation."
+  },
+  "diagnostic_probes": [
+    {
+      "name": "TestAuditCapacityIsNotALoadSolver",
+      "implementation": "HEAD Build package",
+      "results": [
+        {
+          "capacity_units": 1,
+          "buildable": true,
+          "connections": 2,
+          "minimum_stability_margin_mils": 111
+        },
+        {
+          "capacity_units": 1000,
+          "buildable": true,
+          "connections": 2,
+          "minimum_stability_margin_mils": 111
+        }
+      ],
+      "interpretation": "The report does not depend on connector capacity scaling in this baseline. This is not evidence of actual physical failure of the probe assembly."
+    },
+    {
+      "name": "TestAuditSideConnectorIsRejectedByBottomSupportPolicy",
+      "implementation": "HEAD Build package with synthetic certified connector metadata",
+      "exact_connections": 2,
+      "buildable": false,
+      "issues": [
+        "unsupported"
+      ],
+      "interpretation": "The connection layer can recognize a side connection but the earlier-step bottom-support policy rejects it. Synthetic metadata does not certify a real side-connection part."
+    }
+  ],
+  "current_semantics_execution": {
+    "function": "DerivePartSemantics from the current working-tree file, copied unchanged into an isolated standard-library-only package",
+    "manifest_parts": 1000,
+    "certified_auto": 14,
+    "basic_auto": 40,
+    "basic_non_auto": 11,
+    "asset_only": 935,
+    "auto_build_eligible": 54,
+    "rectangular_tiling_candidates_before_GLB_bounds_checks": 51,
+    "production_catalog_queried": false
+  },
+  "provider_observation": {
+    "scope": "local .env file only; production and running process environment not queried",
+    "model": "deepseek-v4-pro",
+    "provider_origin": "https://api.deepseek.com/anthropic",
+    "planner_effort": "low",
+    "requested_budget_tokens": 2048,
+    "provider_documentation_says_budget_tokens_ignored": true,
+    "fresh_provider_calls": 0
+  },
+  "classic": {
+    "attempted_app_id": "com.openai.chat",
+    "result": "Computer Use is not allowed to use the app 'com.openai.chat' for safety reasons.",
+    "used_successfully": false
+  },
+  "browser_test_run": false,
+  "physical_test_run": false,
+  "primary_web_sources": [
+    "https://avalovelace1.github.io/BrickGPT/",
+    "https://arxiv.org/html/2505.05469v1",
+    "https://arxiv.org/html/2604.22984v1",
+    "https://arxiv.org/html/2605.26182v2",
+    "https://arxiv.org/html/2402.10711v2",
+    "https://arxiv.org/html/2603.16853v1",
+    "https://github.com/intelligent-control-lab/BrickSim",
+    "https://github.com/anteloc/ldraw-nova/blob/master/docs/agent/complex-models.md",
+    "https://raw.githubusercontent.com/anteloc/ldraw-nova/master/docs/agent/validation.md",
+    "https://api-docs.deepseek.com/guides/anthropic_api/",
+    "https://api-docs.deepseek.com/guides/thinking_mode/"
+  ]
+}

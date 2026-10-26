@@ -3,6 +3,7 @@ package build
 import (
 	"context"
 	"fmt"
+	"math"
 	"sort"
 	"time"
 )
@@ -39,7 +40,7 @@ func (b *searchBudget) consume(repair bool) bool {
 // IsShapePartEligible identifies reviewed solid parts usable for target tiling.
 // Placement-specific geometry, stock and support still require validation.
 func IsShapePartEligible(part PartSpec) bool {
-	return partIsMechanicallyCertified(part) && part.GeometryProfile == "stud_tube_rect" && part.HasTopStuds && part.HasBottomReceptors
+	return math.Abs((part.Bounds.MaxX-part.Bounds.MinX)-float64(part.StudsX*20)) < 0.01 && math.Abs((part.Bounds.MaxZ-part.Bounds.MinZ)-float64(part.StudsZ*20)) < 0.01 && math.Abs(part.Bounds.MaxY-float64(part.PlatesY*8)) < 0.01 && partIsMechanicallyCertified(part) && part.GeometryProfile == "stud_tube_rect" && part.HasTopStuds && part.HasBottomReceptors
 }
 
 type shapeCandidate struct {
@@ -67,6 +68,14 @@ type shapeSearch struct {
 	seamPriority bool
 	accept       func([]Placement) bool
 	result       []Placement
+	maxParts     int
+	validate     func([]Placement) ValidationReport
+	seedCells    int
+	normalize    func([]Placement) []Placement
+	failed       *ValidationReport
+	frozenIDs    map[string]bool
+	deadCell     *DesignVector
+	deadCursor   int
 }
 
 // SolveDesign searches a finite catalog-backed tiling space. It may report a
@@ -197,6 +206,9 @@ func (s *shapeSearch) walk(cursor int) bool {
 			return false
 		}
 		placements := normalizeShapeSteps(s.placements)
+		if s.normalize != nil {
+			placements = s.normalize(s.placements)
+		}
 		if s.accept != nil {
 			if s.accept(placements) {
 				s.result = placements
@@ -204,10 +216,21 @@ func (s *shapeSearch) walk(cursor int) bool {
 			}
 			return false
 		}
-		validation := ValidateWithCatalog(placements, s.inventory, s.catalog)
+		validation := s.validation(placements)
 		if validation.Buildable {
 			s.result = placements
 			return true
+		}
+		if s.failed == nil || len(validation.Issues) < len(s.failed.Issues) {
+			for i := range validation.Issues {
+				for _, placement := range placements {
+					if placement.ID == validation.Issues[i].PlacementID {
+						validation.Issues[i].Message += " (" + placement.Module + ")"
+						break
+					}
+				}
+			}
+			s.failed = &validation
 		}
 		if !s.triedRepair && onlyDisconnectedIssues(validation) {
 			s.triedRepair = true
@@ -218,7 +241,7 @@ func (s *shapeSearch) walk(cursor int) bool {
 		}
 		return false
 	}
-	if len(s.placements) >= 200 || (s.exactCount > 0 && len(s.placements) >= s.exactCount) {
+	if len(s.placements) >= s.partLimit() || (s.exactCount > 0 && len(s.placements) >= s.exactCount) {
 		return false
 	}
 	if !s.canCoverRemaining() {
@@ -226,6 +249,10 @@ func (s *shapeSearch) walk(cursor int) bool {
 		return false
 	}
 	candidates := s.candidates(s.cells[cursor])
+	if len(candidates) == 0 && (s.deadCell == nil || cursor > s.deadCursor) {
+		cell := s.cells[cursor]
+		s.deadCell, s.deadCursor = &cell, cursor
+	}
 	for _, candidate := range candidates {
 		p := candidate.Placement
 		p.ID = fmt.Sprintf("%s:%d:%d:%d", p.Module, p.X, p.Y, p.Z)
@@ -372,7 +399,7 @@ func (s *shapeSearch) candidates(cell DesignVector) []shapeCandidate {
 // These optimistic capacity bounds cannot reject a feasible completion.
 // Disconnected partial layouts may still acquire a cross-brick later.
 func (s *shapeSearch) canCoverRemaining() bool {
-	uncovered := len(s.target) - len(s.occupied)
+	uncovered := len(s.target) - len(s.occupied) + s.seedCells
 	availableVolume, availableCount, largest := 0, 0, 0
 	for _, part := range s.parts {
 		volume := part.StudsX * part.StudsZ * part.PlatesY
@@ -393,7 +420,7 @@ func (s *shapeSearch) canCoverRemaining() bool {
 	if largest == 0 || (s.inventory.Configured && availableVolume < uncovered) {
 		return false
 	}
-	countLimit := 200
+	countLimit := s.partLimit()
 	if s.exactCount > 0 {
 		countLimit = s.exactCount
 		if s.inventory.Configured && availableCount < s.exactCount-len(s.placements) {
@@ -401,6 +428,20 @@ func (s *shapeSearch) canCoverRemaining() bool {
 		}
 	}
 	return len(s.placements)+(uncovered+largest-1)/largest <= countLimit
+}
+
+func (s *shapeSearch) partLimit() int {
+	if s.maxParts > 0 {
+		return s.maxParts
+	}
+	return 200
+}
+
+func (s *shapeSearch) validation(placements []Placement) ValidationReport {
+	if s.validate != nil {
+		return s.validate(placements)
+	}
+	return ValidateWithCatalog(placements, s.inventory, s.catalog)
 }
 
 // Scores order eligible candidates; they never override a hard constraint.
@@ -466,7 +507,7 @@ func CompileDesign(ctx context.Context, recipe AssemblyRecipe, inventory Invento
 		return result, err
 	}
 	result.Plan.GeneratorVersion = ShapeGeneratorVersion
-	result.Plan.Document = &BuildDocument{Version: 1, Design: *recipe.Design, DesignHash: DesignHash(*recipe.Design), Solver: solver,
+	result.Plan.Document = &BuildDocument{Version: 1, Design: recipe.Design, DesignHash: DesignHash(*recipe.Design), Solver: solver,
 		ParentCreationID: recipe.Metadata["parent_creation_id"], ParentHash: recipe.Metadata["parent_hash"]}
 	result.Plan.ContentHash = physicalContentHash(result.Plan)
 	result.MPD = ExportMPD(result.Plan)

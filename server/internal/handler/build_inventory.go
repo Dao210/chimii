@@ -74,14 +74,7 @@ func (h *Handler) GetBuildCatalog(w http.ResponseWriter, r *http.Request) {
 		CatalogVersion: catalog.Version,
 		CatalogSource:  catalog.Source,
 		Parts:          sortedBuildCatalogParts(catalog.Parts),
-		Colors: []buildCatalogColorResponse{
-			{Code: 1, Name: "Blue", Hex: "#1e5aa8"},
-			{Code: 2, Name: "Green", Hex: "#00852b"},
-			{Code: 4, Name: "Red", Hex: "#b40000"},
-			{Code: 14, Name: "Yellow", Hex: "#fac80a"},
-			{Code: 15, Name: "White", Hex: "#f4f4f4"},
-			{Code: 71, Name: "Light gray", Hex: "#969696"},
-		},
+		Colors:         buildCatalogColors(),
 	})
 }
 
@@ -383,4 +376,24 @@ func loadBrickInventorySnapshot(ctx context.Context, queries *db.Queries, worksp
 
 func unlimitedBrickInventoryResponse(catalogVersion string) brickInventoryResponse {
 	return brickInventoryResponse{Configured: false, CatalogVersion: catalogVersion, Revision: 0, Items: []buildstudio.InventoryItem{}}
+}
+
+func buildCatalogColors() []buildCatalogColorResponse {
+	return []buildCatalogColorResponse{
+		{Code: 0, Name: "Black", Hex: "#1b2a34"},
+		{Code: 1, Name: "Blue", Hex: "#1e5aa8"},
+		{Code: 2, Name: "Green", Hex: "#00852b"},
+		{Code: 4, Name: "Red", Hex: "#b40000"},
+		{Code: 14, Name: "Yellow", Hex: "#fac80a"},
+		{Code: 15, Name: "White", Hex: "#f4f4f4"},
+		{Code: 71, Name: "Light gray", Hex: "#969696"},
+		{Code: 19, Name: "Tan", Hex: "#d7ba8c"},
+		{Code: 25, Name: "Orange", Hex: "#d67923"},
+		{Code: 28, Name: "Dark tan", Hex: "#897d62"},
+		{Code: 29, Name: "Bright pink", Hex: "#ff9ecd"},
+		{Code: 70, Name: "Reddish brown", Hex: "#5f3109"},
+		{Code: 72, Name: "Dark gray", Hex: "#646464"},
+		{Code: 272, Name: "Dark blue", Hex: "#19325a"},
+		{Code: 288, Name: "Dark green", Hex: "#00451a"},
+	}
 }

@@ -24,13 +24,6 @@ func ComposeLDrawCatalogVersion(release, archiveSHA256 string) string {
 	return fmt.Sprintf("ldraw-official-%s-%s-r2", release, archiveSHA256[:min(12, len(archiveSHA256))])
 }
 
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}
-
 // StarterCatalog is deliberately small and versioned. The application never
 // asks a model to invent a part number: every placement must resolve here.
 var StarterCatalog = PartCatalog{
@@ -123,16 +116,25 @@ func CatalogCopy(parts PartCatalog) PartCatalog {
 }
 
 var allowedColors = map[int]bool{
-	1:  true, // blue
-	2:  true, // green
-	4:  true, // red
-	14: true, // yellow
-	15: true, // white
-	71: true, // light bluish gray
+	0:   true,
+	1:   true, // blue
+	2:   true, // green
+	4:   true, // red
+	14:  true, // yellow
+	15:  true, // white
+	71:  true, // light bluish gray
+	19:  true,
+	25:  true,
+	28:  true,
+	29:  true,
+	70:  true,
+	72:  true,
+	272: true,
+	288: true,
 }
 
 func IsAllowedColor(color int) bool { return allowedColors[color] }
 
 func AllowedColorCodes() []int {
-	return []int{1, 2, 4, 14, 15, 71}
+	return []int{0, 1, 2, 4, 14, 15, 19, 25, 28, 29, 70, 71, 72, 272, 288}
 }

@@ -69,7 +69,9 @@ func New(cfg Config) *Client {
 	}
 	httpClient := cfg.HTTPClient
 	if httpClient == nil {
-		httpClient = &http.Client{Timeout: defaultRequestTimeout}
+		// Message supplies a bounded context. An independent transport timeout
+		// would truncate explicitly longer scene-planning deadlines.
+		httpClient = &http.Client{}
 	}
 
 	return &Client{
@@ -111,7 +113,7 @@ func (c *Client) Message(ctx context.Context, req api.MessagesRequest) (*api.Str
 // GenerateText sends an optional system prompt and one user message, then
 // concatenates the text blocks in the Anthropic response. These bounded utility
 // calls explicitly disable extended thinking: compatible providers may enable
-// it by default. Use GenerateReasonedText for geometry or other planning work.
+// it by default. Build planning/review uses GenerateContent with explicit task controls.
 // An empty model uses the configured default.
 func (c *Client) GenerateText(ctx context.Context, model, systemPrompt, userPrompt string) (string, error) {
 	return c.generateText(ctx, model, systemPrompt, userPrompt, &api.ThinkingConfig{Type: "disabled"}, nil)
